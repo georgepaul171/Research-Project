@@ -83,13 +83,11 @@ Ensure that your datasets are placed in the `Data/` folder and that paths are co
 
 ## Contributing
 
-Contributions are welcome! If you'd like to suggest improvements or add new features:
+As this project is part of my individual MSc dissertation, I am required to complete the work solely on my own. 
 
-1. Fork the repo
-2. Create a feature branch (`git checkout -b feature-name`)
-3. Commit your changes (`git commit -m "Description of your feature"`)
-4. Push to your fork (`git push origin feature-name`)
-5. Create a Pull Request
+For this reason, I am **not accepting external contributions** at this time.
+
+If you have feedback or spot any issues, feel free to open an issue — but please understand that I cannot incorporate external code or direct contributions.
 
 
 ## License
