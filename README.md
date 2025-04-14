@@ -46,18 +46,22 @@ Make sure you have the following installed:
 
 1. **Clone the repository:**
 
-```bash
+```
+bash
 git clone https://github.com/georgepaul171/Research-Project.git
-cd Research-Project```
+cd Research-Project
+```
 
 2. **Optional Create a Virtual Environment:**
 
-```python -m venv env
-source env/bin/activate  # or `env\Scripts\activate` on Windows```
+```
+python -m venv env
+source env/bin/activate  # or `env\Scripts\activate` on Windows
+```
 
 3. **Install the Required Packages:**
 
-Use the ```requirements.txt```
+Use the requirements.txt file
 
 
 ## Usage
