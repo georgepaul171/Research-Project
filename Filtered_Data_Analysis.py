@@ -89,7 +89,7 @@ plt.show()
 
 # %%
 # Pairplot of key continuous variables
-key_vars = ['EUI_kWh_per_sqmt', 'SQFT', 'NFLOOR', 'FLCEILHT', 'WKHRS', 'NWKER', 'HDD65', 'CDD65']
+key_vars = ['EUI_kWh_per_sqmt', 'SQMT', 'NFLOOR', 'FLCEILHT', 'WKHRS', 'NWKER', 'HDD65', 'CDD65']
 sns.pairplot(df[key_vars].dropna())
 plt.suptitle("Pairwise Relationships (Numerical Variables)", y=1.02)
 plt.show()
@@ -146,4 +146,11 @@ print(df_model.head())
 # %%
 # Export filtered dataset
 df_model.to_csv('/Users/georgepaul/Desktop/Research-Project/Data/Data_Ready_to_Model.csv', index=False)
+# %%
+corr = df[key_vars].corr(numeric_only=True)
+plt.figure(figsize=(10, 8))
+sns.heatmap(corr, annot=True, cmap='coolwarm', vmin=-1, vmax=1)
+plt.title('Correlation Heatmap of Key Variables')
+plt.tight_layout()
+plt.show()
 # %%
