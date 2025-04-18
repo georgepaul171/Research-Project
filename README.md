@@ -42,10 +42,11 @@ Ensure the following are installed:
 
 1. **Clone the repository:**
 
-```bash
+```
+bash
 git clone https://github.com/georgepaul171/Research-Project.git
 cd Research-Project
-
+```
 
 2. **Optional Create a Virtual Environment:**
 
