@@ -1,18 +1,18 @@
 # Research-Project
 
-This repository contains all code and resources for my Data Science MSc research project. The project focuses on analyzing building-related data, with a particular emphasis on estimating Energy Use Intensity (EUI) through data cleaning, transformation, and exploratory data analysis.
-
+This repository contains all code and resources for my Data Science MSc research project. The project focuses on analyzing building-related data, with a particular emphasis on estimating Energy Use Intensity (EUI) through data cleaning, transformation, exploratory data analysis, and Bayesian modeling approaches.
 
 ## Project Overview
 
-The goal of this is to prepare and analyse data relevant to energy usage in commercial buildings. This involves:
+The objective is to prepare analyse, and model data relevant to energy usage in commercial office buildings. Key tasks include:
 
 - Data cleaning and preprocessing
 - Feature extraction and EUI metric generation
-- Exploratory data analysis
-- Experimental design and trials
+- Exploratory data analysis (EDA)
+- Bayesian hierarchical modeling
+- Bayesian sparse regression modeling
 
-The final aim is to support Bayesian Machine Learning modeling for EUI estimation, as part of my research.
+This project ultimately supports Bayesian Machine Learning techniques to estimate EUI, as part of my MSc dissertation.
 
 
 ## Repository Structure
@@ -20,65 +20,65 @@ The final aim is to support Bayesian Machine Learning modeling for EUI estimatio
 <pre lang="markdown">
 ```
 Research-Project/
-│
-├── Data/                    # Raw and cleaned datasets
-├── Add_EUI.ipynb           # Adds EUI-related metrics to the dataset
-├── Data_Cleaning.ipynb     # Data cleaning and preprocessing steps
-├── trial.ipynb             # Experimental trial notebook
-└── README.md               # This file
+├── Data/                  # Raw & cleaned datasets
+├── analysis-cleaning/     # Data cleaning & EDA notebooks + scripts
+├── hierarchical/          # Bayesian hierarchical models
+└── sparse‑regression/     # Bayesian sparse regression models
 ```
 </pre>
 
 
 ## Getting Started
 
-To run this project locally, follow the instructions below.
-
 ### Prerequisites
 
-Make sure you have the following installed:
+Ensure the following are installed:
 
 - Python 3.8+
 - Jupyter Notebook or JupyterLab
-- pip or conda package manager
+- pip or conda
 
-### Installation
+### Setup Instructions
 
 1. **Clone the repository:**
 
-```
-bash
+```bash
 git clone https://github.com/georgepaul171/Research-Project.git
 cd Research-Project
-```
+
 
 2. **Optional Create a Virtual Environment:**
 
 ```
 python -m venv env
-source env/bin/activate  # or `env\Scripts\activate` on Windows
+source env/bin/activate      # macOS/Linux
+# or
+env\Scripts\activate         # Windows
 ```
 
 3. **Install the Required Packages:**
 
-Use the requirements.txt file
-
+```
+pip install -r requirements.txt
+```
 
 ## Usage
 
-1. **Data Cleaning:**
+### 1. **Data Cleaning & EDA**
+Open notebooks in the `analysis-cleaning/` directory to explore data handling:
 
-   Open `Data_Cleaning.ipynb` to explore how missing values, duplicates, and formatting inconsistencies are handled.
+- `add_EUI_SQMT.ipynb`: Calculates EUI per square meter  
+- `Filtered_Data_Analysis.ipynb`: EDA on clean datasets  
+- Graphs are stored under `Graphs/`
 
-2. **Add EUI:**
+### 2. **Modeling**
 
-   Use `Add_EUI.ipynb` to calculate and merge Energy Use Intensity metrics based on available features.
+- Run `bay_hier.ipynb` for hierarchical Bayesian modeling  
+- Use `bay_sparse_reg.ipynb` for sparse regression model experiments
 
-3. **Run Experiments:**
-
-   Use `trial.ipynb` to try out initial visualizations, feature correlations, and modeling ideas.
-
-Ensure that your datasets are placed in the `Data/` folder and that paths are correctly referenced inside each notebook.
+### 3. **Datasets**
+Place all relevant CSV and Excel files in the `Data/` folder.  
+Ensure paths in notebooks point accordingly.
 
 
 ## Contributing
