@@ -27,7 +27,7 @@ from sklearn.preprocessing import StandardScaler
 import matplotlib.pyplot as plt
 
 # Path to cleaned data
-file_path = "/Users/georgepaul/Desktop/Research-Project/seattle/seattle-data-cleaned.csv"
+file_path = "/Users/georgepaul/Desktop/Research-Project/seattle/data/seattle-data-cleaned.csv"
 
 # Load dataset
 df = pd.read_csv(file_path)
