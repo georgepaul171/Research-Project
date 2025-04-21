@@ -22,7 +22,7 @@ from sklearn.preprocessing import MinMaxScaler
 
 # %%
 ## Load and prepare data
-df = pd.read_csv('/Users/georgepaul/Desktop/Research-Project/Data-CBECS/Data_Ready_Model.csv')
+df = pd.read_csv('/Users/georgepaul/Desktop/Research-Project/Data-CBECS/Data_Ready_to_Model.csv')
 features = [
     'EUI_kWh_per_sqmt', 'SQMT', 'NFLOOR', 'FLCEILHT',
     'MONUSE', 'OCCUPYP', 'WKHRS', 'NWKER',
