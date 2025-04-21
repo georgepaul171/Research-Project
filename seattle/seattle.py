@@ -24,7 +24,7 @@ import plotly.figure_factory as ff
 import matplotlib.pyplot as plt
 
 # Replace with your actual path
-file_path = "/Users/georgepaul/Desktop/Research-Project/seattle/seattle-data.csv"
+file_path = "/Users/georgepaul/Desktop/Research-Project/data/seattle/seattle-data.csv"
 
 # Load data
 df = pd.read_csv(file_path)
@@ -127,5 +127,5 @@ X = df[model_features]
 y = df["SiteEUI(kBtu/sf)"]
 
 print("Final input shape:", X.shape)
-df.to_csv("/Users/georgepaul/Desktop/Research-Project/seattle/seattle-data-cleaned.csv", index=False)
+df.to_csv("/Users/georgepaul/Desktop/Research-Project/seattle/data/seattle-data-cleaned.csv", index=False)
 # %%

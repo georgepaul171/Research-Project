@@ -35,7 +35,7 @@ import matplotlib.pyplot as plt
 # ## 1. Load and Preprocess Data
 
 # %%
-df = pd.read_csv('Data/Data_Ready_to_Model.csv')
+df = pd.read_csv('/Users/georgepaul/Desktop/Research-Project/Data-CBECS/Data_Ready_to_Model.csv')
 
 def floor_band(n):
     if n < 994:

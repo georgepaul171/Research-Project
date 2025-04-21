@@ -18,7 +18,7 @@ import seaborn as sns
 
 # %%
 # Load the dataset
-df = pd.read_csv('/Users/georgepaul/Desktop/Research-Project/Data/Usable_data_Offices_Clean.csv')
+df = pd.read_csv('/Users/georgepaul/Desktop/Research-Project/Data-CBECS/Usable_data_Offices_Clean.csv')
 print(df.columns.tolist())
 
 # %%
@@ -145,7 +145,7 @@ print(df_model.head())
 
 # %%
 # Export filtered dataset
-df_model.to_csv('/Users/georgepaul/Desktop/Research-Project/Data/Data_Ready_to_Model.csv', index=False)
+df_model.to_csv('/Users/georgepaul/Desktop/Research-Project/Data-CBECS/Data_Ready_to_Model.csv', index=False)
 # %%
 corr = df[key_vars].corr(numeric_only=True)
 plt.figure(figsize=(10, 8))

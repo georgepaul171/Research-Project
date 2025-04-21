@@ -15,7 +15,7 @@
 import pandas as pd
 
 # Load the original dataset
-df = pd.read_csv('/Users/georgepaul/Desktop/Research-Project/Data/dataCBECS.csv')
+df = pd.read_csv('/Users/georgepaul/Desktop/Research-Project/Data-CBECS/dataCBECS.csv')
 
 # Show all column names
 print(df.columns.tolist())
@@ -56,14 +56,14 @@ df['EUI_kWh_per_sqft'] = df['Total_Energy_kWh'] / df['SQFT']
 df['EUI_kWh_per_sqmt'] = df['Total_Energy_kWh'] / df['SQMT']
 
 # Save version 1
-df.to_csv('/Users/georgepaul/Desktop/Research-Project/Data/data_Offices_Clean.csv', index=False)
+df.to_csv('/Users/georgepaul/Desktop/Research-Project/Data-CBECS/data_Offices_Clean.csv', index=False)
 
 # Output shape
 print("Dataset shape (rows, columns):", df.shape)
 # %% 
 # ## Step 6: Alternative Calculation Using MFBTU (Version 2)
 
-df = pd.read_csv('/Users/georgepaul/Desktop/Research-Project/Data/dataCBECS.csv')
+df = pd.read_csv('/Users/georgepaul/Desktop/Research-Project/Data-CBECS/dataCBECS.csv')
 
 # Filter to only office buildings
 df = df[df['PBA'] == 2]
@@ -83,7 +83,7 @@ df['EUI_kWh_per_sqft'] = df['Total_Energy_kWh'] / df['SQFT']
 df['EUI_kWh_per_sqmt'] = df['Total_Energy_kWh'] / df['SQMT']
 
 # Save version 2
-df.to_csv('/Users/georgepaul/Desktop/Research-Project/Data/Usable_data_Offices_Clean.csv', index=False)
+df.to_csv('/Users/georgepaul/Desktop/Research-Project/Data-CBECS/Usable_data_Offices_Clean.csv', index=False)
 
 # Output shape
 print("Usable data filtered for offices and cleaning has shape (rows, columns):", df.shape)
