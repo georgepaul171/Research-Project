@@ -22,9 +22,10 @@ import pandas as pd
 import plotly.express as px
 import plotly.figure_factory as ff
 import matplotlib.pyplot as plt
+import seaborn as sns   
 
 # Replace with your actual path
-file_path = "/Users/georgepaul/Desktop/Research-Project/data/seattle/seattle-data.csv"
+file_path = "/Users/georgepaul/Desktop/Research-Project/seattle/data/seattle-data.csv"
 
 # Load data
 df = pd.read_csv(file_path)
