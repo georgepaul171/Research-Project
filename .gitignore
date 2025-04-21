@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg
+*.egg-info/
+*.pyd
+*.pyo
+*.log
+
+# Virtual environment
+venv/
+.env/
+.venv/
+
+# PyMC & sampling outputs
+*.nc
+*.csv
+*.hdf5
+*.trace
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# Notebooks
+.ipynb_checkpoints/
+
+# Mac OS
+.DS_Store
