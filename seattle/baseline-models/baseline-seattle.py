@@ -8,6 +8,9 @@ from sklearn.metrics import r2_score
 import os
 import plotly.graph_objects as go
 
+import matplotlib.pyplot as plt
+import seaborn as sns
+
 
 
 # Load and clean
@@ -83,3 +86,29 @@ fig_rmse.update_layout(
     template="plotly_white"
 )
 fig_rmse.write_image(f"{results_path}/rmse_comparison.png")
+
+# Random Forest Feature Importances
+rf_model = models["Random Forest"]
+rf_importances = rf_model.feature_importances_
+rf_series = pd.Series(rf_importances, index=X.columns).sort_values(ascending=False)
+
+plt.figure(figsize=(10, 6))
+sns.barplot(x=rf_series.values[:10], y=rf_series.index[:10], palette="crest")
+plt.title("Top 10 Feature Importances - Random Forest")
+plt.xlabel("Importance")
+plt.tight_layout()
+plt.savefig(f"{results_path}/rf_feature_importance.png")
+plt.close()
+
+# XGBoost Feature Importances
+xgb_model = models["XGBoost"]
+xgb_importances = xgb_model.feature_importances_
+xgb_series = pd.Series(xgb_importances, index=X.columns).sort_values(ascending=False)
+
+plt.figure(figsize=(10, 6))
+sns.barplot(x=xgb_series.values[:10], y=xgb_series.index[:10], palette="flare")
+plt.title("Top 10 Feature Importances - XGBoost")
+plt.xlabel("Importance")
+plt.tight_layout()
+plt.savefig(f"{results_path}/xgb_feature_importance.png")
+plt.close()
