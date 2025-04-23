@@ -10,13 +10,13 @@
 # # Seattle Building Energy Data: Cleaning and EDA with Plotly
 
 # ## Virtual Environment Setup
-# Run the following in your terminal:
+# Run the following in terminal:
 # python3 -m venv bpd_env
 # source bpd_env/bin/activate
 # pip install pandas plotly scikit-learn matplotlib
 
 # %%
-# ## 1. Load Libraries and Dataset
+# Load Libraries and Dataset
 
 import pandas as pd
 import plotly.express as px
@@ -24,7 +24,6 @@ import plotly.figure_factory as ff
 import matplotlib.pyplot as plt
 import seaborn as sns   
 
-# Replace with your actual path
 file_path = "/Users/georgepaul/Desktop/Research-Project/seattle/data/seattle-data.csv"
 
 # Load data
@@ -33,7 +32,7 @@ df = pd.read_csv(file_path)
 print("Initial shape:", df.shape)
 df.head()
 # %%
-# ## 2. Clean the Dataset
+#Clean the dataset
 
 drop_cols = [
     "OSEBuildingID", "BuildingName", "TaxParcelIdentificationNumber",
@@ -57,9 +56,9 @@ df.reset_index(drop=True, inplace=True)
 
 print("Cleaned data shape:", df.shape)
 # %%
-# ## 3. Interactive EDA with Plotly
+# ## Interactive EDA with Plotly
 
-# Histogram of Site EUI
+# Histogram of site EUI
 
 fig_hist = px.histogram(
     df,
@@ -71,7 +70,7 @@ fig_hist = px.histogram(
 fig_hist.update_layout(bargap=0.1)
 fig_hist.show()
 # %%
-# ## 4. Pairplot (Scatter Matrix) for Selected Features
+# Pairplot for selected features
 
 selected_features = [
     "SiteEUI(kBtu/sf)",
@@ -91,7 +90,7 @@ sns.pairplot(df[selected_features], corner=True)
 plt.suptitle("Pairplot of Key Features", y=1.02)
 plt.show()
 # %%
-# ## 5. Correlation Heatmap
+# Correlation Heatmap
 
 
 corr_matrix = df[selected_features].corr().round(2)
@@ -109,7 +108,7 @@ fig_corr = ff.create_annotated_heatmap(
 fig_corr.update_layout(title="Correlation Matrix", height=700)
 fig_corr.show()
 # %%
-# ## 6. Feature Engineering (for modeling)
+# Feature engineering (for modelling)
 
 features = [
     "DataYear", "YearBuilt", "NumberofFloors", "NumberofBuildings",
