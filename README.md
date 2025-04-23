@@ -15,7 +15,7 @@ The objective is to prepare analyse, and model data relevant to energy usage in 
 This project ultimately supports Bayesian Machine Learning techniques to estimate EUI, as part of my MSc dissertation.
 
 
-## Repository Structure
+## Repository Structure - Updated on the Monday of every week
 
 <pre lang="markdown">
 ```
