@@ -1,6 +1,6 @@
 # Research-Project
 
-This repository contains all code and resources for my Data Science MSc research project. The project focuses on analyzing building-related data, with a particular emphasis on estimating Energy Use Intensity (EUI) through data cleaning, transformation, exploratory data analysis, and Bayesian modeling approaches.
+This repository contains all code and resources for my Data Science MSc research project. The project focuses on analyzing building-related data, with a particular emphasis on estimating Energy Use Intensity (EUI) through data cleaning, transformation, exploratory data analysis, and Bayesian modelling approaches.
 
 ## Project Overview
 
