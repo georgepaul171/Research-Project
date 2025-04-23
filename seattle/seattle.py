@@ -13,7 +13,7 @@
 # Run the following in terminal:
 # python3 -m venv bpd_env
 # source bpd_env/bin/activate
-# pip install pandas plotly scikit-learn matplotlib
+# pip install pandas plotly scikit-learn matplotlib seaborn
 
 # %%
 # Load Libraries and Dataset
@@ -129,3 +129,4 @@ y = df["SiteEUI(kBtu/sf)"]
 print("Final input shape:", X.shape)
 df.to_csv("/Users/georgepaul/Desktop/Research-Project/seattle/data/seattle-data-cleaned.csv", index=False)
 # %%
+
