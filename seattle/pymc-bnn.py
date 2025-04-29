@@ -186,7 +186,8 @@ axes[1, 1].set_title("Residual Plot")
 axes[1, 1].grid(True)
 
 plt.tight_layout()
-plt.show()
+plt.savefig('bnn_results.png')  # Save the plot instead of showing it
+plt.close()
 
 # Additional summary statistics
 print("\n========= Additional Statistics =========")
