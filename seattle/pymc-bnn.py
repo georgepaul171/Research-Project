@@ -22,6 +22,7 @@ import arviz as az
 TRAIN_NEW_MODEL = True  # Set to True to train new model, False to load existing
 
 # ========== 1. Load Data ==========
+# Use relative paths
 X_train = pd.read_csv("X_train.csv")
 X_test = pd.read_csv("X_test.csv")
 y_train = pd.read_csv("y_train.csv").squeeze()
