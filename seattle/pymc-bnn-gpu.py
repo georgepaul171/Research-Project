@@ -1,11 +1,7 @@
-# bnn_seattle_model.py
+# bnn_seattle_model_gpu.py
 
 # ============================================================
-# Virtual Environment Setup (run once in terminal):
-# ============================================================
-# python3 -m venv bpd_env
-# source bpd_env/bin/activate
-# pip install pandas scikit-learn pymc arviz matplotlib
+# GPU Optimized Version
 # ============================================================
 
 import pymc as pm
@@ -17,6 +13,12 @@ from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
 from sklearn.impute import KNNImputer
 import os
 import arviz as az
+import cupy as cp  # For GPU-accelerated computations
+from pytensor import shared
+
+# Configure PyMC for GPU usage
+pm.config.set_floatX("float32")  # Use float32 for better GPU performance
+pm.config.set_use_gpu(True)      # Enable GPU usage
 
 # Flag to control whether to train or load existing model
 TRAIN_NEW_MODEL = True  # Set to True to train new model, False to load existing
@@ -67,13 +69,13 @@ print(f"Missing values in y_train: {y_train.isna().sum()}")
 print(f"Missing values in X_test: {X_test.isna().sum().sum()}")
 print(f"Missing values in y_test: {y_test.isna().sum()}")
 
-# Convert to numpy arrays
-X_train_np = X_train.values.astype(np.float32)
-X_test_np = X_test.values.astype(np.float32)
-y_train_np = y_train.values.astype(np.float32)
-y_test_np = y_test.values.astype(np.float32)
+# Convert to numpy arrays and then to cupy arrays for GPU processing
+X_train_np = cp.asarray(X_train.values.astype(np.float32))
+X_test_np = cp.asarray(X_test.values.astype(np.float32))
+y_train_np = cp.asarray(y_train.values.astype(np.float32))
+y_test_np = cp.asarray(y_test.values.astype(np.float32))
 
-print("\nFinal numpy array shapes:")
+print("\nFinal array shapes (on GPU):")
 print(f"X_train_np shape: {X_train_np.shape}")
 print(f"y_train_np shape: {y_train_np.shape}")
 print(f"X_test_np shape: {X_test_np.shape}")
@@ -82,12 +84,15 @@ print(f"y_test_np shape: {y_test_np.shape}")
 n_features = X_train_np.shape[1]
 
 # ========== 3. Build and Train the Bayesian Neural Network ==========
-trace_file = "bnn_trace.nc"
+trace_file = "bnn_trace_gpu.nc"
 
 if TRAIN_NEW_MODEL:
     with pm.Model() as bnn_model:
-        X_data = pm.Data("X_data", X_train_np)
+        # Use shared variables for better GPU memory management
+        X_data = shared(X_train_np)
+        y_data = shared(y_train_np)
 
+        # Define the neural network architecture
         w1 = pm.Normal("w1", mu=0, sigma=1, shape=(n_features, 128))
         b1 = pm.Normal("b1", mu=0, sigma=1, shape=(128,))
         z1 = pt.tanh(pt.dot(X_data, w1) + b1)
@@ -101,10 +106,20 @@ if TRAIN_NEW_MODEL:
         mu = pt.dot(z2, w_out) + b_out
 
         sigma = pm.HalfNormal("sigma", sigma=1)
-        y_obs = pm.Normal("y_obs", mu=mu, sigma=sigma, observed=y_train_np)
+        y_obs = pm.Normal("y_obs", mu=mu, sigma=sigma, observed=y_data)
 
-        trace = pm.sample(draws=1000, tune=1000, chains=2, target_accept=0.9,
-                         return_inferencedata=True, cores=1, random_seed=42)
+        # Use NUTS sampler with GPU acceleration
+        trace = pm.sample(
+            draws=1000,
+            tune=1000,
+            chains=2,
+            target_accept=0.9,
+            return_inferencedata=True,
+            cores=1,
+            random_seed=42,
+            progressbar=True
+        )
+        
         print("\n========= Training Progress =========")
         print(f"Number of samples: {len(trace.posterior.draw)}")
         print(f"Number of chains: {len(trace.posterior.chain)}")
@@ -123,19 +138,22 @@ else:
 
 # ========== 4. Make Predictions Using Posterior Predictive ==========
 with bnn_model:
-    pm.set_data({"X_data": X_test_np})
+    # Update shared variable for test data
+    X_data.set_value(X_test_np)
     ppc = pm.sample_posterior_predictive(trace, var_names=["y_obs"], random_seed=42)
 
 mu_pred_eval = ppc["y_obs"]  # shape: (n_samples, n_test_points)
 
 # ========== 5. Evaluation ==========
-pred_mean = mu_pred_eval.mean(axis=0)
-pred_std = mu_pred_eval.std(axis=0)
+# Convert back to numpy for evaluation metrics
+pred_mean = cp.asnumpy(mu_pred_eval.mean(axis=0))
+pred_std = cp.asnumpy(mu_pred_eval.std(axis=0))
+y_test_np_cpu = cp.asnumpy(y_test_np)
 
-r2 = r2_score(y_test_np, pred_mean)
-rmse = np.sqrt(np.mean((y_test_np - pred_mean) ** 2))
-mae = mean_absolute_error(y_test_np, pred_mean)
-mape = np.mean(np.abs((y_test_np - pred_mean) / y_test_np)) * 100
+r2 = r2_score(y_test_np_cpu, pred_mean)
+rmse = np.sqrt(np.mean((y_test_np_cpu - pred_mean) ** 2))
+mae = mean_absolute_error(y_test_np_cpu, pred_mean)
+mape = np.mean(np.abs((y_test_np_cpu - pred_mean) / y_test_np_cpu)) * 100
 avg_uncertainty = np.mean(pred_std)
 max_uncertainty = np.max(pred_std)
 
@@ -153,7 +171,7 @@ fig, axes = plt.subplots(2, 2, figsize=(15, 12))
 
 # 1. Predictions vs Actual with Uncertainty
 axes[0, 0].errorbar(range(len(pred_mean)), pred_mean, yerr=pred_std, fmt='o', alpha=0.5, label="Predicted ± std")
-axes[0, 0].plot(range(len(y_test_np)), y_test_np, 'k.', alpha=0.6, label="Actual")
+axes[0, 0].plot(range(len(y_test_np_cpu)), y_test_np_cpu, 'k.', alpha=0.6, label="Actual")
 axes[0, 0].set_xlabel("Sample Index")
 axes[0, 0].set_ylabel("Site EUI")
 axes[0, 0].set_title("PyMC BNN: Predicted vs Actual with Uncertainty")
@@ -162,7 +180,7 @@ axes[0, 0].grid(True)
 
 # 2. Distribution of Predictions
 axes[0, 1].hist(pred_mean, bins=30, alpha=0.7, label="Predicted")
-axes[0, 1].hist(y_test_np, bins=30, alpha=0.7, label="Actual")
+axes[0, 1].hist(y_test_np_cpu, bins=30, alpha=0.7, label="Actual")
 axes[0, 1].set_xlabel("Site EUI")
 axes[0, 1].set_ylabel("Frequency")
 axes[0, 1].set_title("Distribution of Predictions vs Actual")
@@ -177,7 +195,7 @@ axes[1, 0].set_title("Uncertainty vs Prediction")
 axes[1, 0].grid(True)
 
 # 4. Residual Plot
-residuals = y_test_np - pred_mean
+residuals = y_test_np_cpu - pred_mean
 axes[1, 1].scatter(pred_mean, residuals, alpha=0.5)
 axes[1, 1].axhline(y=0, color='r', linestyle='--')
 axes[1, 1].set_xlabel("Predicted Value")
@@ -186,11 +204,12 @@ axes[1, 1].set_title("Residual Plot")
 axes[1, 1].grid(True)
 
 plt.tight_layout()
-plt.show()
+plt.savefig('bnn_results_gpu.png')  # Save the plot instead of showing it
+plt.close()
 
 # Additional summary statistics
 print("\n========= Additional Statistics =========")
 print(f"Mean of predictions: {np.mean(pred_mean):.2f}")
 print(f"Std of predictions: {np.std(pred_mean):.2f}")
 print(f"Mean of residuals: {np.mean(residuals):.2f}")
-print(f"Std of residuals: {np.std(residuals):.2f}")
+print(f"Std of residuals: {np.std(residuals):.2f}") 
