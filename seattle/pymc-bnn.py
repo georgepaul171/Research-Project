@@ -23,10 +23,10 @@ TRAIN_NEW_MODEL = True  # Set to True to train new model, False to load existing
 
 # ========== 1. Load Data ==========
 # Use relative paths
-X_train = pd.read_csv("X_train.csv")
-X_test = pd.read_csv("X_test.csv")
-y_train = pd.read_csv("y_train.csv").squeeze()
-y_test = pd.read_csv("y_test.csv").squeeze()
+X_train = pd.read_csv("data/X_train.csv")
+X_test = pd.read_csv("data/X_test.csv")
+y_train = pd.read_csv("data/y_train.csv").squeeze()
+y_test = pd.read_csv("data/y_test.csv").squeeze()
 
 print("\nInitial shapes:")
 print(f"X_train shape: {X_train.shape}")
