@@ -1,7 +1,7 @@
-# Base image with CUDA 12 and Python
+# Base image with CUDA 12.1 and Python
 FROM nvidia/cuda:12.1.1-runtime-ubuntu22.04
 
-# Set environment variables to prevent Python from writing .pyc files
+# Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
@@ -14,19 +14,18 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Set python3.10 as default
 RUN ln -s /usr/bin/python3.10 /usr/bin/python
 
 # Upgrade pip
 RUN pip install --upgrade pip
 
-# Install Python dependencies
-COPY requirements.txt .
+# Copy and install Python requirements
+COPY requirements.txt /app/requirements.txt
+WORKDIR /app
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy your project code into the container
-WORKDIR /app
+# Copy the rest of the project
 COPY . /app
 
-# Default command (optional override with docker run)
-CMD ["python", "bnn/bnn_seattle.py"]
+# Set default command to run BNN
+CMD ["python", "bnn/bnn.py"]
