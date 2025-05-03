@@ -26,6 +26,10 @@ import arviz as az
 import pymc.sampling.jax
 import os
 
+print("Remember to take import jax out after you see this message")
+import jax
+print("JAX devices:", jax.devices())
+
 # Output directory
 output_dir = "results"
 os.makedirs(output_dir, exist_ok=True)
