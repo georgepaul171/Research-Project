@@ -6,6 +6,3 @@ seaborn>=0.12
 pymc>=5.10
 arviz>=0.16
 pytensor>=2.16
-jax>=0.4.25
-jaxlib>=0.4.25
-numpyro>=0.13

@@ -33,8 +33,11 @@ WORKDIR /app
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Install CUDA-enabled JAX
-RUN pip install --upgrade "jax[cuda12_pip]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
-
+RUN pip install --upgrade \
+  jax==0.4.25 \
+  jaxlib==0.4.25+cuda12.cudnn89 \
+  numpyro==0.13.2 \
+  -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 # Copy rest of the code
 COPY . /app
 
