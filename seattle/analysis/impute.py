@@ -32,7 +32,7 @@ X = df_numeric.drop(columns=[target_col])
 y = df_numeric[target_col]
 
 # Split into train and test
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
 # Fit KNN imputer on training data
 imputer = KNNImputer(n_neighbors=5)
@@ -56,7 +56,7 @@ y_test.to_csv("/Users/georgepaul/Desktop/Research-Project/seattle/data/y_test_im
 joblib.dump(imputer, "/Users/georgepaul/Desktop/Research-Project/seattle/data/knn_imputer.joblib")
 
 # Summary
-print("✅ Split + KNN Imputation complete.")
-print(f"✔️ Columns kept: {list(cols_to_keep)}")
-print(f"🧪 X_train: {X_train_imputed.shape}, y_train: {y_train.shape}")
-print(f"🧪 X_test : {X_test_imputed.shape}, y_test : {y_test.shape}")
+print("Split + KNN Imputation complete.")
+print(f"Columns kept: {list(cols_to_keep)}")
+print(f"X_train: {X_train_imputed.shape}, y_train: {y_train.shape}")
+print(f"X_test : {X_test_imputed.shape}, y_test : {y_test.shape}")

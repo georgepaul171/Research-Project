@@ -1,6 +1,19 @@
-# bnn_seattle.py
-# This is a simple BNN model for the Seattle dataset (using pre-imputed and pre-split files).
+# ---
+# jupyter:
+#   jupytext_format_version: '1.3'
+#   kernelspec:
+#     display_name: Python 3
+#     language: python
+#     name: python3
+# ---
 
+# # Bayesian Neural Network for Seattle Dataset
+# This notebook uses imputed and pre-split energy data to train a Bayesian Neural Network using PyMC and JAX.
+
+# %% [markdown]
+# ### 1. Imports & Setup
+
+# %%
 import pymc as pm
 import pytensor.tensor as pt
 import pandas as pd
@@ -11,17 +24,31 @@ from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
 import arviz as az
 import pymc.sampling.jax
 import os
+import numpyro
 
 
-# ========= 1. Load Imputed Data =========
-X_train = pd.read_csv("data/X_train_imputed.csv")
-y_train = pd.read_csv("data/y_train_imputed.csv").squeeze()
+# %% [markdown]
+# ### 2. Load Imputed Data
 
-X_test = pd.read_csv("data/X_test_imputed.csv")
-y_test = pd.read_csv("data/y_test_imputed.csv").squeeze()
+# %%
+X_train = pd.read_csv("/Users/georgepaul/Desktop/Research-Project/seattle/data/X_train_imputed.csv")
+y_train = pd.read_csv("/Users/georgepaul/Desktop/Research-Project/seattle/data/y_train_imputed.csv")
+X_test = pd.read_csv("/Users/georgepaul/Desktop/Research-Project/seattle/data/X_test_imputed.csv")
+y_test = pd.read_csv("/Users/georgepaul/Desktop/Research-Project/seattle/data/y_test_imputed.csv")
 
-# ========= 2. Preprocess =========
-# Standardize features
+# Rename columns if needed
+if y_train.columns[0] != "SiteEUI(kBtu/sf)":
+    y_train.columns = ["SiteEUI(kBtu/sf)"]
+if y_test.columns[0] != "SiteEUI(kBtu/sf)":
+    y_test.columns = ["SiteEUI(kBtu/sf)"]
+
+y_train = y_train.squeeze()
+y_test = y_test.squeeze()
+
+# %% [markdown]
+# ### 3. Standardize Features
+
+# %%
 scaler = StandardScaler()
 X_train_scaled = scaler.fit_transform(X_train).astype(np.float32)
 X_test_scaled = scaler.transform(X_test).astype(np.float32)
@@ -32,17 +59,17 @@ y_test_np = y_test.values.astype(np.float32)
 n_features = X_train.shape[1]
 trace_file = "bnn_trace_seattle.nc"
 
-# ========= 3. Build or Load BNN =========
+# %% [markdown]
+# ### 4. Build or Load BNN
+# %%
+
 if os.path.exists(trace_file):
     print(f"Loading existing trace from {trace_file}...")
     trace = az.from_netcdf(trace_file)
-    print("Trace loaded successfully.")
     with pm.Model() as bnn_model:
-        
         X_data = pm.Data("X_data", X_train_scaled)
         y_data = pm.Data("y_data", y_train_np)
 
-        # Rebuild model structure
         w1 = pm.Normal("w1", mu=0, sigma=1, shape=(n_features, 32))
         b1 = pm.Normal("b1", mu=0, sigma=1, shape=(32,))
         z1 = pt.tanh(pt.dot(X_data, w1) + b1)
@@ -58,7 +85,6 @@ if os.path.exists(trace_file):
         sigma = pm.HalfNormal("sigma", sigma=1)
         y_obs = pm.Normal("y_obs", mu=mu, sigma=sigma, observed=y_train_np)
 else:
-    print("Training new BNN model...")
     with pm.Model() as bnn_model:
         X_data = pm.Data("X_data", X_train_scaled)
         y_data = pm.Data("y_data", y_train_np)
@@ -89,7 +115,10 @@ else:
         trace.to_netcdf(trace_file)
         print(f"Trace saved to {trace_file}")
 
-# ========= 4. Posterior Predictive =========
+# %% [markdown]
+# ### 5. Posterior Predictive
+
+# %%
 with bnn_model:
     pm.set_data({"X_data": X_test_scaled})
     ppc = pm.sample_posterior_predictive(trace, var_names=["y_obs"], random_seed=42)
@@ -98,41 +127,52 @@ mu_pred_eval = ppc["y_obs"]
 pred_mean = mu_pred_eval.mean(axis=0)
 pred_std = mu_pred_eval.std(axis=0)
 
-# ========= 5. Evaluation =========
+# %% [markdown]
+# ### 6. Evaluation Metrics
+
+# %%
 r2 = r2_score(y_test_np, pred_mean)
 rmse = mean_squared_error(y_test_np, pred_mean, squared=False)
 mae = mean_absolute_error(y_test_np, pred_mean)
 
-print("\n========= Evaluation Metrics =========")
+print("========= Evaluation Metrics =========")
 print(f"R² Score                  : {r2:.3f}")
 print(f"RMSE                      : {rmse:.2f}")
 print(f"MAE                       : {mae:.2f}")
 print(f"Avg Std Dev (Uncertainty) : {np.mean(pred_std):.2f}")
 print(f"Max Std Dev               : {np.max(pred_std):.2f}")
 
-# ========= 6. Visualizations =========
+# Save to file
+with open("bnn_seattle_metrics.txt", "w") as f:
+    f.write("========= Evaluation Metrics =========\n")
+    f.write(f"R² Score                  : {r2:.3f}\n")
+    f.write(f"RMSE                      : {rmse:.2f}\n")
+    f.write(f"MAE                       : {mae:.2f}\n")
+    f.write(f"Avg Std Dev (Uncertainty) : {np.mean(pred_std):.2f}\n")
+    f.write(f"Max Std Dev               : {np.max(pred_std):.2f}\n")
+
+# %% [markdown]
+# ### 7. Visualizations
+
+# %%
 fig, axes = plt.subplots(2, 2, figsize=(15, 12))
 
-# 1. Predictions with uncertainty
 axes[0, 0].errorbar(range(len(pred_mean)), pred_mean, yerr=pred_std, fmt='o', alpha=0.5, label="Predicted ± std")
 axes[0, 0].plot(range(len(y_test_np)), y_test_np, 'k.', alpha=0.6, label="Actual")
 axes[0, 0].set_title("Predicted vs Actual")
 axes[0, 0].legend()
 axes[0, 0].grid(True)
 
-# 2. Prediction distribution
 axes[0, 1].hist(pred_mean, bins=30, alpha=0.7, label="Predicted")
 axes[0, 1].hist(y_test_np, bins=30, alpha=0.7, label="Actual")
 axes[0, 1].set_title("Distribution of Predictions vs Actual")
 axes[0, 1].legend()
 axes[0, 1].grid(True)
 
-# 3. Uncertainty vs prediction
 axes[1, 0].scatter(pred_mean, pred_std, alpha=0.5)
 axes[1, 0].set_title("Uncertainty vs Prediction")
 axes[1, 0].grid(True)
 
-# 4. Residual plot
 residuals = y_test_np - pred_mean
 axes[1, 1].scatter(pred_mean, residuals, alpha=0.5)
 axes[1, 1].axhline(y=0, color='r', linestyle='--')
@@ -143,4 +183,10 @@ plt.tight_layout()
 plt.savefig("bnn_seattle_results.png")
 plt.close()
 
-print("\nResults saved to 'bnn_seattle_results.png'")
+# %% [markdown]
+# ### 8. Trace Summary
+
+# %%
+summary_df = az.summary(trace)
+summary_df.to_csv("bnn_trace_summary.csv")
+summary_df
