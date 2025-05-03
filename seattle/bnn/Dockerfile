@@ -14,18 +14,24 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
+# Create symlink for 'python' command
 RUN ln -s /usr/bin/python3.10 /usr/bin/python
 
-# Upgrade pip
-RUN pip install --upgrade pip
+# Upgrade pip, setuptools, and wheel
+RUN pip install --upgrade pip setuptools wheel
 
-# Copy and install Python requirements
-COPY requirements.txt /app/requirements.txt
+# Optional: Install Jupyter & Jupytext for interactive dev
+RUN pip install jupyterlab jupytext
+
+# Set working directory
 WORKDIR /app
+
+# Copy requirements first (for caching)
+COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the project
+# Copy rest of the code
 COPY . /app
 
 # Set default command to run BNN
-CMD ["python", "bnn/bnn.py"]
+CMD ["python", "bnn.py"]

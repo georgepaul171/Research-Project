@@ -7,11 +7,12 @@
 #     name: python3
 # ---
 
-# # Bayesian Neural Network for Seattle Dataset
-# This notebook uses imputed and pre-split energy data to train a Bayesian Neural Network using PyMC and JAX.
+# %% [markdown]
+# # Bayesian Neural Network (PyMC) on Seattle Energy Data
+# This notebook trains a Bayesian Neural Network on imputed energy data using PyMC, JAX, and NumPyro.
 
 # %% [markdown]
-# ### 1. Imports & Setup
+# ## 1. Imports & Setup
 
 # %%
 import pymc as pm
@@ -24,17 +25,19 @@ from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
 import arviz as az
 import pymc.sampling.jax
 import os
-import numpyro
 
+# Output directory
+output_dir = "results"
+os.makedirs(output_dir, exist_ok=True)
 
 # %% [markdown]
-# ### 2. Load Imputed Data
+# ## 2. Load and Prepare Data
 
 # %%
-X_train = pd.read_csv("/Users/georgepaul/Desktop/Research-Project/seattle/data/X_train_imputed.csv")
-y_train = pd.read_csv("/Users/georgepaul/Desktop/Research-Project/seattle/data/y_train_imputed.csv")
-X_test = pd.read_csv("/Users/georgepaul/Desktop/Research-Project/seattle/data/X_test_imputed.csv")
-y_test = pd.read_csv("/Users/georgepaul/Desktop/Research-Project/seattle/data/y_test_imputed.csv")
+X_train = pd.read_csv("data/X_train_imputed.csv")
+y_train = pd.read_csv("data/y_train_imputed.csv")
+X_test = pd.read_csv("data/X_test_imputed.csv")
+y_test = pd.read_csv("data/y_test_imputed.csv")
 
 # Rename columns if needed
 if y_train.columns[0] != "SiteEUI(kBtu/sf)":
@@ -46,7 +49,7 @@ y_train = y_train.squeeze()
 y_test = y_test.squeeze()
 
 # %% [markdown]
-# ### 3. Standardize Features
+# ## 3. Standardize Features
 
 # %%
 scaler = StandardScaler()
@@ -57,14 +60,14 @@ y_train_np = y_train.values.astype(np.float32)
 y_test_np = y_test.values.astype(np.float32)
 
 n_features = X_train.shape[1]
-trace_file = "bnn_trace_seattle.nc"
+trace_file = os.path.join(output_dir, "bnn_trace_seattle.nc")
 
 # %% [markdown]
-# ### 4. Build or Load BNN
-# %%
+# ## 4. Build and Train Model
 
+# %%
 if os.path.exists(trace_file):
-    print(f"Loading existing trace from {trace_file}...")
+    print(f"Loading trace from {trace_file}...")
     trace = az.from_netcdf(trace_file)
     with pm.Model() as bnn_model:
         X_data = pm.Data("X_data", X_train_scaled)
@@ -113,10 +116,10 @@ else:
         )
         trace = az.from_dict(trace)
         trace.to_netcdf(trace_file)
-        print(f"Trace saved to {trace_file}")
+        print(f"Saved trace to {trace_file}")
 
 # %% [markdown]
-# ### 5. Posterior Predictive
+# ## 5. Posterior Prediction
 
 # %%
 with bnn_model:
@@ -128,44 +131,43 @@ pred_mean = mu_pred_eval.mean(axis=0)
 pred_std = mu_pred_eval.std(axis=0)
 
 # %% [markdown]
-# ### 6. Evaluation Metrics
+# ## 6. Evaluation Metrics
 
 # %%
 r2 = r2_score(y_test_np, pred_mean)
 rmse = mean_squared_error(y_test_np, pred_mean, squared=False)
 mae = mean_absolute_error(y_test_np, pred_mean)
 
-print("========= Evaluation Metrics =========")
-print(f"R² Score                  : {r2:.3f}")
-print(f"RMSE                      : {rmse:.2f}")
-print(f"MAE                       : {mae:.2f}")
-print(f"Avg Std Dev (Uncertainty) : {np.mean(pred_std):.2f}")
-print(f"Max Std Dev               : {np.max(pred_std):.2f}")
+print("=== Evaluation Metrics ===")
+print(f"R²     : {r2:.3f}")
+print(f"RMSE   : {rmse:.2f}")
+print(f"MAE    : {mae:.2f}")
+print(f"Avg σ  : {np.mean(pred_std):.2f}")
+print(f"Max σ  : {np.max(pred_std):.2f}")
 
-# Save to file
-with open("bnn_seattle_metrics.txt", "w") as f:
-    f.write("========= Evaluation Metrics =========\n")
-    f.write(f"R² Score                  : {r2:.3f}\n")
-    f.write(f"RMSE                      : {rmse:.2f}\n")
-    f.write(f"MAE                       : {mae:.2f}\n")
-    f.write(f"Avg Std Dev (Uncertainty) : {np.mean(pred_std):.2f}\n")
-    f.write(f"Max Std Dev               : {np.max(pred_std):.2f}\n")
+with open(os.path.join(output_dir, "bnn_seattle_metrics.txt"), "w") as f:
+    f.write("=== Evaluation Metrics ===\n")
+    f.write(f"R²     : {r2:.3f}\n")
+    f.write(f"RMSE   : {rmse:.2f}\n")
+    f.write(f"MAE    : {mae:.2f}\n")
+    f.write(f"Avg σ  : {np.mean(pred_std):.2f}\n")
+    f.write(f"Max σ  : {np.max(pred_std):.2f}\n")
 
 # %% [markdown]
-# ### 7. Visualizations
+# ## 7. Visualizations
 
 # %%
 fig, axes = plt.subplots(2, 2, figsize=(15, 12))
 
-axes[0, 0].errorbar(range(len(pred_mean)), pred_mean, yerr=pred_std, fmt='o', alpha=0.5, label="Predicted ± std")
+axes[0, 0].errorbar(range(len(pred_mean)), pred_mean, yerr=pred_std, fmt='o', alpha=0.5, label="Pred ± σ")
 axes[0, 0].plot(range(len(y_test_np)), y_test_np, 'k.', alpha=0.6, label="Actual")
-axes[0, 0].set_title("Predicted vs Actual")
+axes[0, 0].set_title("Prediction vs Actual")
 axes[0, 0].legend()
 axes[0, 0].grid(True)
 
 axes[0, 1].hist(pred_mean, bins=30, alpha=0.7, label="Predicted")
 axes[0, 1].hist(y_test_np, bins=30, alpha=0.7, label="Actual")
-axes[0, 1].set_title("Distribution of Predictions vs Actual")
+axes[0, 1].set_title("Prediction vs Actual Distribution")
 axes[0, 1].legend()
 axes[0, 1].grid(True)
 
@@ -180,13 +182,13 @@ axes[1, 1].set_title("Residual Plot")
 axes[1, 1].grid(True)
 
 plt.tight_layout()
-plt.savefig("bnn_seattle_results.png")
+plt.savefig(os.path.join(output_dir, "bnn_seattle_results.png"))
 plt.close()
 
 # %% [markdown]
-# ### 8. Trace Summary
+# ## 8. Trace Summary
 
 # %%
 summary_df = az.summary(trace)
-summary_df.to_csv("bnn_trace_summary.csv")
+summary_df.to_csv(os.path.join(output_dir, "bnn_trace_summary.csv"))
 summary_df
