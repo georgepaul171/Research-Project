@@ -15,7 +15,6 @@ venv/
 
 # PyMC & sampling outputs
 *.nc
-*.csv
 *.hdf5
 *.trace
 
