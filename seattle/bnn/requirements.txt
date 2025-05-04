@@ -6,4 +6,3 @@ seaborn>=0.12
 pymc>=5.10
 arviz>=0.16
 pytensor>=2.16
-jaxlib>=0.4.15+cuda12.cudnn89

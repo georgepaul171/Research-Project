@@ -37,7 +37,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 RUN pip install --upgrade \
     jax==0.4.25 \
     jaxlib==0.4.25+cuda12.cudnn89 \
-    numpyro==0.13.2 \
+    numpyro==0.13.2 \ 
     -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 
 # Copy the rest of the code
