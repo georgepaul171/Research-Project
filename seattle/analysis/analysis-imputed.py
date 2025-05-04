@@ -70,3 +70,50 @@ corr.to_csv(corr_csv_path)
 print(f"\nSaved correlation matrix CSV to: {corr_csv_path}")
 
 print("\nAll analysis outputs saved in 'imputed-graphs' folder.")
+# %%
+# 6. SHAP Value Analysis
+print("\n=== Running SHAP Analysis ===")
+
+import shap
+import xgboost as xgb
+import numpy as np
+
+# Fit a simple XGBoost regressor
+model = xgb.XGBRegressor(n_estimators=100, max_depth=4, learning_rate=0.1, random_state=42)
+model.fit(X_train, y_train.values.ravel())
+
+# Create SHAP explainer and compute values
+explainer = shap.Explainer(model, X_train)
+shap_values = explainer(X_train)
+
+# Summary plot (feature importance)
+summary_path = os.path.join(output_path, "shap_summary_plot.png")
+plt.figure()
+shap.plots.beeswarm(shap_values, show=False)
+plt.tight_layout()
+plt.savefig(summary_path)
+print(f"Saved SHAP summary plot to: {summary_path}")
+plt.close()
+
+# SHAP bar plot (mean absolute SHAP values per feature)
+bar_path = os.path.join(output_path, "shap_bar_plot.png")
+plt.figure()
+shap.plots.bar(shap_values, show=False)
+plt.tight_layout()
+plt.savefig(bar_path)
+print(f"Saved SHAP bar plot to: {bar_path}")
+plt.close()
+
+# SHAP dependence plots for top features
+print("\n=== Generating SHAP Dependence Plots ===")
+top_features = np.argsort(np.abs(shap_values.values).mean(0))[-5:][::-1]
+for i in top_features:
+    feature_name = X_train.columns[i]
+    plt.figure()
+    shap.plots.scatter(shap_values[:, i], color=shap_values, show=False)
+    plt.title(f"SHAP Dependence: {feature_name}")
+    dep_path = os.path.join(output_path, f"shap_dependence_{feature_name}.png")
+    plt.tight_layout()
+    plt.savefig(dep_path)
+    print(f"Saved: {dep_path}")
+    plt.close()
