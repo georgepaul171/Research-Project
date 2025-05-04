@@ -4,6 +4,7 @@ FROM nvidia/cuda:12.1.1-runtime-ubuntu22.04
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
+ENV JAX_PLATFORM_NAME=gpu 
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -27,19 +28,20 @@ RUN pip install jupyterlab jupytext
 WORKDIR /app
 
 # Copy requirements first (for caching)
-# Install requirements
 COPY requirements.txt /app/requirements.txt
-WORKDIR /app
+
+# Install project dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install CUDA-enabled JAX
+# Install CUDA-enabled JAX and NumPyro
 RUN pip install --upgrade \
-  jax==0.4.25 \
-  jaxlib==0.4.25+cuda12.cudnn89 \
-  numpyro==0.13.2 \
-  -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
-# Copy rest of the code
+    jax==0.4.25 \
+    jaxlib==0.4.25+cuda12.cudnn89 \
+    numpyro==0.13.2 \
+    -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+
+# Copy the rest of the code
 COPY . /app
 
-# Set default command to run BNN
+# Default command to run BNN
 CMD ["python", "bnn.py"]
