@@ -26,21 +26,16 @@ import arviz as az
 import pymc.sampling.jax
 import os
 
+import os
 import jax
-import torch
 
 print("CUDA_VISIBLE_DEVICES =", os.environ.get("CUDA_VISIBLE_DEVICES"))
 
 print("\n--- JAX ---")
-print("JAX devices:", jax.devices())
-
-print("\n--- PyTorch ---")
-print("torch.cuda.device_count() =", torch.cuda.device_count())
-if torch.cuda.is_available():
-    for i in range(torch.cuda.device_count()):
-        print(f"Device {i}: {torch.cuda.get_device_name(i)}")
-else:
-    print("No CUDA device available.")
+try:
+    print("JAX devices:", jax.devices())
+except Exception as e:
+    print("Error detecting JAX devices:", e)
 
 # Output directory
 output_dir = "results"
