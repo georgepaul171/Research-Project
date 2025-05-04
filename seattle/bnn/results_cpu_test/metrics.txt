@@ -1,0 +1,6 @@
+=== Evaluation Metrics ===
+R²     : -0.027
+RMSE   : 36.81
+MAE    : 22.86
+Avg σ  : 25.55
+Max σ  : 29.78
