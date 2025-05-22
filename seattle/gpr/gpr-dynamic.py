@@ -68,9 +68,6 @@ for i, col in enumerate(numeric_columns[:-1]):
     corr, pval = stats.pearsonr(X_test_np[:, i], y_test_np)
     print(f"{col:20s}: correlation = {corr: .3f} (p={pval:.2g})")
 
-# Exit after printing correlations
-sys.exit(0)
-
 def create_gp_model(X, y_data, input_dim):
     print(f"\nInside create_gp_model:")
     print(f"X shape: {X.shape}")
@@ -84,8 +81,8 @@ def create_gp_model(X, y_data, input_dim):
 
         # More informative priors based on domain knowledge
         # Shorter lengthscales for energy-related features
-        lengthscale_energy = pm.Gamma("lengthscale_energy", alpha=2, beta=0.5, shape=3)  # For energy features
-        lengthscale_building = pm.Gamma("lengthscale_building", alpha=2, beta=0.2, shape=3)  # For building features
+        lengthscale_energy = pm.Gamma("lengthscale_energy", alpha=2, beta=0.5, shape=4)  # For energy features
+        lengthscale_building = pm.Gamma("lengthscale_building", alpha=2, beta=0.2, shape=4)  # For building features
         
         # Combine lengthscales
         lengthscale = pt.concatenate([lengthscale_energy, lengthscale_building])
@@ -96,6 +93,9 @@ def create_gp_model(X, y_data, input_dim):
         # Noise with more informative prior
         sigma = pm.HalfNormal("sigma", sigma=10)
 
+        # Add larger jitter for numerical stability
+        jitter = 1e-4
+
         # Kernel structure
         # 1. RBF kernel for general smoothness
         cov_rbf = variance**2 * pm.gp.cov.ExpQuad(
@@ -103,14 +103,17 @@ def create_gp_model(X, y_data, input_dim):
             ls=lengthscale
         )
         
-        # 2. Linear kernel for linear trends
-        cov_linear = variance**2 * pm.gp.cov.Linear(
+        # 2. Linear kernel for linear trends (with smaller weight)
+        cov_linear = 0.05 * variance**2 * pm.gp.cov.Linear(
             input_dim=input_dim,
             c=0.1
         )
         
+        # 3. White noise kernel for numerical stability
+        cov_white = pm.gp.cov.WhiteNoise(jitter)
+        
         # Combine kernels
-        cov = cov_rbf + 0.3 * cov_linear
+        cov = cov_rbf + cov_linear + cov_white
 
         # Gaussian Process
         gp = pm.gp.Marginal(cov_func=cov)
