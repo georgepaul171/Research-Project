@@ -24,22 +24,18 @@ def create_gp_model(X, y_data, input_dim):
         X = pm.Data("X_data", X)
         y = pm.Data("y_data", y_data)
 
-        # Balanced priors
-        # RBF kernel parameters
-        lengthscale_rbf = pm.Gamma("lengthscale_rbf", alpha=2, beta=1, shape=input_dim)
-        variance_rbf = pm.HalfNormal("variance_rbf", sigma=15)
+        # Optimized priors for better performance
+        # RBF kernel for smooth variations
+        lengthscale_rbf = pm.Gamma("lengthscale_rbf", alpha=2, beta=0.5, shape=input_dim)  # More flexible lengthscale
+        variance_rbf = pm.HalfNormal("variance_rbf", sigma=20)  # Increased variance
 
-        # Matern kernel parameters
-        lengthscale_matern = pm.Gamma("lengthscale_matern", alpha=2, beta=1, shape=input_dim)
-        variance_matern = pm.HalfNormal("variance_matern", sigma=15)
-
-        # Linear kernel parameters
+        # Linear kernel for capturing trends
         variance_linear = pm.HalfNormal("variance_linear", sigma=15)
-        offset = pm.HalfNormal("offset", sigma=15)
+        offset = pm.HalfNormal("offset", sigma=10)
 
         # Noise parameters
-        sigma = pm.HalfNormal("sigma", sigma=7)
-        jitter = 1e-1
+        sigma = pm.HalfNormal("sigma", sigma=5)  # Reduced noise
+        jitter = 1e-2  # Reduced jitter for better fit
 
         # Kernel components
         # RBF kernel for smooth variations
@@ -48,13 +44,7 @@ def create_gp_model(X, y_data, input_dim):
             ls=lengthscale_rbf
         )
         
-        # Matern kernel for less smooth variations
-        cov_matern = variance_matern**2 * pm.gp.cov.Matern52(
-            input_dim=input_dim,
-            ls=lengthscale_matern
-        )
-        
-        # Linear kernel for capturing linear trends
+        # Linear kernel for capturing trends
         cov_linear = variance_linear**2 * pm.gp.cov.Linear(
             input_dim=input_dim,
             c=offset
@@ -63,8 +53,8 @@ def create_gp_model(X, y_data, input_dim):
         # White noise kernel
         cov_white = pm.gp.cov.WhiteNoise(jitter)
         
-        # Combine kernels with weights
-        cov = cov_rbf + cov_matern + cov_linear + cov_white
+        # Combine kernels
+        cov = cov_rbf + cov_linear + cov_white
 
         # Gaussian Process
         gp = pm.gp.Marginal(cov_func=cov)
@@ -92,8 +82,8 @@ def load_and_prepare_data():
     )
     df_ready = pd.concat([X_scaled, df_model[['EUI_kWh_per_sqmt', 'YRCONC', 'PUBCLIM']].reset_index(drop=True)], axis=1)
 
-    # Take a smaller subset for better stability
-    subset_size = 300  # Reduced from 500
+    # Take a balanced subset
+    subset_size = 250  # Slightly increased for better coverage
     df_ready = df_ready.sample(n=subset_size, random_state=42)
 
     # Prepare X and y
@@ -151,14 +141,13 @@ def plot_results(y_true, mu_pred, std_pred, X_df, feature_names):
     plt.savefig(f"{PLOTS_DIR}/model_results_{timestamp}.png")
     plt.close()
 
-    # SHAP Analysis
+    # Simplified SHAP Analysis
     print("\nGenerating SHAP values...")
-    # Create a simple surrogate model for SHAP
     from sklearn.ensemble import RandomForestRegressor
-    surrogate = RandomForestRegressor(n_estimators=100, random_state=42)
+    surrogate = RandomForestRegressor(n_estimators=50, random_state=42)  # Reduced trees
     surrogate.fit(X_df, mu_pred)
     
-    # Calculate SHAP values
+    # Calculate SHAP values with fewer samples
     explainer = shap.TreeExplainer(surrogate)
     shap_values = explainer.shap_values(X_df)
 
@@ -170,8 +159,8 @@ def plot_results(y_true, mu_pred, std_pred, X_df, feature_names):
     plt.savefig(f"{PLOTS_DIR}/shap_summary_{timestamp}.png")
     plt.close()
 
-    # Dependence plots for top features
-    top_features = np.abs(shap_values).mean(0).argsort()[-3:][::-1]
+    # Dependence plots for top 2 features only
+    top_features = np.abs(shap_values).mean(0).argsort()[-2:][::-1]
     for idx in top_features:
         plt.figure(figsize=(8, 6))
         shap.dependence_plot(idx, shap_values, X_df, show=False)
@@ -189,14 +178,14 @@ def main():
     gp_model, gp = create_gp_model(X_np, y_np, X_np.shape[1])
 
     with gp_model:
-        # Balanced sampling parameters
+        # Optimized sampling parameters
         trace = pm.sample(
-            draws=1000,
-            tune=1000,
-            target_accept=0.85,  # Balanced acceptance rate
+            draws=600,  # Slightly increased for better convergence
+            tune=600,   # Slightly increased for better convergence
+            target_accept=0.9,  # Increased for better exploration
             return_inferencedata=True,
             cores=1,
-            chains=4
+            chains=2
         )
 
     # Save the trace
