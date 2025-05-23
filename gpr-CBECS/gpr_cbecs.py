@@ -6,6 +6,7 @@ import arviz as az
 import matplotlib.pyplot as plt
 from sklearn.metrics import r2_score, mean_squared_error
 from sklearn.preprocessing import MinMaxScaler
+from sklearn.model_selection import KFold
 import warnings
 from scipy import stats
 import shap
@@ -24,37 +25,34 @@ def create_gp_model(X, y_data, input_dim):
         X = pm.Data("X_data", X)
         y = pm.Data("y_data", y_data)
 
-        # Optimized priors for better performance
-        # RBF kernel for smooth variations
-        lengthscale_rbf = pm.Gamma("lengthscale_rbf", alpha=2, beta=0.5, shape=input_dim)  # More flexible lengthscale
-        variance_rbf = pm.HalfNormal("variance_rbf", sigma=20)  # Increased variance
+        # More informative priors with regularization
+        # RBF kernel with stronger regularization
+        lengthscale_rbf = pm.Gamma("lengthscale_rbf", alpha=2, beta=1, shape=input_dim)
+        variance_rbf = pm.HalfNormal("variance_rbf", sigma=10)  # Reduced variance
 
-        # Linear kernel for capturing trends
-        variance_linear = pm.HalfNormal("variance_linear", sigma=15)
-        offset = pm.HalfNormal("offset", sigma=10)
+        # Linear kernel with stronger regularization
+        variance_linear = pm.HalfNormal("variance_linear", sigma=5)
+        offset = pm.HalfNormal("offset", sigma=5)
 
-        # Noise parameters
-        sigma = pm.HalfNormal("sigma", sigma=5)  # Reduced noise
-        jitter = 1e-2  # Reduced jitter for better fit
+        # Noise parameters with stronger regularization
+        sigma = pm.HalfNormal("sigma", sigma=2)
+        jitter = 1e-3  # Reduced jitter
 
         # Kernel components
-        # RBF kernel for smooth variations
         cov_rbf = variance_rbf**2 * pm.gp.cov.ExpQuad(
             input_dim=input_dim, 
             ls=lengthscale_rbf
         )
         
-        # Linear kernel for capturing trends
         cov_linear = variance_linear**2 * pm.gp.cov.Linear(
             input_dim=input_dim,
             c=offset
         )
         
-        # White noise kernel
         cov_white = pm.gp.cov.WhiteNoise(jitter)
         
-        # Combine kernels
-        cov = cov_rbf + cov_linear + cov_white
+        # Combine kernels with regularization
+        cov = cov_rbf + 0.5 * cov_linear + cov_white  # Reduced linear component
 
         # Gaussian Process
         gp = pm.gp.Marginal(cov_func=cov)
@@ -169,23 +167,158 @@ def plot_results(y_true, mu_pred, std_pred, X_df, feature_names):
         plt.savefig(f"{PLOTS_DIR}/shap_dependence_{feature_names[idx]}_{timestamp}.png")
         plt.close()
 
+def plot_posterior_analysis(trace, model):
+    """Generate posterior analysis plots."""
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    
+    # Plot posterior distributions
+    plt.figure(figsize=(15, 10))
+    az.plot_posterior(trace, var_names=['lengthscale_rbf', 'variance_rbf', 
+                                      'variance_linear', 'offset', 'sigma'])
+    plt.tight_layout()
+    plt.savefig(f"{PLOTS_DIR}/posterior_distributions_{timestamp}.png")
+    plt.close()
+    
+    # Plot trace
+    plt.figure(figsize=(15, 10))
+    az.plot_trace(trace, var_names=['lengthscale_rbf', 'variance_rbf', 
+                                  'variance_linear', 'offset', 'sigma'])
+    plt.tight_layout()
+    plt.savefig(f"{PLOTS_DIR}/trace_plot_{timestamp}.png")
+    plt.close()
+    
+    # Print summary statistics
+    print("\nPosterior Summary Statistics:")
+    print(az.summary(trace, var_names=['lengthscale_rbf', 'variance_rbf', 
+                                     'variance_linear', 'offset', 'sigma']))
+
+def plot_calibration(y_true, mu_pred, std_pred):
+    """Generate calibration plots."""
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    
+    # Calculate prediction intervals
+    intervals = [0.5, 0.8, 0.9, 0.95, 0.99]
+    coverage = []
+    
+    plt.figure(figsize=(10, 6))
+    for interval in intervals:
+        z_score = stats.norm.ppf((1 + interval) / 2)
+        lower = mu_pred - z_score * std_pred
+        upper = mu_pred + z_score * std_pred
+        coverage.append(np.mean((y_true >= lower) & (y_true <= upper)))
+        plt.plot([interval], [coverage[-1]], 'o', label=f'{interval*100}% interval')
+    
+    # Plot ideal calibration line
+    plt.plot([0, 1], [0, 1], 'k--', label='Perfect calibration')
+    plt.xlabel('Expected coverage')
+    plt.ylabel('Actual coverage')
+    plt.title('Calibration Plot')
+    plt.legend()
+    plt.grid(True)
+    plt.savefig(f"{PLOTS_DIR}/calibration_plot_{timestamp}.png")
+    plt.close()
+    
+    # Print coverage statistics
+    print("\nCalibration Coverage:")
+    for interval, cov in zip(intervals, coverage):
+        print(f"{interval*100}% interval: {cov*100:.1f}% coverage")
+
+def cross_validate_model(X, y, n_splits=5):
+    """Perform k-fold cross-validation."""
+    kf = KFold(n_splits=n_splits, shuffle=True, random_state=42)
+    cv_scores = {'r2': [], 'rmse': []}
+    
+    for fold, (train_idx, val_idx) in enumerate(kf.split(X)):
+        X_train, X_val = X[train_idx], X[val_idx]
+        y_train, y_val = y[train_idx], y[val_idx]
+        
+        # Create and fit model
+        model, gp = create_gp_model(X_train, y_train, X.shape[1])
+        
+        with model:
+            # Optimized sampling parameters
+            trace = pm.sample(
+                draws=1000,
+                tune=1000,
+                target_accept=0.95,
+                return_inferencedata=True,
+                cores=1,
+                chains=4  # Increased to 4 chains
+            )
+            
+            # Generate predictions
+            f_pred = gp.conditional("f_pred", X_val)
+            posterior_pred = pm.sample_posterior_predictive(
+                trace, var_names=["f_pred"], random_seed=42
+            )
+        
+        # Extract predictions
+        f_samples = posterior_pred.posterior_predictive["f_pred"].values
+        f_samples = f_samples.reshape(-1, f_samples.shape[-1])
+        mu_pred = f_samples.mean(axis=0)
+        
+        # Calculate metrics
+        r2 = r2_score(y_val, mu_pred)
+        rmse = np.sqrt(mean_squared_error(y_val, mu_pred))
+        
+        cv_scores['r2'].append(r2)
+        cv_scores['rmse'].append(rmse)
+        
+        print(f"\nFold {fold + 1}/{n_splits}:")
+        print(f"R² Score: {r2:.3f}")
+        print(f"RMSE: {rmse:.2f}")
+    
+    return cv_scores
+
+def plot_cv_results(cv_scores):
+    """Plot cross-validation results."""
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    
+    plt.figure(figsize=(12, 5))
+    
+    # R² scores
+    plt.subplot(1, 2, 1)
+    plt.boxplot(cv_scores['r2'])
+    plt.title('Cross-Validation R² Scores')
+    plt.ylabel('R² Score')
+    
+    # RMSE scores
+    plt.subplot(1, 2, 2)
+    plt.boxplot(cv_scores['rmse'])
+    plt.title('Cross-Validation RMSE Scores')
+    plt.ylabel('RMSE')
+    
+    plt.tight_layout()
+    plt.savefig(f"{PLOTS_DIR}/cv_results_{timestamp}.png")
+    plt.close()
+    
+    # Print summary statistics
+    print("\nCross-Validation Summary:")
+    print(f"Mean R² Score: {np.mean(cv_scores['r2']):.3f} ± {np.std(cv_scores['r2']):.3f}")
+    print(f"Mean RMSE: {np.mean(cv_scores['rmse']):.2f} ± {np.std(cv_scores['rmse']):.2f}")
+
 def main():
     # Load and prepare data
     X_np, y_np, feature_names, X_df = load_and_prepare_data()
 
-    # Create and fit the model
-    print("Creating GP model...")
+    # Perform cross-validation
+    print("Performing cross-validation...")
+    cv_scores = cross_validate_model(X_np, y_np)
+    plot_cv_results(cv_scores)
+
+    # Train final model on full dataset
+    print("\nTraining final model on full dataset...")
     gp_model, gp = create_gp_model(X_np, y_np, X_np.shape[1])
 
     with gp_model:
         # Optimized sampling parameters
         trace = pm.sample(
-            draws=600,  # Slightly increased for better convergence
-            tune=600,   # Slightly increased for better convergence
-            target_accept=0.9,  # Increased for better exploration
+            draws=1000,
+            tune=1000,
+            target_accept=0.95,
             return_inferencedata=True,
             cores=1,
-            chains=2
+            chains=4
         )
 
     # Save the trace
@@ -226,6 +359,10 @@ def main():
 
     # Plot results and generate SHAP analysis
     plot_results(y_np, mu_pred, std_pred, X_df, feature_names)
+    
+    # Add posterior and calibration analysis
+    plot_posterior_analysis(trace, gp_model)
+    plot_calibration(y_np, mu_pred, std_pred)
 
 if __name__ == "__main__":
     main() 
