@@ -7,6 +7,7 @@ from typing import Tuple, Optional
 import matplotlib.pyplot as plt
 import pandas as pd
 import os
+from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 
 class HierarchicalBayesianLinear(nn.Module):
     def __init__(self, in_features: int, out_features: int):
@@ -197,4 +198,92 @@ if __name__ == "__main__":
     plt.close()
     print("\nExample predictions with uncertainty:")
     for i in range(min(5, len(mean_pred))):
-        print(f"Sample {i+1}: {mean_pred[i].item():.4f} ± {std_pred[i].item():.4f}") 
+        print(f"Sample {i+1}: {mean_pred[i].item():.4f} ± {std_pred[i].item():.4f}")
+
+    # Convert predictions and actuals to numpy arrays
+    val_predictions = val_predictions.flatten()
+    val_actuals = val_actuals.flatten()
+
+    # Calculate metrics
+    rmse = np.sqrt(mean_squared_error(val_actuals, val_predictions))
+    mae = mean_absolute_error(val_actuals, val_predictions)
+    r2 = r2_score(val_actuals, val_predictions)
+
+    print("\nEvaluation Metrics:")
+    print(f"RMSE: {rmse:.4f}")
+    print(f"MAE: {mae:.4f}")
+    print(f"R² Score: {r2:.4f}")
+
+    # Residual plot
+    residuals = val_actuals - val_predictions
+    plt.figure(figsize=(10, 6))
+    plt.scatter(val_predictions, residuals, alpha=0.5)
+    plt.axhline(y=0, color='r', linestyle='--')
+    plt.xlabel('Predicted Values')
+    plt.ylabel('Residuals')
+    plt.title('Residual Plot')
+    plt.savefig(os.path.join(output_dir, 'residual_plot.png'))
+    plt.close()
+
+    # Feature importance analysis using sensitivity analysis
+    feature_importance = []
+    for i in range(len(features)):
+        # Create perturbed input
+        perturbed_x = X_val.clone()
+        perturbed_x[:, i] = perturbed_x[:, i] + 0.1  # Small perturbation
+        
+        # Get predictions for original and perturbed inputs
+        with torch.no_grad():
+            orig_pred, _ = model(X_val)
+            pert_pred, _ = model(perturbed_x)
+        
+        # Calculate importance as average change in prediction
+        importance = torch.mean(torch.abs(pert_pred - orig_pred)).item()
+        feature_importance.append(importance)
+
+    # Plot feature importance
+    plt.figure(figsize=(10, 6))
+    plt.bar(features, feature_importance)
+    plt.xticks(rotation=45)
+    plt.xlabel('Features')
+    plt.ylabel('Importance Score')
+    plt.title('Feature Importance Analysis')
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, 'feature_importance.png'))
+    plt.close()
+
+    print("\nFeature Importance Scores:")
+    for feature, importance in zip(features, feature_importance):
+        print(f"{feature}: {importance:.4f}")
+
+    # Get validation set uncertainties
+    val_uncertainties = []
+    for _ in range(100):  # 100 Monte Carlo samples
+        with torch.no_grad():
+            pred, _ = model(X_val)
+            val_uncertainties.append(pred)
+    val_uncertainties = torch.stack(val_uncertainties)
+    val_std = val_uncertainties.std(dim=0).numpy().flatten()
+
+    # Calibration plot
+    num_bins = 10
+    bin_edges = np.linspace(0, val_std.max(), num_bins + 1)
+    calibration_errors = []
+    empirical_coverage = []
+
+    for i in range(num_bins):
+        mask = (val_std >= bin_edges[i]) & (val_std < bin_edges[i + 1])
+        if np.sum(mask) > 0:
+            bin_std = val_std[mask]
+            bin_residuals = np.abs(residuals[mask])
+            empirical_coverage.append(np.mean(bin_residuals <= 2 * bin_std))
+            calibration_errors.append(np.mean(bin_std))
+
+    plt.figure(figsize=(10, 6))
+    plt.plot(calibration_errors, empirical_coverage, 'bo-')
+    plt.plot([0, max(calibration_errors)], [0, max(calibration_errors)], 'r--')
+    plt.xlabel('Predicted Uncertainty')
+    plt.ylabel('Empirical Coverage')
+    plt.title('Calibration Plot')
+    plt.savefig(os.path.join(output_dir, 'calibration_plot.png'))
+    plt.close() 
