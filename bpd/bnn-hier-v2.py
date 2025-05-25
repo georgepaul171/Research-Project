@@ -14,6 +14,7 @@ from sklearn.preprocessing import StandardScaler
 import shap
 from scipy import stats
 import seaborn as sns
+from torchviz import make_dot
 
 class HierarchicalBayesianLinear(nn.Module):
     def __init__(self, in_features: int, out_features: int):
@@ -405,4 +406,9 @@ if __name__ == "__main__":
             base_val_str = f"{base_val[0]:.4f} ± {base_val[1]:.4f}"
         else:
             base_val_str = "N/A"
-        print(f"{metric:<8} | {bnn_val:<20} | {base_val_str:<20}") 
+        print(f"{metric:<8} | {bnn_val:<20} | {base_val_str:<20}")
+
+    # Example usage after model definition
+    dummy_x = torch.randn(1, X.shape[1])
+    output, _ = model(dummy_x)
+    make_dot(output, params=dict(model.named_parameters())).render("bpd/bnn_hier_model_architecture", format="png") 

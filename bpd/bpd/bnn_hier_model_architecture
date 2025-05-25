@@ -1,0 +1,130 @@
+digraph {
+	graph [size="16.95,16.95"]
+	node [align=left fontname=monospace fontsize=10 height=0.2 ranksep=0.1 shape=box style=filled]
+	5846525952 [label="
+ (1, 1)" fillcolor=darkolivegreen1]
+	5836042832 [label=AddmmBackward0]
+	5836613008 -> 5836042832
+	5836613008 [label=AddBackward0]
+	5822575904 -> 5836613008
+	5837411168 [label="layers.2.bias_mu
+ (1)" fillcolor=lightblue]
+	5837411168 -> 5822575904
+	5822575904 [label=AccumulateGrad]
+	5822565344 -> 5836613008
+	5822565344 [label=MulBackward0]
+	5822574224 -> 5822565344
+	5822574224 [label=Log1PBackward0]
+	5837138112 -> 5822574224
+	5837138112 [label=ExpBackward0]
+	5837138064 -> 5837138112
+	5837416608 [label="layers.2.bias_rho
+ (1)" fillcolor=lightblue]
+	5837416608 -> 5837138064
+	5837138064 [label=AccumulateGrad]
+	5836039232 -> 5836042832
+	5836039232 [label=ReluBackward0]
+	5836612432 -> 5836039232
+	5836612432 [label=AddmmBackward0]
+	5822577008 -> 5836612432
+	5822577008 [label=AddBackward0]
+	5836608496 -> 5822577008
+	5837420688 [label="layers.1.bias_mu
+ (32)" fillcolor=lightblue]
+	5837420688 -> 5836608496
+	5836608496 [label=AccumulateGrad]
+	5837132448 -> 5822577008
+	5837132448 [label=MulBackward0]
+	5837140992 -> 5837132448
+	5837140992 [label=Log1PBackward0]
+	5837133216 -> 5837140992
+	5837133216 [label=ExpBackward0]
+	5837142768 -> 5837133216
+	5837416448 [label="layers.1.bias_rho
+ (32)" fillcolor=lightblue]
+	5837416448 -> 5837142768
+	5837142768 [label=AccumulateGrad]
+	5837131296 -> 5836612432
+	5837131296 [label=ReluBackward0]
+	5837133024 -> 5837131296
+	5837133024 [label=AddmmBackward0]
+	5837137584 -> 5837133024
+	5837137584 [label=AddBackward0]
+	5822378336 -> 5837137584
+	5837420448 [label="layers.0.bias_mu
+ (64)" fillcolor=lightblue]
+	5837420448 -> 5822378336
+	5822378336 [label=AccumulateGrad]
+	5822369456 -> 5837137584
+	5822369456 [label=MulBackward0]
+	5822376368 -> 5822369456
+	5822376368 [label=Log1PBackward0]
+	5822371808 -> 5822376368
+	5822371808 [label=ExpBackward0]
+	5836326896 -> 5822371808
+	5837409728 [label="layers.0.bias_rho
+ (64)" fillcolor=lightblue]
+	5837409728 -> 5836326896
+	5836326896 [label=AccumulateGrad]
+	5837131584 -> 5837133024
+	5837131584 [label=TBackward0]
+	5822373968 -> 5837131584
+	5822373968 [label=AddBackward0]
+	5836335296 -> 5822373968
+	5837174208 [label="layers.0.weight_mu
+ (64, 4)" fillcolor=lightblue]
+	5837174208 -> 5836335296
+	5836335296 [label=AccumulateGrad]
+	5836336496 -> 5822373968
+	5836336496 [label=MulBackward0]
+	5836328672 -> 5836336496
+	5836328672 [label=Log1PBackward0]
+	5836324976 -> 5836328672
+	5836324976 [label=ExpBackward0]
+	5836328960 -> 5836324976
+	5522481440 [label="layers.0.weight_rho
+ (64, 4)" fillcolor=lightblue]
+	5522481440 -> 5836328960
+	5836328960 [label=AccumulateGrad]
+	5837136768 -> 5836612432
+	5837136768 [label=TBackward0]
+	5822372384 -> 5837136768
+	5822372384 [label=AddBackward0]
+	5837131440 -> 5822372384
+	5837410768 [label="layers.1.weight_mu
+ (32, 64)" fillcolor=lightblue]
+	5837410768 -> 5837131440
+	5837131440 [label=AccumulateGrad]
+	5836337792 -> 5822372384
+	5836337792 [label=MulBackward0]
+	5836329824 -> 5836337792
+	5836329824 [label=Log1PBackward0]
+	5836334864 -> 5836329824
+	5836334864 [label=ExpBackward0]
+	5836326512 -> 5836334864
+	5837414368 [label="layers.1.weight_rho
+ (32, 64)" fillcolor=lightblue]
+	5837414368 -> 5836326512
+	5836326512 [label=AccumulateGrad]
+	5836728224 -> 5836042832
+	5836728224 [label=TBackward0]
+	5837142000 -> 5836728224
+	5837142000 [label=AddBackward0]
+	5822578208 -> 5837142000
+	5837410448 [label="layers.2.weight_mu
+ (1, 32)" fillcolor=lightblue]
+	5837410448 -> 5822578208
+	5822578208 [label=AccumulateGrad]
+	5517052512 -> 5837142000
+	5517052512 [label=MulBackward0]
+	5836340528 -> 5517052512
+	5836340528 [label=Log1PBackward0]
+	5836338944 -> 5836340528
+	5836338944 [label=ExpBackward0]
+	5836340144 -> 5836338944
+	5837411248 [label="layers.2.weight_rho
+ (1, 32)" fillcolor=lightblue]
+	5837411248 -> 5836340144
+	5836340144 [label=AccumulateGrad]
+	5836042832 -> 5846525952
+}
