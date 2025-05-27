@@ -1,0 +1,2 @@
+Negative Log Likelihood: 2.1194
+95% Prediction Interval Coverage: 0.5852

@@ -20,6 +20,8 @@ from sklearn.preprocessing import StandardScaler
 import shap
 from captum.attr import IntegratedGradients
 from typing import List, Dict, Optional, Tuple
+import json
+from scipy.stats import norm
 
 class HyperPrior:
     """Base class for hyperpriors on standard deviations"""
@@ -420,11 +422,95 @@ class HierarchicalInterpretabilityTools:
             plt.savefig(os.path.join(output_dir, f'{name}_distribution.png'))
             plt.close()
 
+class PerformanceMetrics:
+    """Comprehensive performance metrics for HBNN with ARD"""
+    
+    @staticmethod
+    def rmse(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+        """Root Mean Square Error"""
+        return np.sqrt(np.mean((y_true - y_pred) ** 2))
+    
+    @staticmethod
+    def mae(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+        """Mean Absolute Error"""
+        return np.mean(np.abs(y_true - y_pred))
+    
+    @staticmethod
+    def r2_score(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+        """R-squared score"""
+        ss_res = np.sum((y_true - y_pred) ** 2)
+        ss_tot = np.sum((y_true - np.mean(y_true)) ** 2)
+        return 1 - (ss_res / ss_tot)
+    
+    @staticmethod
+    def explained_variance(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+        """Explained variance score"""
+        return 1 - np.var(y_true - y_pred) / np.var(y_true)
+    
+    @staticmethod
+    def mean_prediction_interval_width(y_std: np.ndarray, confidence: float = 0.95) -> float:
+        """Mean width of prediction intervals"""
+        z_score = 1.96  # for 95% confidence
+        return np.mean(2 * z_score * y_std)
+    
+    @staticmethod
+    def calibration_error(y_true: np.ndarray, y_pred: np.ndarray, 
+                         y_std: np.ndarray, num_bins: int = 10) -> float:
+        """Calculate calibration error using quantile-based approach"""
+        # Create bins based on predicted probabilities
+        quantiles = np.linspace(0, 1, num_bins + 1)
+        bin_edges = np.percentile(y_std, quantiles * 100)
+        
+        # Calculate empirical coverage for each bin
+        empirical_coverage = []
+        predicted_coverage = []
+        
+        for i in range(num_bins):
+            mask = (y_std >= bin_edges[i]) & (y_std < bin_edges[i + 1])
+            if np.sum(mask) > 0:
+                z_scores = np.abs(y_true[mask] - y_pred[mask]) / y_std[mask]
+                empirical_coverage.append(np.mean(z_scores <= 1.96))
+                predicted_coverage.append(0.95)  # For 95% confidence interval
+        
+        return np.mean(np.abs(np.array(empirical_coverage) - np.array(predicted_coverage)))
+    
+    @staticmethod
+    def feature_importance(model: TrueHierarchicalHBNN, feature_names: List[str]) -> Dict[str, float]:
+        """Calculate feature importance based on ARD parameters"""
+        importance = {}
+        for name, module in model.named_modules():
+            if isinstance(module, HierarchicalBayesianLinear):
+                ard_values = module.ard_alpha.detach().cpu().numpy()
+                for i, feature in enumerate(feature_names):
+                    importance[feature] = float(ard_values[i])
+        return importance
+    
+    @staticmethod
+    def group_wise_metrics(y_true: np.ndarray, y_pred: np.ndarray, 
+                          y_std: np.ndarray, group_ids: np.ndarray) -> Dict:
+        """Calculate metrics for each group"""
+        unique_groups = np.unique(group_ids)
+        metrics = {}
+        
+        for group in unique_groups:
+            mask = group_ids == group
+            metrics[f'group_{group}'] = {
+                'rmse': PerformanceMetrics.rmse(y_true[mask], y_pred[mask]),
+                'mae': PerformanceMetrics.mae(y_true[mask], y_pred[mask]),
+                'r2': PerformanceMetrics.r2_score(y_true[mask], y_pred[mask]),
+                'coverage': CalibrationMetrics.prediction_interval_coverage(
+                    y_true[mask], y_pred[mask], y_std[mask]
+                ),
+                'mean_interval_width': PerformanceMetrics.mean_prediction_interval_width(y_std[mask])
+            }
+        
+        return metrics
+
 def train_model(model: TrueHierarchicalHBNN, X_train: torch.Tensor, y_train: torch.Tensor,
                 X_val: torch.Tensor, y_val: torch.Tensor, group_ids_train: torch.Tensor,
-                group_ids_val: torch.Tensor, num_epochs: int = 100, batch_size: int = 32,
-                learning_rate: float = 0.001, kl_weight: float = 1e-3, patience: int = 10,
-                output_dir: Optional[str] = None) -> Tuple[List[float], List[float]]:
+                group_ids_val: torch.Tensor, feature_names: List[str], num_epochs: int = 100,
+                batch_size: int = 32, learning_rate: float = 0.001, kl_weight: float = 1e-3,
+                patience: int = 10, output_dir: Optional[str] = None) -> Tuple[List[float], List[float]]:
     """Train the model with early stopping and learning rate scheduling"""
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
@@ -489,6 +575,75 @@ def train_model(model: TrueHierarchicalHBNN, X_train: torch.Tensor, y_train: tor
         if (epoch + 1) % 10 == 0:
             print(f"Epoch {epoch+1}: Train Loss = {avg_train_loss:.4f}, Val Loss = {val_loss:.4f}")
             print(f"Learning rate: {optimizer.param_groups[0]['lr']:.6f}")
+    
+    # After training, calculate and save comprehensive metrics
+    model.eval()
+    with torch.no_grad():
+        y_pred, y_std = model.predict(X_val, group_ids_val)
+        
+        # Convert tensors to numpy arrays
+        y_val_np = y_val.numpy()
+        y_pred_np = y_pred.numpy()
+        y_std_np = y_std.numpy()
+        group_ids_val_np = group_ids_val.numpy()
+        
+        # Calculate all metrics
+        metrics = {
+            'overall': {
+                'rmse': float(PerformanceMetrics.rmse(y_val_np, y_pred_np)),
+                'mae': float(PerformanceMetrics.mae(y_val_np, y_pred_np)),
+                'r2': float(PerformanceMetrics.r2_score(y_val_np, y_pred_np)),
+                'explained_variance': float(PerformanceMetrics.explained_variance(y_val_np, y_pred_np)),
+                'nll': float(CalibrationMetrics.negative_log_likelihood(y_val_np, y_pred_np, y_std_np)),
+                'coverage': float(CalibrationMetrics.prediction_interval_coverage(y_val_np, y_pred_np, y_std_np)),
+                'mean_interval_width': float(PerformanceMetrics.mean_prediction_interval_width(y_std_np)),
+                'calibration_error': float(PerformanceMetrics.calibration_error(y_val_np, y_pred_np, y_std_np))
+            },
+            'group_wise': {
+                group_id: {
+                    metric: float(value) 
+                    for metric, value in group_metrics.items()
+                }
+                for group_id, group_metrics in PerformanceMetrics.group_wise_metrics(
+                    y_val_np, y_pred_np, y_std_np, group_ids_val_np
+                ).items()
+            },
+            'feature_importance': {
+                feature: float(importance)
+                for feature, importance in PerformanceMetrics.feature_importance(model, feature_names).items()
+            }
+        }
+        
+        # Save metrics to file
+        if output_dir is not None:
+            with open(os.path.join(output_dir, 'performance_metrics.json'), 'w') as f:
+                json.dump(metrics, f, indent=4)
+            
+            # Plot feature importance
+            plt.figure(figsize=(12, 6))
+            importance = metrics['feature_importance']
+            plt.bar(range(len(importance)), list(importance.values()))
+            plt.xticks(range(len(importance)), list(importance.keys()), rotation=45)
+            plt.title('Feature Importance (ARD)')
+            plt.tight_layout()
+            plt.savefig(os.path.join(output_dir, 'feature_importance.png'))
+            plt.close()
+            
+            # Plot calibration curve
+            plt.figure(figsize=(10, 6))
+            z_scores = np.abs(y_val_np - y_pred_np) / y_std_np
+            empirical_coverage = []
+            predicted_coverage = np.linspace(0, 1, 100)
+            for p in predicted_coverage:
+                empirical_coverage.append(float(np.mean(z_scores <= norm.ppf((1 + p) / 2))))
+            plt.plot(predicted_coverage, empirical_coverage, 'b-', label='Empirical')
+            plt.plot([0, 1], [0, 1], 'r--', label='Perfect Calibration')
+            plt.xlabel('Predicted Coverage')
+            plt.ylabel('Empirical Coverage')
+            plt.title('Calibration Curve')
+            plt.legend()
+            plt.savefig(os.path.join(output_dir, 'calibration_curve.png'))
+            plt.close()
     
     return train_losses, val_losses
 
@@ -566,7 +721,7 @@ if __name__ == "__main__":
         # Train model
         train_losses, val_losses = train_model(
             model, X_train, y_train, X_val, y_val,
-            group_ids_train, group_ids_val,
+            group_ids_train, group_ids_val, feature_names,
             num_epochs=100,
             batch_size=32,
             learning_rate=0.001,

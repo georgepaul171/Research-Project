@@ -1,0 +1,25 @@
+# Core dependencies
+torch>=2.0.0
+numpy>=1.21.0
+pandas>=1.3.0
+scikit-learn>=1.0.0
+
+# Visualization
+matplotlib>=3.4.0
+seaborn>=0.11.0
+
+# Model interpretation and attribution
+captum>=0.6.0
+shap>=0.41.0
+
+# Scientific computing
+scipy>=1.7.0
+
+# Optional but recommended for better performance
+numba>=0.54.0  # For faster numerical computations
+tqdm>=4.62.0   # For progress bars
+
+# Development tools
+pytest>=6.2.5  # For testing
+black>=21.5b2  # For code formatting
+flake8>=3.9.0  # For code linting 
