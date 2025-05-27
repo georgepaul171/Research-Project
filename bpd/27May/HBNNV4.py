@@ -71,15 +71,26 @@ class HierarchicalStudentTPrior(HierarchicalPrior):
                      raw_mu: torch.Tensor, raw_sigma: torch.Tensor) -> torch.Tensor:
         # Monte Carlo approximation for Student's t KL divergence
         num_samples = 100
-        samples = raw_mu + raw_sigma * torch.randn_like(raw_mu).unsqueeze(0).repeat(num_samples, 1, 1)
+        
+        # Ensure raw_mu and raw_sigma have the right shape for broadcasting
+        raw_mu = raw_mu.view(-1, 1, 1)  # [num_groups, 1, 1]
+        raw_sigma = raw_sigma.view(-1, 1, 1)  # [num_groups, 1, 1]
+        
+        # Generate samples with correct shape
+        noise = torch.randn(num_samples, raw_mu.size(0), 1, 1, device=raw_mu.device)
+        samples = raw_mu + raw_sigma * noise  # [num_samples, num_groups, 1, 1]
+        
+        # Convert constants to tensors
+        two_pi = torch.tensor(2 * np.pi, device=raw_sigma.device)
+        df_pi = torch.tensor(self.df * np.pi, device=raw_sigma.device)
         
         # Log density of normal posterior
-        log_q = -0.5 * torch.log(2 * np.pi) - torch.log(raw_sigma) - \
+        log_q = -0.5 * torch.log(two_pi) - torch.log(raw_sigma) - \
                0.5 * ((samples - raw_mu) / raw_sigma) ** 2
         
         # Log density of Student's t prior
         log_p = torch.lgamma((self.df + 1) / 2) - torch.lgamma(self.df / 2) - \
-                0.5 * torch.log(self.df * np.pi) - \
+                0.5 * torch.log(df_pi) - \
                 ((self.df + 1) / 2) * torch.log(1 + samples ** 2 / self.df)
         
         # Monte Carlo KL estimate
@@ -100,17 +111,27 @@ class HierarchicalMixtureGaussianPrior(HierarchicalPrior):
                      raw_mu: torch.Tensor, raw_sigma: torch.Tensor) -> torch.Tensor:
         # Monte Carlo approximation for mixture Gaussian KL divergence
         num_samples = 100
-        samples = raw_mu + raw_sigma * torch.randn_like(raw_mu).unsqueeze(0).repeat(num_samples, 1, 1)
+        
+        # Ensure raw_mu and raw_sigma have the right shape for broadcasting
+        raw_mu = raw_mu.view(-1, 1, 1)  # [num_groups, 1, 1]
+        raw_sigma = raw_sigma.view(-1, 1, 1)  # [num_groups, 1, 1]
+        
+        # Generate samples with correct shape
+        noise = torch.randn(num_samples, raw_mu.size(0), 1, 1, device=raw_mu.device)
+        samples = raw_mu + raw_sigma * noise  # [num_samples, num_groups, 1, 1]
+        
+        # Convert constants to tensors
+        two_pi = torch.tensor(2 * np.pi, device=raw_sigma.device)
         
         # Log density of normal posterior
-        log_q = -0.5 * torch.log(2 * np.pi) - torch.log(raw_sigma) - \
+        log_q = -0.5 * torch.log(two_pi) - torch.log(raw_sigma) - \
                0.5 * ((samples - raw_mu) / raw_sigma) ** 2
         
         # Log density of mixture Gaussian prior
         log_p = torch.zeros_like(samples)
         for m, v, w in zip(self.mus, self.logvars, self.weights):
             prior_var = torch.exp(v)
-            log_p += w * (-0.5 * torch.log(2 * np.pi * prior_var) - \
+            log_p += w * (-0.5 * torch.log(two_pi * prior_var) - \
                          0.5 * ((samples - m) ** 2) / prior_var)
         
         # Monte Carlo KL estimate
@@ -337,6 +358,16 @@ class CalibrationMetrics:
         coverage = np.mean((y_true >= lower) & (y_true <= upper))
         return coverage
 
+class PredictionWrapper(nn.Module):
+    """Wrapper class for model predictions to be used with IntegratedGradients"""
+    def __init__(self, model: TrueHierarchicalHBNN):
+        super().__init__()
+        self.model = model
+    
+    def forward(self, x: torch.Tensor, group_ids: torch.Tensor) -> torch.Tensor:
+        output, _ = self.model(x, group_ids)
+        return output
+
 class HierarchicalInterpretabilityTools:
     def __init__(self, model: TrueHierarchicalHBNN, input_dim: int):
         self.model = model
@@ -455,7 +486,8 @@ if __name__ == "__main__":
     
     # Data setup
     data_csv_path = "/Users/georgepaul/Desktop/Research-Project/bpd/cleaned_office_buildings.csv"
-    features = ["floor_area", "ghg_emissions_int", "fuel_eui", "electric_eui"]
+    features = ["floor_area", "ghg_emissions_int", "fuel_eui", "electric_eui", 
+                "energy_star_rating", "heating_fuel"]
     target = "site_eui"
     group_column = "city"  # Assuming 'city' is the grouping variable
     feature_names = features.copy()
@@ -464,6 +496,9 @@ if __name__ == "__main__":
     na_vals = ['No Value', '', 'NA', 'N/A', 'null', 'Null', 'nan', 'NaN']
     df = pd.read_csv(data_csv_path, na_values=na_vals, low_memory=False)
     df = df.dropna(subset=features + [target, group_column])
+    
+    # Handle categorical features
+    df['heating_fuel'] = df['heating_fuel'].astype('category').cat.codes
     
     # Create group IDs
     unique_groups = df[group_column].unique()
@@ -575,4 +610,4 @@ if __name__ == "__main__":
     summary_df = pd.DataFrame(summary_rows)
     summary_df.to_csv(os.path.join(results_dir, 'compare_priors.csv'), index=False)
     print(f"[INFO] Comparison summary saved to {os.path.join(results_dir, 'compare_priors.csv')}")
-    print("[INFO] All experiments complete.") 
+    print("[INFO] All experiments complete.")
