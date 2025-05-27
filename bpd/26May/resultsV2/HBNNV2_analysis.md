@@ -1,3 +1,167 @@
+# Hierarchical Bayesian Neural Network (HBNN) Analysis
+
+## Overview
+The HBNNV2 implementation provides a sophisticated framework for Bayesian Neural Networks with multiple prior distributions. This document provides a detailed analysis of the implementation, its components, and the Bayesian approximations used.
+
+## 1. Core Components
+
+### 1.1 Prior Distributions
+The implementation includes several prior distribution classes:
+
+- **PriorDistribution**: Base class for all priors
+- **NormalPrior**: Standard normal distribution
+- **LaplacePrior**: Laplace distribution
+- **StudentTPrior**: Student's t-distribution
+- **MixtureGaussianPrior**: Mixture of Gaussian distributions
+
+Each prior implements a `kl_divergence` method to compute the Kullback-Leibler divergence between the prior and posterior distributions.
+
+### 1.2 Neural Network Architecture
+The network architecture consists of:
+
+- **ResidualBlock**: Implements residual connections with batch normalization and dropout
+- **HierarchicalBayesianLinear**: Bayesian linear layer that samples weights from a distribution
+- **EnhancedHBNN**: Main model class combining:
+  - Input layer
+  - Hidden layers with residual connections
+  - Output layer
+  - Batch normalization layers
+
+## 2. Bayesian Neural Network Implementation
+
+### 2.1 Weight Parameterization
+Weights are parameterized using the reparameterization trick:
+
+```python
+weight_sigma = torch.log1p(torch.exp(self.weight_rho))  # Softplus transformation
+bias_sigma = torch.log1p(torch.exp(self.bias_rho))
+weight = self.weight_mu + weight_sigma * torch.randn_like(self.weight_mu)
+bias = self.bias_mu + bias_sigma * torch.randn_like(self.bias_mu)
+```
+
+This uses:
+- `mu`: Mean of the weight distribution
+- `rho`: Raw parameter for standard deviation
+- Softplus transformation to ensure positive standard deviation
+- Reparameterization trick for sampling: `weight = mu + sigma * epsilon` where `epsilon ~ N(0,1)`
+
+### 2.2 Prior Distributions and KL Divergence
+
+#### Normal Prior
+```python
+def kl_divergence(self, mu, sigma):
+    prior_var = torch.exp(self.logvar)
+    prior_mu = self.mu
+    kl = torch.log(prior_var.sqrt() / sigma) + (sigma ** 2 + (mu - prior_mu) ** 2) / (2 * prior_var) - 0.5
+    return kl.sum()
+```
+
+#### Laplace Prior
+```python
+def kl_divergence(self, mu, sigma):
+    b = torch.exp(0.5 * self.logvar)
+    kl = torch.log(2 * b * torch.sqrt(torch.tensor(np.e))) - torch.log(sigma) + (sigma + torch.abs(mu - self.mu)) / b - 1
+    return kl.sum()
+```
+
+#### Student's t Prior
+```python
+def kl_divergence(self, mu, sigma):
+    prior_var = torch.exp(self.logvar)
+    kl = 0.5 * torch.log(prior_var / sigma**2) + \
+         (self.df + 1) * torch.log(1 + (mu - self.mu)**2 / (self.df * prior_var)) - \
+         (self.df + 1) * torch.log(1 + (mu - self.mu)**2 / (self.df * sigma**2))
+    return kl.sum()
+```
+
+#### Mixture Gaussian Prior
+```python
+def kl_divergence(self, mu, sigma):
+    kl = torch.zeros_like(mu)
+    for m, v, w in zip(self.mus, self.logvars, self.weights):
+        prior_var = torch.exp(v)
+        kl += w * (torch.log(prior_var.sqrt() / sigma) +
+                  (sigma ** 2 + (mu - m) ** 2) / (2 * prior_var) - 0.5)
+    return kl.sum()
+```
+
+### 2.3 Loss Function
+The total loss combines:
+- Mean Squared Error (MSE) for prediction accuracy
+- KL divergence for Bayesian regularization
+```python
+mse_loss = F.mse_loss(output, batch_y)
+kl = torch.abs(kl)  # Ensure KL is positive
+loss = mse_loss + kl_weight * kl
+```
+
+### 2.4 Uncertainty Estimation
+The model estimates uncertainty through:
+```python
+def predict(self, x, num_samples=100):
+    predictions = []
+    for _ in range(num_samples):
+        pred, _ = self.forward(x)
+        predictions.append(pred)
+    predictions = torch.stack(predictions)
+    return predictions.mean(dim=0), predictions.std(dim=0)
+```
+
+## 3. Training and Evaluation
+
+### 3.1 Training Process
+The training process includes:
+- KL weight scaling to balance accuracy and uncertainty
+- Early stopping to prevent overfitting
+- Learning rate scheduling for better convergence
+- Batch normalization for training stability
+
+### 3.2 Calibration Metrics
+The implementation includes calibration metrics to evaluate uncertainty estimates:
+```python
+def expected_calibration_error(y_true, y_pred, y_std, n_bins=10):
+    confidences = 1.96 * y_std  # 95% confidence interval
+    accuracies = np.abs(y_true - y_pred) <= confidences
+```
+
+## 4. Approximations and Trade-offs
+
+The implementation makes several approximations:
+- Uses variational inference instead of full Bayesian inference
+- Approximates posterior with factorized normal distributions
+- Uses Monte Carlo sampling for predictions
+- Approximates KL divergences for non-Gaussian priors
+
+## 5. Output and Visualization
+
+The code generates various outputs for each prior:
+- Training curves
+- Reliability diagrams
+- Feature importance plots
+- SHAP summary plots
+- Calibration metrics
+- Comparison summary CSV
+
+## 6. Key Features and Benefits
+
+- Bayesian uncertainty estimation
+- Multiple prior distributions
+- Residual connections for better gradient flow
+- Batch normalization for training stability
+- Dropout for regularization
+- Comprehensive evaluation metrics
+- Interpretability tools
+- Automated experiment pipeline
+
+## 7. Software Engineering Practices
+
+The implementation follows good software engineering practices:
+- Clear class hierarchy
+- Modular design
+- Comprehensive documentation
+- Error handling
+- Organized output structure
+
 # HBNNV2: Hierarchical Bayesian Neural Network Experiments – Results Summary
 
 ## Overview
