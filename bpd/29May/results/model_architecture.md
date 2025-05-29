@@ -39,7 +39,7 @@
 - Updated through EM algorithm
 - Captures uncertainty in weight estimates
 
-## Priors and Initialization
+## Priors and Initialisation
 
 ### 1. Current Prior Settings
 - **Noise Precision Prior (α)**:
@@ -151,20 +151,15 @@ std = sqrt(1/α + sum((X @ S) * X, axis=1))
 
 ### 1. Prior Selection
 - Investigate different prior distributions:
-  - Gamma priors for precision parameters
-  - Student's t priors for weights
-  - Horseshoe priors for feature selection
-- Optimise hyperparameter initialisation:
-  - Adaptive initialization based on data scale
-  - Cross-validation for prior parameters
+  - Gamma priors 
+  - Student's t 
+  - Horseshoe
+- Optimise hyperparameter initialisation
 - Explore hierarchical priors:
-  - Group-level priors for related features
-  - Feature-type specific priors
 
 ### 2. Feature Engineering
 - Improve floor area feature performance
 - Develop additional interaction terms
-- Optimize feature transformations
 
 ### 3. Model Enhancements
 - Implement advanced uncertainty quantification
