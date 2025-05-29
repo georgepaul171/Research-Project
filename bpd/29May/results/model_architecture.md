@@ -65,7 +65,7 @@
 ### 2. Prior Updates
 - Updated through Expectation-Maximization (EM) algorithm
 - E-step: Updates posterior distribution of weights
-- M-step: Updates hyperparameters (&alpha; and &beta;)
+- M-step: Updates hyperparameters (α and β)
 
 ## Training Process
 
