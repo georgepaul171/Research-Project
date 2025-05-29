@@ -75,7 +75,7 @@ These indicate:
    - Age-Energy Star interaction shows strong negative correlation
    - Area-Energy Star interaction shows moderate negative correlation
 
-## Recommendations
+## Recommendations & Thoughts
 
 1. **Feature Selection**
    - Consider removing low-importance features:
@@ -95,9 +95,9 @@ These indicate:
 
 ## Conclusion
 
-The analysis includes several visualisation files. The model provides excellent predictive performance while offering  insights into feature importance and interactions. The strong performance of building age features and GHG emissions suggests these are key factors in building energy performance. The model's high R$^2$ score and low error metrics indicate its reliability for energy performance prediction. 
+The analysis includes several visualisation files. The model provides good predictive performance while offering  nsights into feature importance and interactions. The strong performance of building age features and GHG emissions suggests these are key factors in building energy performance. The model's high R² score and low error metrics indicate its reliability for energy performance prediction. 
 
 ## Further Work
 
 - I want to improve the predictive performance of floor_area feature.
-- Another area to investigate is the selection of priors
+- Another area to investigate is the prior selection - talk to Mike

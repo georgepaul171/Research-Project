@@ -65,7 +65,7 @@
 ### 2. Prior Updates
 - Updated through Expectation-Maximization (EM) algorithm
 - E-step: Updates posterior distribution of weights
-- M-step: Updates hyperparameters (\alpha and \beta)
+- M-step: Updates hyperparameters (&alpha; and &beta;)
 
 ## Training Process
 
@@ -162,6 +162,6 @@ std = sqrt(1/α + sum((X @ S) * X, axis=1))
 - Develop additional interaction terms
 
 ### 3. Model Enhancements
-- Implement advanced uncertainty quantification
+- Implement better uncertainty quantification
 - Add support for non-linear relationships
 - Enhance cross-validation strategies 
