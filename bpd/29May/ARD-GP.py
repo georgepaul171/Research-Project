@@ -19,10 +19,23 @@ import joblib
 from typing import Tuple, List, Optional, Dict, Union
 from dataclasses import dataclass
 import logging
+from sklearn.feature_selection import mutual_info_regression
+import scipy.stats as stats
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+class NumpyEncoder(json.JSONEncoder):
+    """Custom JSON encoder for numpy types"""
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return super(NumpyEncoder, self).default(obj)
 
 @dataclass
 class ModelConfig:
@@ -196,36 +209,30 @@ class EnhancedBayesianARD:
 
 def enhanced_feature_engineering(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Perform enhanced feature engineering on the dataset
-    
-    Parameters:
-    -----------
-    df : pd.DataFrame
-        Input dataframe
-        
-    Returns:
-    --------
-    df : pd.DataFrame
-        Dataframe with engineered features
+    Perform enhanced feature engineering on the dataset with improved scaling
     """
-    # 1. Enhanced floor area features
+    # 1. Enhanced floor area features with robust scaling
     df['floor_area'] = df['floor_area'].clip(
         lower=df['floor_area'].quantile(0.01),
         upper=df['floor_area'].quantile(0.99)
     )
     df['floor_area_log'] = np.log1p(df['floor_area'])
-    df['floor_area_squared'] = df['floor_area'] ** 2
+    df['floor_area_squared'] = np.log1p(df['floor_area'] ** 2)  # Log transform squared term
     
     # 2. Enhanced energy intensity features
     df['electric_ratio'] = df['electric_eui'] / (df['electric_eui'] + df['fuel_eui'])
     df['fuel_ratio'] = df['fuel_eui'] / (df['electric_eui'] + df['fuel_eui'])
     df['energy_mix'] = df['electric_ratio'] * df['fuel_ratio']
-    df['energy_intensity_ratio'] = (df['electric_eui'] + df['fuel_eui']) / df['floor_area']
+    df['energy_intensity_ratio'] = np.log1p((df['electric_eui'] + df['fuel_eui']) / df['floor_area'])
     
     # 3. Enhanced building age features
     df['building_age'] = 2024 - df['year_built']
+    df['building_age'] = df['building_age'].clip(
+        lower=df['building_age'].quantile(0.01),
+        upper=df['building_age'].quantile(0.99)
+    )
     df['building_age_log'] = np.log1p(df['building_age'])
-    df['building_age_squared'] = df['building_age'] ** 2
+    df['building_age_squared'] = np.log1p(df['building_age'] ** 2)  # Log transform squared term
     
     # 4. Enhanced energy star rating features
     df['energy_star_rating'] = pd.to_numeric(df['energy_star_rating'], errors='coerce')
@@ -237,14 +244,89 @@ def enhanced_feature_engineering(df: pd.DataFrame) -> pd.DataFrame:
     df['ghg_emissions_int'] = pd.to_numeric(df['ghg_emissions_int'], errors='coerce')
     df['ghg_emissions_int'] = df['ghg_emissions_int'].fillna(df['ghg_emissions_int'].median())
     df['ghg_emissions_int_log'] = np.log1p(df['ghg_emissions_int'])
-    df['ghg_per_area'] = df['ghg_emissions_int'] / df['floor_area']
+    df['ghg_per_area'] = np.log1p(df['ghg_emissions_int'] / df['floor_area'])
     
-    # 6. Interaction features
-    df['age_energy_star_interaction'] = df['building_age'] * df['energy_star_rating_normalized']
+    # 6. Interaction features with proper scaling
+    df['age_energy_star_interaction'] = df['building_age_log'] * df['energy_star_rating_normalized']
     df['area_energy_star_interaction'] = df['floor_area_log'] * df['energy_star_rating_normalized']
-    df['age_ghg_interaction'] = df['building_age'] * df['ghg_emissions_int_log']
+    df['age_ghg_interaction'] = df['building_age_log'] * df['ghg_emissions_int_log']
     
     return df
+
+def analyze_feature_interactions(X: np.ndarray, y: np.ndarray, feature_names: List[str], 
+                               output_dir: str):
+    """
+    Perform detailed analysis of feature interactions
+    """
+    # Create a new figure for interaction analysis
+    plt.figure(figsize=(20, 15))
+    
+    # 1. Pairwise Feature Interactions
+    plt.subplot(2, 2, 1)
+    top_indices = np.argsort([np.corrcoef(X[:, i], y)[0, 1] for i in range(X.shape[1])])[-5:]
+    top_features = [feature_names[i] for i in top_indices]
+    
+    interaction_matrix = np.zeros((len(top_features), len(top_features)))
+    for i, feat1 in enumerate(top_features):
+        for j, feat2 in enumerate(top_features):
+            if i != j:
+                idx1 = feature_names.index(feat1)
+                idx2 = feature_names.index(feat2)
+                interaction_matrix[i, j] = np.corrcoef(X[:, idx1], X[:, idx2])[0, 1]
+    
+    sns.heatmap(interaction_matrix, annot=True, cmap='coolwarm', center=0, fmt='.2f',
+                xticklabels=top_features, yticklabels=top_features)
+    plt.title('Top Feature Interactions')
+    
+    # 2. Feature Importance vs Correlation
+    plt.subplot(2, 2, 2)
+    target_correlations = [np.corrcoef(X[:, i], y)[0, 1] for i in range(X.shape[1])]
+    feature_variances = np.var(X, axis=0)
+    
+    plt.scatter(target_correlations, feature_variances, alpha=0.5)
+    for i, feat in enumerate(feature_names):
+        plt.annotate(feat, (target_correlations[i], feature_variances[i]))
+    plt.xlabel('Correlation with Target')
+    plt.ylabel('Feature Variance')
+    plt.title('Feature Variance vs Target Correlation')
+    
+    # 3. Feature Distribution Analysis
+    plt.subplot(2, 2, 3)
+    feature_skewness = [stats.skew(X[:, i]) for i in range(X.shape[1])]
+    feature_kurtosis = [stats.kurtosis(X[:, i]) for i in range(X.shape[1])]
+    
+    plt.scatter(feature_skewness, feature_kurtosis, alpha=0.5)
+    for i, feat in enumerate(feature_names):
+        plt.annotate(feat, (feature_skewness[i], feature_kurtosis[i]))
+    plt.xlabel('Skewness')
+    plt.ylabel('Kurtosis')
+    plt.title('Feature Distribution Analysis')
+    
+    # 4. Feature Importance vs Information Value
+    plt.subplot(2, 2, 4)
+    mutual_info = mutual_info_regression(X, y)
+    plt.scatter(mutual_info, feature_variances, alpha=0.5)
+    for i, feat in enumerate(feature_names):
+        plt.annotate(feat, (mutual_info[i], feature_variances[i]))
+    plt.xlabel('Mutual Information with Target')
+    plt.ylabel('Feature Variance')
+    plt.title('Feature Information Value vs Variance')
+    
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, 'detailed_feature_analysis.png'), dpi=300, bbox_inches='tight')
+    plt.close()
+    
+    # Save detailed feature analysis to JSON
+    feature_analysis = {
+        'correlations': dict(zip(feature_names, target_correlations)),
+        'variances': dict(zip(feature_names, feature_variances)),
+        'skewness': dict(zip(feature_names, feature_skewness)),
+        'kurtosis': dict(zip(feature_names, feature_kurtosis)),
+        'mutual_info': dict(zip(feature_names, mutual_info))
+    }
+    
+    with open(os.path.join(output_dir, 'feature_analysis.json'), 'w') as f:
+        json.dump(feature_analysis, f, indent=4, cls=NumpyEncoder)
 
 def train_and_evaluate_enhanced(X: np.ndarray, y: np.ndarray, feature_names: List[str],
                               output_dir: Optional[str] = None) -> Tuple[EnhancedBayesianARD, dict]:
@@ -253,6 +335,9 @@ def train_and_evaluate_enhanced(X: np.ndarray, y: np.ndarray, feature_names: Lis
     """
     if output_dir is not None:
         os.makedirs(output_dir, exist_ok=True)
+        
+        # Perform detailed feature analysis
+        analyze_feature_interactions(X, y, feature_names, output_dir)
     
     # Initialize and train model
     config = ModelConfig()
