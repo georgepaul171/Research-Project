@@ -1,16 +1,13 @@
-# Enhanced Bayesian ARD Analysis Report
-
-## Overview
-This report presents the findings from the Enhanced Bayesian ARD (Automatic Relevance Determination) analysis of building energy performance data. The model achieved excellent predictive performance while providing insights into feature importance and interactions.
+This .md file presents the findings from the ARD analysis.
 
 ## Model Performance
 The model demonstrated strong predictive capabilities:
-- **R² Score**: 0.9455 (94.55% variance explained)
+- **R² Score**: 0.9455
 - **RMSE**: 6.2411
 - **MAE**: 3.9196
 - **Mean Uncertainty**: 0.2080
 
-These metrics indicate:
+These indicate:
 - High accuracy in predictions
 - Low prediction error
 - Good model confidence
@@ -28,7 +25,7 @@ These metrics indicate:
 ### Features with Low Importance
 - `energy_mix` (0.0003)
 - `energy_star_rating_squared` (0.0046)
-- `floor_area_squared` (0.0164)
+- `floor_area_squared` (0.0164) 
 
 ## Feature Correlations with Target
 
@@ -59,11 +56,10 @@ These metrics indicate:
 - `energy_mix`: 0.0032
 - `energy_star_rating_normalized`: 0.0506
 
-## Key Insights
+## Insights
 
 1. **Building Age Impact**
-   - Building age features (both log and squared) are the strongest predictors
-   - Suggests significant impact of building age on energy performance
+   - Building age features (both log and squared) are the strongest predictors. I would say this is expected.
 
 2. **GHG Emissions**
    - Strong correlation with target variable
@@ -71,8 +67,8 @@ These metrics indicate:
    - Log transformation improves predictive power
 
 3. **Energy Star Rating**
-   - Negative correlations suggest inverse relationship with energy consumption
-   - Normalized rating more important than squared term
+   - Negative correlations suggest inverse relationship with energy consumption. I would say this is expected.
+   - Normalised rating more important than squared term
 
 4. **Feature Interactions**
    - Age-GHG interaction shows strong positive correlation
@@ -85,7 +81,7 @@ These metrics indicate:
    - Consider removing low-importance features:
      - `energy_mix`
      - `energy_star_rating_squared`
-     - `floor_area_squared`
+     - `floor_area_squared`, which I need to work on.
 
 2. **Feature Engineering**
    - Focus on building age transformations
@@ -97,12 +93,11 @@ These metrics indicate:
    - Consider feature scaling for high-variance features
    - Explore non-linear relationships further
 
-## Visualizations
-The analysis includes several visualization files:
-- `enhanced_ard_analysis.png`: Main analysis plots
-- `detailed_performance_analysis.png`: Performance metrics
-- `feature_interaction_analysis.png`: Feature interactions
-- `detailed_feature_analysis.png`: Detailed feature analysis
-
 ## Conclusion
-The Enhanced Bayesian ARD model provides excellent predictive performance while offering valuable insights into feature importance and interactions. The strong performance of building age features and GHG emissions suggests these are key factors in building energy performance. The model's high R² score and low error metrics indicate its reliability for energy performance prediction. 
+
+The analysis includes several visualisation files. The model provides excellent predictive performance while offering  insights into feature importance and interactions. The strong performance of building age features and GHG emissions suggests these are key factors in building energy performance. The model's high R$^2$ score and low error metrics indicate its reliability for energy performance prediction. 
+
+## Further Work
+
+- I want to improve the predictive performance of floor_area feature.
+- Another area to investigate is the selection of priors
