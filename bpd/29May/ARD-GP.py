@@ -25,6 +25,26 @@ import scipy.stats as stats
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+# Remove any existing handlers to avoid duplicate messages
+for handler in logger.handlers[:]:
+    logger.removeHandler(handler)
+
+# Remove root logger handlers
+for handler in logging.getLogger().handlers[:]:
+    logging.getLogger().removeHandler(handler)
+
+# Add a new handler with the correct format
+handler = logging.StreamHandler()
+handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+logger.addHandler(handler)
+
+# Prevent propagation to root logger
+logger.propagate = False
+
+# Configure root logger to not add [INFO]
+logging.getLogger().handlers = []
+logging.getLogger().propagate = False
+
 class NumpyEncoder(json.JSONEncoder):
     """
     Custom JSON encoder for numpy types
