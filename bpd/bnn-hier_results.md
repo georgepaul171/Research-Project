@@ -11,7 +11,7 @@
 - Final dataset size after preprocessing: 7,697 rows
 
 ## Training Progress
-The model was trained for 100 epochs with the following key milestones:
+The model was trained for 100 epochs with the following milestones:
 - Initial loss (Epoch 1): Train=10.7263, Val=10.2491
 - Mid training (Epoch 50): Train=0.2719, Val=0.2824
 - Final loss (Epoch 100): Train=0.2615, Val=0.2649

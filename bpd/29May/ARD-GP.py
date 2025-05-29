@@ -1,9 +1,8 @@
 """
-EnhancedBayesianARD.py: Advanced Bayesian ARD Model with Enhanced Features
--------------------------------------------------------------------------------
+ARD-GP.py: ARD Model with Enhanced Features
 - Implements ARD for feature selection using standard Bayesian techniques
 - Includes cross-validation and hyperparameter tuning
-- Enhanced feature engineering and analysis capabilities
+- Feature engineering and analysis capabilities
 - Model persistence and loading functionality
 """
 import numpy as np
@@ -27,7 +26,9 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 class NumpyEncoder(json.JSONEncoder):
-    """Custom JSON encoder for numpy types"""
+    """
+    Custom JSON encoder for numpy types
+    """
     def default(self, obj):
         if isinstance(obj, np.integer):
             return int(obj)
@@ -39,7 +40,9 @@ class NumpyEncoder(json.JSONEncoder):
 
 @dataclass
 class ModelConfig:
-    """Configuration for the Enhanced Bayesian ARD model"""
+    """
+    Configuration for the Enhanced Bayesian ARD model
+    """
     alpha_0: float = 1e-6
     beta_0: float = 1e-6
     max_iter: int = 200
@@ -50,20 +53,19 @@ class ModelConfig:
 class EnhancedBayesianARD:
     def __init__(self, config: Optional[ModelConfig] = None):
         """
-        Initialize Enhanced Bayesian ARD model
+        Initialise model
         
         Parameters:
-        -----------
         config : Optional[ModelConfig]
             Model configuration parameters
         """
         self.config = config or ModelConfig()
         
         # Model parameters
-        self.alpha = None  # Noise precision
-        self.beta = None   # Weight precisions (ARD parameters)
-        self.m = None      # Mean of weights
-        self.S = None      # Covariance of weights
+        self.alpha = None # Noise precision
+        self.beta = None # Weight precisions (ARD parameters)
+        self.m = None # Mean of weights
+        self.S = None # Covariance of weights
         
         # Feature engineering components
         self.scaler_X = RobustScaler()
@@ -74,10 +76,9 @@ class EnhancedBayesianARD:
         
     def fit(self, X: np.ndarray, y: np.ndarray) -> 'EnhancedBayesianARD':
         """
-        Fit the Enhanced Bayesian ARD model with cross-validation
+        Fit the model with cross-validation
         
         Parameters:
-        -----------
         X : np.ndarray
             Input features (n_samples, n_features)
         y : np.ndarray
@@ -150,14 +151,12 @@ class EnhancedBayesianARD:
         Make predictions with uncertainty estimates
         
         Parameters:
-        -----------
         X : np.ndarray
             Input features
         return_std : bool
             Whether to return standard deviation of predictions
             
         Returns:
-        --------
         mean : np.ndarray
             Mean predictions
         std : np.ndarray, optional
@@ -174,14 +173,15 @@ class EnhancedBayesianARD:
         Get feature importance based on ARD parameters
         
         Returns:
-        --------
         importance : np.ndarray
             Feature importance scores (1/beta)
         """
         return 1 / self.beta
     
     def save_model(self, path: str):
-        """Save model and scalers to disk"""
+        """
+        Save model and scalers
+        """
         model_data = {
             'alpha': self.alpha,
             'beta': self.beta,
@@ -196,7 +196,9 @@ class EnhancedBayesianARD:
     
     @classmethod
     def load_model(cls, path: str) -> 'EnhancedBayesianARD':
-        """Load model from disk"""
+        """
+        Load model from disk
+        """
         model_data = joblib.load(path)
         model = cls(config=model_data['config'])
         model.alpha = model_data['alpha']
@@ -207,11 +209,11 @@ class EnhancedBayesianARD:
         model.scaler_y = model_data['scaler_y']
         return model
 
-def enhanced_feature_engineering(df: pd.DataFrame) -> pd.DataFrame:
+def feature_engineering(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Perform enhanced feature engineering on the dataset with improved scaling
+    Perform feature engineering on the dataset
     """
-    # 1. Enhanced floor area features with robust scaling
+    # Floor area features with scaling
     df['floor_area'] = df['floor_area'].clip(
         lower=df['floor_area'].quantile(0.01),
         upper=df['floor_area'].quantile(0.99)
@@ -219,49 +221,48 @@ def enhanced_feature_engineering(df: pd.DataFrame) -> pd.DataFrame:
     df['floor_area_log'] = np.log1p(df['floor_area'])
     df['floor_area_squared'] = np.log1p(df['floor_area'] ** 2)  # Log transform squared term
     
-    # 2. Enhanced energy intensity features
+    # Energy intensity features
     df['electric_ratio'] = df['electric_eui'] / (df['electric_eui'] + df['fuel_eui'])
     df['fuel_ratio'] = df['fuel_eui'] / (df['electric_eui'] + df['fuel_eui'])
     df['energy_mix'] = df['electric_ratio'] * df['fuel_ratio']
     df['energy_intensity_ratio'] = np.log1p((df['electric_eui'] + df['fuel_eui']) / df['floor_area'])
     
-    # 3. Enhanced building age features
-    df['building_age'] = 2024 - df['year_built']
+    # Bilding age features
+    df['building_age'] = 2025 - df['year_built']
     df['building_age'] = df['building_age'].clip(
         lower=df['building_age'].quantile(0.01),
         upper=df['building_age'].quantile(0.99)
     )
     df['building_age_log'] = np.log1p(df['building_age'])
-    df['building_age_squared'] = np.log1p(df['building_age'] ** 2)  # Log transform squared term
+    df['building_age_squared'] = np.log1p(df['building_age'] ** 2)
     
-    # 4. Enhanced energy star rating features
+    # Energy star rating features
     df['energy_star_rating'] = pd.to_numeric(df['energy_star_rating'], errors='coerce')
     df['energy_star_rating'] = df['energy_star_rating'].fillna(df['energy_star_rating'].median())
     df['energy_star_rating_normalized'] = df['energy_star_rating'] / 100
     df['energy_star_rating_squared'] = df['energy_star_rating_normalized'] ** 2
     
-    # 5. Enhanced GHG emissions features
+    # GHG emissions features
     df['ghg_emissions_int'] = pd.to_numeric(df['ghg_emissions_int'], errors='coerce')
     df['ghg_emissions_int'] = df['ghg_emissions_int'].fillna(df['ghg_emissions_int'].median())
     df['ghg_emissions_int_log'] = np.log1p(df['ghg_emissions_int'])
     df['ghg_per_area'] = np.log1p(df['ghg_emissions_int'] / df['floor_area'])
     
-    # 6. Interaction features with proper scaling
+    # Interaction features
     df['age_energy_star_interaction'] = df['building_age_log'] * df['energy_star_rating_normalized']
     df['area_energy_star_interaction'] = df['floor_area_log'] * df['energy_star_rating_normalized']
     df['age_ghg_interaction'] = df['building_age_log'] * df['ghg_emissions_int_log']
     
     return df
 
-def analyze_feature_interactions(X: np.ndarray, y: np.ndarray, feature_names: List[str], 
-                               output_dir: str):
+def analyse_feature_interactions(X: np.ndarray, y: np.ndarray, feature_names: List[str], output_dir: str):
     """
-    Perform detailed analysis of feature interactions
+    Perform analysis of feature interactions
     """
     # Create a new figure for interaction analysis
     plt.figure(figsize=(20, 15))
     
-    # 1. Pairwise Feature Interactions
+    # Pairwise Feature Interactions
     plt.subplot(2, 2, 1)
     top_indices = np.argsort([np.corrcoef(X[:, i], y)[0, 1] for i in range(X.shape[1])])[-5:]
     top_features = [feature_names[i] for i in top_indices]
@@ -278,7 +279,7 @@ def analyze_feature_interactions(X: np.ndarray, y: np.ndarray, feature_names: Li
                 xticklabels=top_features, yticklabels=top_features)
     plt.title('Top Feature Interactions')
     
-    # 2. Feature Importance vs Correlation
+    # Feature Importance vs Correlation
     plt.subplot(2, 2, 2)
     target_correlations = [np.corrcoef(X[:, i], y)[0, 1] for i in range(X.shape[1])]
     feature_variances = np.var(X, axis=0)
@@ -290,7 +291,7 @@ def analyze_feature_interactions(X: np.ndarray, y: np.ndarray, feature_names: Li
     plt.ylabel('Feature Variance')
     plt.title('Feature Variance vs Target Correlation')
     
-    # 3. Feature Distribution Analysis
+    # Feature Distribution Analysis
     plt.subplot(2, 2, 3)
     feature_skewness = [stats.skew(X[:, i]) for i in range(X.shape[1])]
     feature_kurtosis = [stats.kurtosis(X[:, i]) for i in range(X.shape[1])]
@@ -302,7 +303,7 @@ def analyze_feature_interactions(X: np.ndarray, y: np.ndarray, feature_names: Li
     plt.ylabel('Kurtosis')
     plt.title('Feature Distribution Analysis')
     
-    # 4. Feature Importance vs Information Value
+    # Feature Importance vs Information Value
     plt.subplot(2, 2, 4)
     mutual_info = mutual_info_regression(X, y)
     plt.scatter(mutual_info, feature_variances, alpha=0.5)
@@ -331,15 +332,14 @@ def analyze_feature_interactions(X: np.ndarray, y: np.ndarray, feature_names: Li
 def train_and_evaluate_enhanced(X: np.ndarray, y: np.ndarray, feature_names: List[str],
                               output_dir: Optional[str] = None) -> Tuple[EnhancedBayesianARD, dict]:
     """
-    Train and evaluate the Enhanced Bayesian ARD model with detailed analysis
+    Train and evaluate the model with detailed analysis
     """
     if output_dir is not None:
         os.makedirs(output_dir, exist_ok=True)
         
-        # Perform detailed feature analysis
-        analyze_feature_interactions(X, y, feature_names, output_dir)
+        analyse_feature_interactions(X, y, feature_names, output_dir)
     
-    # Initialize and train model
+    # Initialise and train model
     config = ModelConfig()
     model = EnhancedBayesianARD(config)
     model.fit(X, y)
@@ -352,13 +352,13 @@ def train_and_evaluate_enhanced(X: np.ndarray, y: np.ndarray, feature_names: Lis
         with open(os.path.join(output_dir, 'metrics.json'), 'w') as f:
             json.dump(metrics, f, indent=4)
         
-        # Create detailed visualizations
+        # Create visualisations
         plt.style.use('default')
         
-        # 1. Main Analysis Figure
+        # Main Analysis Figure
         fig = plt.figure(figsize=(20, 15))
         
-        # 1.1 Feature Importance Plot
+        # Feature Importance Plot
         plt.subplot(2, 2, 1)
         importance = model.get_feature_importance()
         sorted_idx = np.argsort(importance)
@@ -367,20 +367,20 @@ def train_and_evaluate_enhanced(X: np.ndarray, y: np.ndarray, feature_names: Lis
         plt.xlabel('Feature Importance (1/β)')
         plt.title('Enhanced Feature Importance Analysis')
         
-        # 1.2 Cross-validation Results
+        # Cross-validation Results
         plt.subplot(2, 2, 2)
         cv_data = model.cv_results.drop('fold', axis=1)
         sns.boxplot(data=cv_data)
         plt.xticks(rotation=45)
         plt.title('Cross-validation Metrics Distribution')
         
-        # 1.3 Correlation Heatmap
+        # Correlation Heatmap
         plt.subplot(2, 2, 3)
         correlation_matrix = pd.DataFrame(X, columns=feature_names).corr()
         sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', center=0, fmt='.2f')
         plt.title('Feature Correlation Heatmap')
         
-        # 1.4 Learning Curves
+        # Learning Curves
         plt.subplot(2, 2, 4)
         plt.plot(model.cv_results['rmse'], 'b-', label='RMSE', marker='o')
         plt.plot(model.cv_results['r2'], 'r-', label='R²', marker='s')
@@ -394,10 +394,10 @@ def train_and_evaluate_enhanced(X: np.ndarray, y: np.ndarray, feature_names: Lis
         plt.savefig(os.path.join(output_dir, 'enhanced_ard_analysis.png'), dpi=300, bbox_inches='tight')
         plt.close()
         
-        # 2. Detailed Performance Analysis
+        # Performance Analysis
         fig = plt.figure(figsize=(20, 15))
         
-        # 2.1 Prediction vs Actual Plot
+        # Prediction vs Actual Plot
         plt.subplot(2, 2, 1)
         y_pred, y_std = model.predict(X, return_std=True)
         y_pred_orig = model.scaler_y.inverse_transform(y_pred.reshape(-1, 1)).ravel()
@@ -409,7 +409,7 @@ def train_and_evaluate_enhanced(X: np.ndarray, y: np.ndarray, feature_names: Lis
         plt.ylabel('Predicted Values')
         plt.title('Prediction vs Actual Values')
         
-        # 2.2 Residuals Analysis
+        # Residuals Analysis
         plt.subplot(2, 2, 2)
         residuals = y_orig - y_pred_orig
         plt.scatter(y_pred_orig, residuals, alpha=0.5)
@@ -418,14 +418,14 @@ def train_and_evaluate_enhanced(X: np.ndarray, y: np.ndarray, feature_names: Lis
         plt.ylabel('Residuals')
         plt.title('Residuals vs Predicted Values')
         
-        # 2.3 Uncertainty Analysis
+        # Uncertainty Analysis
         plt.subplot(2, 2, 3)
         plt.scatter(np.abs(residuals), y_std, alpha=0.5)
         plt.xlabel('Absolute Prediction Error')
         plt.ylabel('Prediction Uncertainty')
         plt.title('Uncertainty vs Prediction Error')
         
-        # 2.4 Feature Importance Distribution
+        # Feature Importance Distribution
         plt.subplot(2, 2, 4)
         sns.histplot(importance, bins=20)
         plt.xlabel('Feature Importance')
@@ -436,10 +436,10 @@ def train_and_evaluate_enhanced(X: np.ndarray, y: np.ndarray, feature_names: Lis
         plt.savefig(os.path.join(output_dir, 'detailed_performance_analysis.png'), dpi=300, bbox_inches='tight')
         plt.close()
         
-        # 3. Feature Interaction Analysis
+        # Feature Interaction Analysis
         fig = plt.figure(figsize=(20, 15))
         
-        # 3.1 Top Feature Interactions
+        # Top Feature Interactions
         top_indices = np.argsort(importance)[-5:]
         top_features = [feature_names[i] for i in top_indices]
         interaction_matrix = np.zeros((len(top_features), len(top_features)))
@@ -456,7 +456,7 @@ def train_and_evaluate_enhanced(X: np.ndarray, y: np.ndarray, feature_names: Lis
                    xticklabels=top_features, yticklabels=top_features)
         plt.title('Top Feature Interactions')
         
-        # 3.2 Feature Importance vs Correlation with Target
+        # Feature Importance vs Correlation with Target
         plt.subplot(2, 2, 2)
         target_correlations = [np.corrcoef(X[:, i], y)[0, 1] for i in range(X.shape[1])]
         plt.scatter(target_correlations, importance)
@@ -466,7 +466,7 @@ def train_and_evaluate_enhanced(X: np.ndarray, y: np.ndarray, feature_names: Lis
         plt.ylabel('Feature Importance')
         plt.title('Feature Importance vs Target Correlation')
         
-        # 3.3 Feature Importance vs Variance
+        # Feature Importance vs Variance
         plt.subplot(2, 2, 3)
         feature_variances = np.var(X, axis=0)
         plt.scatter(feature_variances, importance)
@@ -476,7 +476,7 @@ def train_and_evaluate_enhanced(X: np.ndarray, y: np.ndarray, feature_names: Lis
         plt.ylabel('Feature Importance')
         plt.title('Feature Importance vs Variance')
         
-        # 3.4 Cumulative Feature Importance
+        # Cumulative Feature Importance
         plt.subplot(2, 2, 4)
         sorted_importance = np.sort(importance)[::-1]
         cumulative_importance = np.cumsum(sorted_importance)
@@ -493,7 +493,7 @@ def train_and_evaluate_enhanced(X: np.ndarray, y: np.ndarray, feature_names: Lis
         # Save model
         model.save_model(os.path.join(output_dir, 'enhanced_ard_model.joblib'))
         
-        # Print detailed analysis
+        # Print analysis
         logger.info("\nDetailed Analysis:")
         logger.info("\n1. Feature Importance:")
         for feat, imp in zip(feature_names, importance):
@@ -516,7 +516,7 @@ def train_and_evaluate_enhanced(X: np.ndarray, y: np.ndarray, feature_names: Lis
     return model, metrics
 
 if __name__ == "__main__":
-    logger.info("[INFO] Starting Enhanced Bayesian ARD analysis...")
+    logger.info("Starting ARD analysis")
     
     # Data setup
     data_csv_path = "/Users/georgepaul/Desktop/Research-Project/bpd/cleaned_office_buildings.csv"
@@ -527,8 +527,8 @@ if __name__ == "__main__":
     df = pd.read_csv(data_csv_path, na_values=na_vals, low_memory=False)
     
     # Enhanced feature engineering
-    logger.info("[INFO] Performing enhanced feature engineering...")
-    df = enhanced_feature_engineering(df)
+    logger.info("Performing feature engineering")
+    df = feature_engineering(df)
     
     # Select features
     features = [
@@ -557,4 +557,4 @@ if __name__ == "__main__":
     results_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'results')
     model, metrics = train_and_evaluate_enhanced(X, y, feature_names, output_dir=results_dir)
     
-    logger.info("[INFO] Analysis complete. Results saved to %s", results_dir) 
+    logger.info("Complete. Results saved to %s", results_dir) 
