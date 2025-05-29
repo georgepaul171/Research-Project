@@ -554,7 +554,7 @@ if __name__ == "__main__":
     y = df[target].values.astype(np.float32)
     
     # Train and evaluate model
-    results_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'resultsEnhancedBayesianARD')
+    results_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'results')
     model, metrics = train_and_evaluate_enhanced(X, y, feature_names, output_dir=results_dir)
     
     logger.info("[INFO] Analysis complete. Results saved to %s", results_dir) 
