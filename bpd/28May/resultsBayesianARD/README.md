@@ -24,7 +24,6 @@ This project implements a standard Bayesian Automatic Relevance Determination (A
 - **Feature Selection**: ARD automatically determines feature relevance
 - **Uncertainty Quantification**: Provides both predictions and uncertainty estimates
 - **Interpretability**: Linear model structure allows direct interpretation of coefficients
-- **Analytical Solution**: Uses Expectation-Maximization (EM) algorithm for optimization
 
 ## Training Process
 
@@ -51,8 +50,8 @@ The model uses the following engineered features:
 - R²: 0.929
 - Mean Uncertainty (std): 6.486
 
-### Visualization
-The model generates comprehensive visualizations including:
+### Visualisation
+The model generates visualisations including:
 1. Predictions vs Actual Values with uncertainty bands
 2. Feature importance analysis based on ARD parameters
 3. Uncertainty vs Prediction Error analysis
@@ -64,7 +63,7 @@ The model generates comprehensive visualizations including:
 The ARD implementation uses precision parameters for each feature:
 - Feature importance is determined by 1/β (inverse of precision)
 - Higher values indicate more important features
-- The precision parameters are updated through the EM algorithm
+- The precision parameters are updated through EM algorithm
 
 ### Uncertainty Estimation
 - Uses analytical posterior variance for uncertainty estimates
@@ -89,8 +88,6 @@ While both models use ARD for feature selection, this standard Bayesian ARD mode
 5. May capture simpler relationships more effectively
 
 ## Future Improvements
-1. Implement cross-validation for more robust evaluation
-2. Add more sophisticated feature engineering
-3. Experiment with different prior specifications
-4. Incorporate temporal aspects of building energy usage
-5. Add model selection criteria (e.g., BIC, AIC) 
+1. Add more sophisticated feature engineering
+2. Experiment with different prior specifications
+3. Incorporate climate data using ZIP code 

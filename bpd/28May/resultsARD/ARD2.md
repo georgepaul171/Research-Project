@@ -10,7 +10,6 @@ This implementation presents a Hierarchical Bayesian Neural Network with Automat
    - Group-level parameters follow a normal distribution
    - Individual-level parameters use non-centered parameterization
    - KL divergence includes both group and individual components
-   - Enables better sampling and convergence
 
 2. **Half-Normal Hyperprior**
    - Used for standard deviations
