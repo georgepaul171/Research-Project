@@ -5,44 +5,32 @@
 ### 1.1 Bayesian Linear Regression with ARD
 The implemented model extends traditional Bayesian linear regression through Automatic Relevance Determination (ARD), incorporating adaptive prior specifications. The model employs a hierarchical Bayesian framework where:
 
-\[
-p(y|X,w,\alpha) = \mathcal{N}(y|Xw,\alpha^{-1}I)
-\]
+$$p(y|X,w,\alpha) = \mathcal{N}(y|Xw,\alpha^{-1}I)$$
 
 with prior distributions:
 
-\[
-p(w|\beta) = \mathcal{N}(w|0,\text{diag}(\beta)^{-1})
-\]
+$$p(w|\beta) = \mathcal{N}(w|0,\text{diag}(\beta)^{-1})$$
 
-where \(\beta\) represents the ARD parameters that control feature relevance.
+where $\beta$ represents the ARD parameters that control feature relevance.
 
 ### 1.2 Adaptive Prior Formulation
 The model implements three distinct prior types:
 
 1. **Hierarchical Prior**:
-   \[
-   p(\beta_j|\lambda_j,\tau_j) \propto \frac{1}{\beta_j} \exp\left(-\frac{\lambda_j\tau_j}{2\beta_j}\right)
-   \]
+   $$p(\beta_j|\lambda_j,\tau_j) \propto \frac{1}{\beta_j} \exp\left(-\frac{\lambda_j\tau_j}{2\beta_j}\right)$$
 
 2. **Spike-and-Slab Prior**:
-   \[
-   p(w_j|\pi_j,\sigma^2_{0j},\sigma^2_{1j}) = (1-\pi_j)\mathcal{N}(0,\sigma^2_{0j}) + \pi_j\mathcal{N}(0,\sigma^2_{1j})
-   \]
+   $$p(w_j|\pi_j,\sigma^2_{0j},\sigma^2_{1j}) = (1-\pi_j)\mathcal{N}(0,\sigma^2_{0j}) + \pi_j\mathcal{N}(0,\sigma^2_{1j})$$
 
 3. **Horseshoe Prior**:
-   \[
-   p(w_j|\lambda_j,\tau) \propto \frac{1}{\sqrt{1 + \frac{w_j^2}{\lambda_j^2\tau^2}}}
-   \]
+   $$p(w_j|\lambda_j,\tau) \propto \frac{1}{\sqrt{1 + \frac{w_j^2}{\lambda_j^2\tau^2}}}$$
 
 ### 1.3 Dynamic Shrinkage Mechanism
 The model incorporates dynamic shrinkage through:
 
-\[
-\kappa_j^{(t+1)} = (1-\eta)\kappa_j^{(t)} + \eta \frac{1}{\beta_j}
-\]
+$$\kappa_j^{(t+1)} = (1-\eta)\kappa_j^{(t)} + \eta \frac{1}{\beta_j}$$
 
-where \(\eta\) is the adaptation rate and \(\kappa_j\) represents the shrinkage strength for feature \(j\).
+where $\eta$ is the adaptation rate and $\kappa_j$ represents the shrinkage strength for feature $j$.
 
 ## 2. Implementation Details
 
@@ -50,19 +38,19 @@ where \(\eta\) is the adaptation rate and \(\kappa_j\) represents the shrinkage 
 The model employs sophisticated feature engineering techniques:
 
 1. **Logarithmic Transformations**:
-   - Floor area: \(\log(1 + \text{floor\_area})\)
-   - Building age: \(\log(1 + \text{building\_age})\)
-   - GHG emissions: \(\log(1 + \text{ghg\_emissions\_int})\)
+   - Floor area: $\log(1 + \text{floor\_area})$
+   - Building age: $\log(1 + \text{building\_age})$
+   - GHG emissions: $\log(1 + \text{ghg\_emissions\_int})$
 
 2. **Interaction Terms**:
-   - Age-Energy Star: \(\text{building\_age\_log} \times \text{energy\_star\_rating\_normalized}\)
-   - Area-Energy Star: \(\text{floor\_area\_log} \times \text{energy\_star\_rating\_normalized}\)
-   - Age-GHG: \(\text{building\_age\_log} \times \text{ghg\_emissions\_int\_log}\)
+   - Age-Energy Star: $\text{building\_age\_log} \times \text{energy\_star\_rating\_normalized}$
+   - Area-Energy Star: $\text{floor\_area\_log} \times \text{energy\_star\_rating\_normalized}$
+   - Age-GHG: $\text{building\_age\_log} \times \text{ghg\_emissions\_int\_log}$
 
 3. **Quadratic Terms**:
-   - Floor area squared: \(\log(1 + \text{floor\_area}^2)\)
-   - Building age squared: \(\log(1 + \text{building\_age}^2)\)
-   - Energy Star rating squared: \((\text{energy\_star\_rating}/100)^2\)
+   - Floor area squared: $\log(1 + \text{floor\_area}^2)$
+   - Building age squared: $\log(1 + \text{building\_age}^2)$
+   - Energy Star rating squared: $(\text{energy\_star\_rating}/100)^2$
 
 ### 2.2 Model Training
 The training process employs:
