@@ -196,6 +196,71 @@ These values suggest:
 - Strong local feature-specific regularisation
 - Effective balance between model complexity and generalisation
 
+## 3.6 Visual Analysis of Output Images
+
+### 3.6.1 Multi-Panel Model Diagnostics (`detailed_analysis.png`)
+
+![Detailed Analysis](./detailed_analysis.png)
+
+This figure provides a comprehensive, multi-panel diagnostic overview of the model and data:
+
+- **Feature Importance (Top-Left Panel):**
+  - Displays the normalized importance of each feature as determined by the ARD mechanism.
+  - The dominance of `floor_area_log` and `floor_area_squared` visually corroborates the quantitative results in Section 3.2.
+  - Error bars (if present) reflect the stability of importance estimates across cross-validation folds, indicating robust feature selection.
+
+- **Feature Correlation Heatmap (Top-Right Panel):**
+  - Shows pairwise Pearson correlations between features.
+  - Strong correlations (red/blue) highlight potential multicollinearity, which the ARD prior helps to regularise.
+  - For example, `floor_area_log` and `floor_area_squared` are highly correlated, as expected from their mathematical relationship.
+
+- **Feature Interaction Network (Middle-Left Panel):**
+  - Nodes represent features; edges indicate strong mutual information-based interactions.
+  - The network structure reveals clusters of features that interact nonlinearly, such as the cluster around floor area and building age.
+  - The thickness of edges encodes interaction strength, supporting the findings in Section 3.3.
+
+- **Partial Dependence Plots (Middle-Right Panel):**
+  - Illustrate how the predicted target changes as a single feature varies, holding others fixed.
+  - Nonlinear relationships are evident, especially for `floor_area_log`, confirming the need for quadratic and interaction terms.
+
+- **Residual Analysis (Bottom-Left Panel):**
+  - Scatter plot of residuals vs. predicted values checks for systematic bias.
+  - The random scatter around zero suggests the model is well-calibrated, with no major heteroscedasticity.
+
+- **Uncertainty vs. Error (Bottom-Middle Panel):**
+  - Relates the model's predicted uncertainty to actual prediction errors.
+  - A positive trend indicates that the model's uncertainty estimates are meaningful: higher uncertainty corresponds to larger errors.
+
+- **Feature Importance vs. Correlation (Bottom-Right Panel):**
+  - Compares each feature's importance to its correlation with the target.
+  - Features with high importance but low correlation may be involved in interactions or nonlinear effects, highlighting the value of the ARD approach.
+
+- **Learning Curves (Bottom-Right Panel):**
+  - Plots of RMSE and R² across cross-validation folds demonstrate model stability and generalisation.
+
+**Interpretation:**
+This figure collectively demonstrates that the model is both accurate and interpretable, with robust uncertainty quantification and meaningful feature selection. The visualizations support the quantitative findings and provide diagnostic confidence in the model's reliability.
+
+---
+
+### 3.6.2 Adaptive Prior Dynamics (`adaptive_prior_analysis.png`)
+
+![Adaptive Prior Analysis](./adaptive_prior_analysis.png)
+
+This figure provides insight into the inner workings of the adaptive prior mechanism:
+
+- **Prior Parameter Evolution:**
+  - The plot tracks the evolution of global and local shrinkage parameters during training.
+  - Convergence of these parameters indicates stable learning and effective regularisation.
+  - Fluctuations in local shrinkage reflect the model's adaptation to feature-specific uncertainty, a key advantage of the adaptive prior framework.
+
+- **Uncertainty Quantification:**
+  - If the plot includes uncertainty bands, it visually demonstrates the model's ability to quantify prediction confidence.
+  - Narrow bands for important features and wider bands for less relevant ones are expected, reflecting the ARD mechanism's selectivity.
+
+**Interpretation:**
+This image provides a window into the model's adaptive regularisation process. The convergence and adaptation of shrinkage parameters validate the model's ability to balance flexibility and regularisation, supporting the methodological contributions discussed earlier.
+
 ## 4. Implications and Future Work
 
 ### 4.1 Practical Implications
