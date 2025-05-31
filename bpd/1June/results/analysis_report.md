@@ -13,7 +13,79 @@ $$p(w|\beta) = \mathcal{N}(w|0,\text{diag}(\beta)^{-1})$$
 
 where $\beta$ represents the ARD parameters that control feature relevance.
 
-### 1.2 Adaptive Prior Formulation
+### 1.2 Model Architecture
+
+```mermaid
+graph TD
+    subgraph Input Layer
+        X[Input Features]
+    end
+
+    subgraph Feature Engineering
+        FE1[Log Transformations]
+        FE2[Quadratic Terms]
+        FE3[Interaction Terms]
+        X --> FE1
+        X --> FE2
+        X --> FE3
+    end
+
+    subgraph Prior Layer
+        P1[Hierarchical Prior]
+        P2[Spike-and-Slab Prior]
+        P3[Horseshoe Prior]
+        FE1 --> P1
+        FE2 --> P2
+        FE3 --> P3
+    end
+
+    subgraph ARD Layer
+        A1[Global Shrinkage]
+        A2[Local Shrinkage]
+        A3[Dynamic Adaptation]
+        P1 --> A1
+        P2 --> A2
+        P3 --> A3
+    end
+
+    subgraph Model Layer
+        M1[Bayesian Linear Regression]
+        M2[EM Algorithm]
+        M3[Cross-validation]
+        A1 --> M1
+        A2 --> M1
+        A3 --> M1
+        M1 --> M2
+        M2 --> M3
+    end
+
+    subgraph Output Layer
+        O1[Predictions]
+        O2[Uncertainty Estimates]
+        O3[Feature Importance]
+        M3 --> O1
+        M3 --> O2
+        M3 --> O3
+    end
+
+    style Input Layer fill:#f9f,stroke:#333,stroke-width:2px
+    style Feature Engineering fill:#bbf,stroke:#333,stroke-width:2px
+    style Prior Layer fill:#bfb,stroke:#333,stroke-width:2px
+    style ARD Layer fill:#fbb,stroke:#333,stroke-width:2px
+    style Model Layer fill:#fbf,stroke:#333,stroke-width:2px
+    style Output Layer fill:#bff,stroke:#333,stroke-width:2px
+```
+
+The architecture diagram above illustrates the hierarchical structure of the Adaptive Prior ARD model:
+
+1. **Input Layer**: Raw building features
+2. **Feature Engineering**: Transformation and interaction creation
+3. **Prior Layer**: Three types of adaptive priors
+4. **ARD Layer**: Automatic relevance determination mechanisms
+5. **Model Layer**: Core Bayesian regression with EM optimisation
+6. **Output Layer**: Predictions, uncertainty, and feature importance
+
+### 1.3 Adaptive Prior Formulation
 The model implements three distinct prior types:
 
 1. **Hierarchical Prior**:
@@ -25,7 +97,7 @@ The model implements three distinct prior types:
 3. **Horseshoe Prior**:
    $$p(w_j|\lambda_j,\tau) \propto \frac{1}{\sqrt{1 + \frac{w_j^2}{\lambda_j^2\tau^2}}}$$
 
-### 1.3 Dynamic Shrinkage Mechanism
+### 1.4 Dynamic Shrinkage Mechanism
 The model incorporates dynamic shrinkage through:
 
 $$\kappa_j^{(t+1)} = (1-\eta)\kappa_j^{(t)} + \eta \frac{1}{\beta_j}$$
@@ -120,14 +192,14 @@ These correlations indicate:
 - **Local Shrinkage**: 1.9065
 
 These values suggest:
-- Moderate global regularization
-- Strong local feature-specific regularization
-- Effective balance between model complexity and generalization
+- Moderate global regularisation
+- Strong local feature-specific regularisation
+- Effective balance between model complexity and generalisation
 
 ## 4. Implications and Future Work
 
 ### 4.1 Practical Implications
-1. **Building Design**: Floor area optimization is crucial for energy efficiency
+1. **Building Design**: Floor area optimisation is good for energy efficiency
 2. **Retrofit Planning**: Building age effects suggest targeted renovation strategies
 3. **Energy Management**: Strong GHG correlations indicate potential for emissions reduction
 
@@ -137,11 +209,6 @@ These values suggest:
 3. **Uncertainty Quantification**: Provided reliable prediction intervals
 
 ### 4.3 Future Research Directions
-1. **Temporal Analysis**: Incorporate time-series aspects of building performance
 2. **Spatial Effects**: Consider geographical and climatic factors
-3. **Deep Learning Integration**: Explore neural network extensions
 4. **Causal Inference**: Develop methods for causal relationship identification
 
-## 5. Conclusion
-
-The Adaptive Prior ARD model demonstrates superior performance in predicting building energy use intensity. The hierarchical Bayesian framework successfully captures complex relationships between building characteristics and energy performance, while providing robust uncertainty estimates. The model's interpretability and predictive power make it valuable for both research and practical applications in building energy analysis. 
