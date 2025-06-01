@@ -1,10 +1,3 @@
-"""
-ARD-GP.py: ARD Model with Enhanced Features
-- Implements ARD for feature selection using standard Bayesian techniques
-- Includes cross-validation and hyperparameter tuning
-- Feature engineering and analysis capabilities
-- Model persistence and loading functionality
-"""
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler, RobustScaler
@@ -106,7 +99,7 @@ class EnhancedBayesianARD:
         """
         n_samples, n_features = X.shape
         
-        # Initialize parameters
+        # Initialise parameters
         self.alpha = self.config.alpha_0
         self.beta = np.ones(n_features) * self.config.beta_0
         self.m = np.zeros(n_features)
@@ -247,7 +240,7 @@ def feature_engineering(df: pd.DataFrame) -> pd.DataFrame:
     df['energy_mix'] = df['electric_ratio'] * df['fuel_ratio']
     df['energy_intensity_ratio'] = np.log1p((df['electric_eui'] + df['fuel_eui']) / df['floor_area'])
     
-    # Bilding age features
+    # Building age features
     df['building_age'] = 2025 - df['year_built']
     df['building_age'] = df['building_age'].clip(
         lower=df['building_age'].quantile(0.01),
@@ -269,8 +262,8 @@ def feature_engineering(df: pd.DataFrame) -> pd.DataFrame:
     df['ghg_per_area'] = np.log1p(df['ghg_emissions_int'] / df['floor_area'])
     
     # Interaction features
-    df['age_energy_star_interaction'] = df['building_age_log'] * df['energy_star_rating_normalized']
-    df['area_energy_star_interaction'] = df['floor_area_log'] * df['energy_star_rating_normalized']
+    df['age_energy_star_interaction'] = df['building_age_log'] * df['energy_star_rating_normalised']
+    df['area_energy_star_interaction'] = df['floor_area_log'] * df['energy_star_rating_normalised']
     df['age_ghg_interaction'] = df['building_age_log'] * df['ghg_emissions_int_log']
     
     return df

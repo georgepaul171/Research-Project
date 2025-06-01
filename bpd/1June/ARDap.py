@@ -1,11 +1,3 @@
-"""
-ARD-GP-AdaptivePriors.py: ARD Model with Adaptive Prior Specifications
-- Implements ARD with novel adaptive prior formulations
-- Features hierarchical prior structures with automatic relevance determination
-- Includes adaptive shrinkage priors for feature selection
-- Incorporates uncertainty-aware prior adaptation
-- Maintains cross-validation and hyperparameter tuning capabilities
-"""
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler, RobustScaler
@@ -44,7 +36,7 @@ logger.addHandler(handler)
 # Prevent propagation to root logger
 logger.propagate = False
 
-# Configure root logger to not add [INFO]
+# Configure root logger to not add
 logging.getLogger().handlers = []
 logging.getLogger().propagate = False
 
@@ -93,9 +85,9 @@ class AdaptivePriorConfig:
 
 class AdaptivePriorARD:
     """
-    Adaptive Prior ARD (Automatic Relevance Determination) model with hierarchical priors
+    Adaptive Prior ARD model with hierarchical priors
     
-    This class implements a Bayesian linear regression model with:
+    This implements a Bayesian linear regression model with:
     - Automatic relevance determination for feature selection
     - Adaptive prior specifications
     - Uncertainty quantification
@@ -103,7 +95,7 @@ class AdaptivePriorARD:
     """
     def __init__(self, config: Optional[AdaptivePriorConfig] = None):
         """
-        Initialize the model with configuration parameters
+        Initialise model with configuration parameters
         
         Args:
             config: Optional configuration object. If None, uses default settings.
@@ -130,13 +122,13 @@ class AdaptivePriorARD:
 
     def _initialize_adaptive_priors(self, n_features: int):
         """
-        Initialize adaptive prior parameters based on configuration
+        Initialise adaptive prior parameters based on configuration
         
         Args:
             n_features: Number of features in the model
         """
         if self.config.prior_type == 'hierarchical':
-            # Hierarchical prior with automatic relevance determination
+            # Hierarchical prior with ARD
             self.prior_hyperparams = {
                 'lambda': np.ones(n_features) * self.config.beta_0,  # Global shrinkage
                 'tau': np.ones(n_features) * 1.0,  # Local shrinkage
@@ -158,11 +150,11 @@ class AdaptivePriorARD:
             }
             
         if self.config.group_sparsity:
-            # Initialize feature groups for group sparsity
+            # InitialiSe feature groups for group sparsity
             self.feature_groups = self._create_feature_groups(n_features)
             
         if self.config.dynamic_shrinkage:
-            # Initialize dynamic shrinkage parameters
+            # InitialiSe dynamic shrinkage parameters
             self.shrinkage_params = {
                 'kappa': np.ones(n_features) * 0.5,  # Shrinkage strength
                 'eta': np.ones(n_features) * 1.0  # Adaptation rate
@@ -178,7 +170,7 @@ class AdaptivePriorARD:
         Returns:
             Dictionary mapping group names to feature indices
         """
-        # Group features by type (modify based on your feature structure)
+        # Group features by type (I'll consifer changing based on feature structure)
         groups = {
             'energy': list(range(0, 4)),  # Energy-related features
             'building': list(range(4, 8)),  # Building characteristics
@@ -277,13 +269,13 @@ class AdaptivePriorARD:
         
         n_samples, n_features = X.shape
         
-        # Initialize parameters with numerical stability
+        # Initialise parameters with numerical stability
         self.alpha = np.clip(self.config.alpha_0, 1e-10, None)
         self.beta = np.ones(n_features) * np.clip(self.config.beta_0, 1e-10, None)
         self.m = np.zeros(n_features)
         self.S = np.eye(n_features)
         
-        # Initialize adaptive priors
+        # Initialise adaptive priors
         self._initialize_adaptive_priors(n_features)
         
         # Cross-validation
@@ -308,7 +300,7 @@ class AdaptivePriorARD:
                     self.S = np.linalg.inv(self.alpha * X_train_scaled.T @ X_train_scaled + 
                                          np.diag(np.clip(self.beta, 1e-10, None)))
                 except np.linalg.LinAlgError:
-                    # Add small jitter to diagonal for stability
+                    # Add to diagonal for stability
                     jitter = 1e-6 * np.eye(n_features)
                     self.S = np.linalg.inv(self.alpha * X_train_scaled.T @ X_train_scaled + 
                                          np.diag(np.clip(self.beta, 1e-10, None)) + jitter)
@@ -343,7 +335,7 @@ class AdaptivePriorARD:
                 
                 # Apply dynamic shrinkage if enabled
                 if self.config.dynamic_shrinkage:
-                    # Clip shrinkage parameters to prevent overflow
+                    # Clip shrinkage parameters
                     kappa = np.clip(self.shrinkage_params['kappa'], 0, 1)
                     beta_new = beta_new * (1 - kappa) + self.beta * kappa
                 
@@ -365,7 +357,6 @@ class AdaptivePriorARD:
             y_pred_orig = self.scaler_y.inverse_transform(y_pred.reshape(-1, 1)).ravel()
             y_val_orig = self.scaler_y.inverse_transform(y_val_scaled.reshape(-1, 1)).ravel()
             
-            # Ensure 1D arrays for sklearn metrics
             y_pred_orig = y_pred_orig.reshape(-1)
             y_val_orig = y_val_orig.reshape(-1)
             
@@ -420,10 +411,10 @@ class AdaptivePriorARD:
         else:
             importance = 1 / np.clip(self.beta, 1e-10, None)
         
-        # Normalize importance scores
+        # Normalise importance scores
         importance = np.clip(importance, 0, None)  # Ensure non-negative
         if np.sum(importance) > 0:
-            importance = importance / np.sum(importance)  # Normalize to sum to 1
+            importance = importance / np.sum(importance)  # Normalise to sum to 1
         
         return importance
     
@@ -432,7 +423,7 @@ class AdaptivePriorARD:
         Save model and adaptive prior parameters
         
         Args:
-            path: Path to save the model
+            path: Path to save the model - results/models/ARDap.joblib
         """
         model_data = {
             'alpha': self.alpha,
@@ -452,10 +443,10 @@ class AdaptivePriorARD:
     @classmethod
     def load_model(cls, path: str) -> 'AdaptivePriorARD':
         """
-        Load model from disk
+        Load model
         
         Args:
-            path: Path to the saved model
+            path: Path to the saved model - results/models/ARDap.joblib
             
         Returns:
             model: Loaded model instance
@@ -540,11 +531,11 @@ def analyze_feature_interactions(X: np.ndarray, y: np.ndarray, feature_names: Li
     # Ensure y is 1D array
     y = np.asarray(y).reshape(-1)
     
-    # Create a new figure for comprehensive analysis
+    # Create a new figure for analysis
     plt.style.use('default')
     fig = plt.figure(figsize=(20, 25))
     
-    # 1. Feature Importance with Confidence Intervals
+    # Feature Importance with Confidence Intervals
     plt.subplot(4, 2, 1)
     importance = model.get_feature_importance()
     sorted_idx = np.argsort(importance)
@@ -558,7 +549,7 @@ def analyze_feature_interactions(X: np.ndarray, y: np.ndarray, feature_names: Li
     plt.errorbar(importance[sorted_idx], range(len(feature_names)),
                 xerr=std_importance[sorted_idx], fmt='none', color='black', alpha=0.3)
     
-    # 2. Feature Correlation Heatmap
+    # Feature Correlation Heatmap
     plt.subplot(4, 2, 2)
     correlation_matrix = pd.DataFrame(X, columns=feature_names).corr()
     mask = np.triu(np.ones_like(correlation_matrix, dtype=bool))
@@ -566,7 +557,7 @@ def analyze_feature_interactions(X: np.ndarray, y: np.ndarray, feature_names: Li
                 fmt='.2f', square=True)
     plt.title('Feature Correlation Matrix')
     
-    # 3. Feature Interaction Network
+    # Feature Interaction Network
     plt.subplot(4, 2, 3)
     interaction_strength = np.zeros((len(feature_names), len(feature_names)))
     for i, feat1 in enumerate(feature_names):
@@ -585,7 +576,7 @@ def analyze_feature_interactions(X: np.ndarray, y: np.ndarray, feature_names: Li
     G = nx.Graph()
     for i, feat1 in enumerate(feature_names):
         for j, feat2 in enumerate(feature_names):
-            if i < j and interaction_strength[i, j] > 0.1:  # Threshold for visualization
+            if i < j and interaction_strength[i, j] > 0.1:  # Threshold
                 G.add_edge(feat1, feat2, weight=interaction_strength[i, j])
     
     pos = nx.spring_layout(G)
@@ -593,9 +584,9 @@ def analyze_feature_interactions(X: np.ndarray, y: np.ndarray, feature_names: Li
             node_size=1000, font_size=8, font_weight='bold')
     plt.title('Feature Interaction Network')
     
-    # 4. Partial Dependence Analysis
+    # Partial Dependence Analysis
     plt.subplot(4, 2, 4)
-    top_features = [feature_names[i] for i in sorted_idx[-3:]]  # Top 3 features
+    top_features = [feature_names[i] for i in sorted_idx[-3:]]  # Top 3 features, but extend this out if needed
     for feat in top_features:
         feat_idx = feature_names.index(feat)
         x_range = np.linspace(X[:, feat_idx].min(), X[:, feat_idx].max(), 100)
@@ -610,7 +601,7 @@ def analyze_feature_interactions(X: np.ndarray, y: np.ndarray, feature_names: Li
     plt.title('Partial Dependence Analysis')
     plt.legend()
     
-    # 5. Residual Analysis
+    # Residual Analysis
     plt.subplot(4, 2, 5)
     y_pred, y_std = model.predict(X, return_std=True)
     residuals = y - y_pred
@@ -620,14 +611,14 @@ def analyze_feature_interactions(X: np.ndarray, y: np.ndarray, feature_names: Li
     plt.ylabel('Residuals')
     plt.title('Residual Analysis')
     
-    # 6. Uncertainty Analysis
+    # Uncertainty Analysis
     plt.subplot(4, 2, 6)
     plt.scatter(np.abs(residuals), y_std, alpha=0.5)
     plt.xlabel('Absolute Prediction Error')
     plt.ylabel('Prediction Uncertainty')
     plt.title('Uncertainty vs Prediction Error')
     
-    # 7. Feature Importance vs Correlation
+    # Feature Importance vs Correlation
     plt.subplot(4, 2, 7)
     target_correlations = [np.corrcoef(X[:, i], y)[0, 1] for i in range(X.shape[1])]
     plt.scatter(target_correlations, importance)
@@ -637,7 +628,7 @@ def analyze_feature_interactions(X: np.ndarray, y: np.ndarray, feature_names: Li
     plt.ylabel('Feature Importance')
     plt.title('Feature Importance vs Target Correlation')
     
-    # 8. Learning Curves
+    # Learning Curves
     plt.subplot(4, 2, 8)
     cv_scores = model.cv_results
     plt.plot(cv_scores['rmse'], 'b-', label='RMSE', marker='o')
@@ -652,7 +643,7 @@ def analyze_feature_interactions(X: np.ndarray, y: np.ndarray, feature_names: Li
     plt.savefig(os.path.join(output_dir, 'detailed_analysis.png'), dpi=300, bbox_inches='tight')
     plt.close()
     
-    # Save detailed analysis to JSON
+    # Save analysis to JSON
     analysis_results = {
         'feature_importance': dict(zip(feature_names, importance)),
         'feature_importance_std': dict(zip(feature_names, std_importance)),
@@ -678,7 +669,7 @@ def analyze_feature_interactions(X: np.ndarray, y: np.ndarray, feature_names: Li
     with open(os.path.join(output_dir, 'detailed_analysis.json'), 'w') as f:
         json.dump(analysis_results, f, indent=4, cls=NumpyEncoder)
     
-    # Print detailed analysis
+    # Print analysis
     logger.info("\nDetailed Analysis Results:")
     logger.info("\n1. Top Features by Importance:")
     for feat, imp in sorted(zip(feature_names, importance), key=lambda x: x[1], reverse=True)[:5]:
@@ -712,7 +703,7 @@ def analyze_feature_interactions(X: np.ndarray, y: np.ndarray, feature_names: Li
 def train_and_evaluate_adaptive(X: np.ndarray, y: np.ndarray, feature_names: List[str],
                               output_dir: Optional[str] = None) -> Tuple[AdaptivePriorARD, dict]:
     """
-    Train and evaluate the model with adaptive priors
+    Train and evaluate the model
     
     Args:
         X: Input features
@@ -727,7 +718,7 @@ def train_and_evaluate_adaptive(X: np.ndarray, y: np.ndarray, feature_names: Lis
     if output_dir is not None:
         os.makedirs(output_dir, exist_ok=True)
     
-    # Initialize and train model
+    # Initialise and train model
     config = AdaptivePriorConfig()
     model = AdaptivePriorARD(config)
     model.fit(X, y)
@@ -740,7 +731,7 @@ def train_and_evaluate_adaptive(X: np.ndarray, y: np.ndarray, feature_names: Lis
         with open(os.path.join(output_dir, 'metrics.json'), 'w') as f:
             json.dump(metrics, f, indent=4)
         
-        # Perform detailed analysis
+        # Perform analysis
         analyze_feature_interactions(X, y, feature_names, model, output_dir)
         
         # Save model
@@ -784,7 +775,7 @@ if __name__ == "__main__":
     feature_names = features.copy()
     
     X = df[features].values.astype(np.float32)
-    y = df[target].values.astype(np.float32).reshape(-1)  # Ensure 1D array
+    y = df[target].values.astype(np.float32).reshape(-1)
     
     # Train and evaluate model
     results_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'results')
