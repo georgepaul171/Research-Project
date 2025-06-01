@@ -2,8 +2,8 @@
 
 ## 1. Model Architecture and Theoretical Framework
 
-### 1.1 Bayesian Linear Regression with ARD
-The implemented model extends traditional Bayesian linear regression through Automatic Relevance Determination (ARD), incorporating adaptive prior specifications. The model employs a hierarchical Bayesian framework where:
+### 1.1
+We have:
 
 $$p(y|X,w,\alpha) = \mathcal{N}(y|Xw,\alpha^{-1}I)$$
 
@@ -76,7 +76,7 @@ graph TD
     style Output Layer fill:#bff,stroke:#333,stroke-width:2px
 ```
 
-The architecture diagram above illustrates the hierarchical structure of the Adaptive Prior ARD model:
+The architecture diagram above illustrates the structure of the Adaptive Prior ARD model:
 
 1. **Input Layer**: Raw building features
 2. **Feature Engineering**: Transformation and interaction creation
@@ -107,7 +107,7 @@ where $\eta$ is the adaptation rate and $\kappa_j$ represents the shrinkage stre
 ## 2. Implementation Details
 
 ### 2.1 Feature Engineering
-The model employs sophisticated feature engineering techniques:
+The model uses a combination of feature engineering techniques:
 
 1. **Logarithmic Transformations**:
    - Floor area: $\log(1 + \text{floor\_area})$
@@ -142,8 +142,6 @@ The model demonstrates exceptional performance:
 - **MAE**: 3.9225
 - **Mean Uncertainty**: 0.2080
 
-These metrics indicate that the model explains approximately 94.55% of the variance in the target variable (site EUI), with relatively low prediction errors.
-
 ### 3.2 Feature Importance Analysis
 
 #### Top Features by Importance:
@@ -153,7 +151,9 @@ These metrics indicate that the model explains approximately 94.55% of the varia
 4. **ghg_per_area** (0.0156 ± 0.0000)
 5. **energy_intensity_ratio** (0.0148 ± 0.0000)
 
-This hierarchy reveals that:
+Note: The standard deviation values indicate the variability within each feature's importance score, however this comes out as 0.0000, indicating a possible issue within the model/calculation - **look into this George**
+
+Nevertheless, this reveals:
 - Floor area is the dominant predictor, with both linear and quadratic effects
 - Building age's quadratic effect is more significant than its linear effect
 - GHG emissions and energy intensity play secondary but important roles
@@ -169,7 +169,7 @@ This hierarchy reveals that:
 
 These interactions suggest:
 - Strong non-linear relationships between features and their transformations
-- Complex interplay between building characteristics and energy performance
+- Interplay between building characteristics and energy performance
 - Hierarchical effects where base features interact with their derived forms
 
 ### 3.4 Feature Correlations with Target
@@ -191,11 +191,6 @@ These correlations indicate:
 - **Global Shrinkage**: 0.6673
 - **Local Shrinkage**: 1.9065
 
-These values suggest:
-- Moderate global regularisation
-- Strong local feature-specific regularisation
-- Effective balance between model complexity and generalisation
-
 ## 3.6 Visual Analysis of Output Images
 
 ### 3.6.1 Multi-Panel Model Diagnostics (`detailed_analysis.png`)
@@ -205,9 +200,8 @@ These values suggest:
 This figure provides a comprehensive, multi-panel diagnostic overview of the model and data:
 
 - **Feature Importance (Top-Left Panel):**
-  - Displays the normalized importance of each feature as determined by the ARD mechanism.
-  - The dominance of `floor_area_log` and `floor_area_squared` visually corroborates the quantitative results in Section 3.2.
-  - Error bars (if present) reflect the stability of importance estimates across cross-validation folds, indicating robust feature selection.
+  - Displays the normalised importance of each feature as determined by the ARD mechanism.
+  - The dominance of `floor_area_log` and `floor_area_squared` corroborates the quantitative results in Section 3.2.
 
 - **Feature Correlation Heatmap (Top-Right Panel):**
   - Shows pairwise Pearson correlations between features.
@@ -216,8 +210,6 @@ This figure provides a comprehensive, multi-panel diagnostic overview of the mod
 
 - **Feature Interaction Network (Middle-Left Panel):**
   - Nodes represent features; edges indicate strong mutual information-based interactions.
-  - The network structure reveals clusters of features that interact nonlinearly, such as the cluster around floor area and building age.
-  - The thickness of edges encodes interaction strength, supporting the findings in Section 3.3.
 
 - **Partial Dependence Plots (Middle-Right Panel):**
   - Illustrate how the predicted target changes as a single feature varies, holding others fixed.
@@ -229,14 +221,14 @@ This figure provides a comprehensive, multi-panel diagnostic overview of the mod
 
 - **Uncertainty vs. Error (Bottom-Middle Panel):**
   - Relates the model's predicted uncertainty to actual prediction errors.
-  - A positive trend indicates that the model's uncertainty estimates are meaningful: higher uncertainty corresponds to larger errors.
+  - A positive trend indicates that the model's uncertainty estimates are meaningful: higher uncertainty corresponds to larger errors. However this needs to be improved.
 
 - **Feature Importance vs. Correlation (Bottom-Right Panel):**
   - Compares each feature's importance to its correlation with the target.
   - Features with high importance but low correlation may be involved in interactions or nonlinear effects, highlighting the value of the ARD approach.
 
 - **Learning Curves (Bottom-Right Panel):**
-  - Plots of RMSE and R² across cross-validation folds demonstrate model stability and generalisation.
+  - Plots of RMSE and R² across cross-validation folds.
 
 **Interpretation:**
 This figure collectively demonstrates that the model is both accurate and interpretable, with robust uncertainty quantification and meaningful feature selection. The visualizations support the quantitative findings and provide diagnostic confidence in the model's reliability.
@@ -247,19 +239,8 @@ This figure collectively demonstrates that the model is both accurate and interp
 
 ![Adaptive Prior Analysis](./adaptive_prior_analysis.png)
 
-This figure provides insight into the inner workings of the adaptive prior mechanism:
-
-- **Prior Parameter Evolution:**
-  - The plot tracks the evolution of global and local shrinkage parameters during training.
-  - Convergence of these parameters indicates stable learning and effective regularisation.
-  - Fluctuations in local shrinkage reflect the model's adaptation to feature-specific uncertainty, a key advantage of the adaptive prior framework.
-
-- **Uncertainty Quantification:**
-  - If the plot includes uncertainty bands, it visually demonstrates the model's ability to quantify prediction confidence.
-  - Narrow bands for important features and wider bands for less relevant ones are expected, reflecting the ARD mechanism's selectivity.
-
 **Interpretation:**
-This image provides a window into the model's adaptive regularisation process. The convergence and adaptation of shrinkage parameters validate the model's ability to balance flexibility and regularisation, supporting the methodological contributions discussed earlier.
+I need to interpet this figure.
 
 ## 4. Implications and Future Work
 
@@ -274,6 +255,5 @@ This image provides a window into the model's adaptive regularisation process. T
 3. **Uncertainty Quantification**: Provided reliable prediction intervals
 
 ### 4.3 Future Research Directions
-2. **Spatial Effects**: Consider geographical and climatic factors
+2. **Spatial Effects**: Consider climatic factors
 4. **Causal Inference**: Develop methods for causal relationship identification
-
