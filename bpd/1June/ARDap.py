@@ -919,4 +919,21 @@ if __name__ == "__main__":
     results_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'results')
     model, metrics = train_and_evaluate_adaptive(X, y, feature_names, output_dir=results_dir)
     
+    # Predict on all data for CSV output
+    X_scaled = model.scaler_X.transform(X)
+    y_pred, y_std = model.predict(X_scaled, return_std=True)
+    y_pred_orig = model.scaler_y.inverse_transform(y_pred.reshape(-1, 1)).ravel()
+    y_std_orig = y_std  # Already in original scale due to linearity of std in ARD
+    y_true_orig = y  # Already in original scale
+    
+    # Save to CSV
+    output_csv = os.path.join(results_dir, 'ard_predictions_with_uncertainty.csv')
+    output_df = pd.DataFrame({
+        'y_true': y_true_orig,
+        'y_pred': y_pred_orig,
+        'y_std': y_std_orig
+    })
+    output_df.to_csv(output_csv, index=False)
+    logger.info(f"Predictions with uncertainty saved to {output_csv}")
+    
     logger.info("Complete. Results saved to %s", results_dir) 
