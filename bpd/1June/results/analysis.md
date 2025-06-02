@@ -111,25 +111,16 @@ where $\eta$ is the adaptation rate and $\kappa_j$ represents the shrinkage stre
 The model now incorporates Hamiltonian Monte Carlo (HMC) for better posterior exploration. The HMC implementation includes:
 
 1. **Hamiltonian Dynamics**:
-   - The system's total energy (Hamiltonian) is defined as:
-   $$H(w,p) = U(w) + K(p)$$
-   where $U(w)$ is the potential energy (negative log posterior) and $K(p)$ is the kinetic energy.
-
 2. **Leapfrog Integration**:
-   - Position and momentum updates follow the leapfrog scheme:
-   $$p_{t+\epsilon/2} = p_t - \frac{\epsilon}{2}\nabla U(w_t)$$
-   $$w_{t+\epsilon} = w_t + \epsilon p_{t+\epsilon/2}$$
-   $$p_{t+\epsilon} = p_{t+\epsilon/2} - \frac{\epsilon}{2}\nabla U(w_{t+\epsilon})$$
-
 3. **Metropolis Acceptance**:
    - Proposals are accepted with probability:
    $$\min(1, \exp(H(w_t,p_t) - H(w^*,p^*)))$$
    where $(w^*,p^*)$ is the proposed state.
 
 4. **Configuration Parameters**:
-   - `hmc_steps`: Number of HMC steps per iteration (default: 10)
-   - `hmc_epsilon`: Step size for leapfrog integration (default: 0.01)
-   - `hmc_leapfrog_steps`: Number of leapfrog steps per HMC step (default: 10)
+   - `hmc_steps`: Number of HMC steps per iteration (10)
+   - `hmc_epsilon`: Step size for leapfrog integration (0.01)
+   - `hmc_leapfrog_steps`: Number of leapfrog steps per HMC step (10)
 
 The HMC implementation provides several benefits:
 - Better exploration of the posterior distribution
@@ -165,10 +156,12 @@ The training process employs:
 3. **Robust Scaling** for features
 4. **Standard Scaling** for target variables
 
+As recommended by scikit-learn article for robust scaling.
+
 ## 3. Results and Interpretation
 
 ### 3.1 Model Performance
-The model demonstrates exceptional performance with HMC-enhanced posterior exploration:
+The model demonstrates good performance with HMC-enhanced posterior exploration:
 
 - **R² Score**: 0.9455
 - **RMSE**: 6.2403
@@ -191,7 +184,7 @@ The Hamiltonian Monte Carlo implementation shows interesting dynamics:
 3. **Numerical Stability**:
    - A single overflow warning was observed in the exponential calculation
    - This occurred in the first iteration of the first fold
-   - The model recovered gracefully and continued to perform well
+   - The model recovered and continued to perform well
 
 ### 3.3 Feature Importance Analysis
 
@@ -205,8 +198,8 @@ The Hamiltonian Monte Carlo implementation shows interesting dynamics:
 The feature importance analysis reveals:
 - Floor area remains the dominant predictor, with both linear and quadratic effects
 - Building age's quadratic effect is more significant than its linear effect
-- GHG emissions and energy intensity play secondary but important roles
-- The HMC implementation has helped stabilize the feature importance estimates
+- GHG emissions and energy intensity ratios are also important
+- The HMC implementation has helped stabilise the feature importance estimates
 
 ### 3.4 Feature Interactions
 
@@ -258,12 +251,12 @@ This figure provides a comprehensive, multi-panel diagnostic overview of the mod
 
 - **Feature Importance (Top-Left Panel):**
   - Displays the normalised importance of each feature as determined by the ARD mechanism.
-  - The dominance of `floor_area_log` and `floor_area_squared` corroborates the quantitative results in Section 3.2.
+  - The dominance of `floor_area_log` and `floor_area_squared` backs the results in Section 3.2.
 
 - **Feature Correlation Heatmap (Top-Right Panel):**
   - Shows pairwise Pearson correlations between features.
   - Strong correlations (red/blue) highlight potential multicollinearity, which the ARD prior helps to regularise.
-  - For example, `floor_area_log` and `floor_area_squared` are highly correlated, as expected from their mathematical relationship.
+  - For example, `floor_area_log` and `floor_area_squared` are highly correlated, as expected.
 
 - **Feature Interaction Network (Middle-Left Panel):**
   - Nodes represent features; edges indicate strong mutual information-based interactions.
@@ -274,7 +267,7 @@ This figure provides a comprehensive, multi-panel diagnostic overview of the mod
 
 - **Residual Analysis (Bottom-Left Panel):**
   - Scatter plot of residuals vs. predicted values checks for systematic bias.
-  - The random scatter around zero suggests the model is well-calibrated, with no major heteroscedasticity.
+  - The random scatter around zero suggests the model is well-calibrated.
 
 - **Uncertainty vs. Error (Bottom-Middle Panel):**
   - Relates the model's predicted uncertainty to actual prediction errors.
@@ -288,7 +281,7 @@ This figure provides a comprehensive, multi-panel diagnostic overview of the mod
   - Plots of RMSE and R² across cross-validation folds.
 
 **Interpretation:**
-This figure collectively demonstrates that the model is both accurate and interpretable, with robust uncertainty quantification and meaningful feature selection. The visualizations support the quantitative findings and provide diagnostic confidence in the model's reliability.
+This figure collectively demonstrates that the model is both accurate and interpretable, with robust uncertainty quantification and meaningful feature selection. The visualisations support the quantitative findings and provide diagnostic confidence in the model's reliability.
 
 ---
 
@@ -307,7 +300,7 @@ I need to interpet this figure.
 3. **Energy Management**: Strong GHG correlations indicate potential for emissions reduction
 
 ### 4.2 Methodological Contributions
-1. **Adaptive Priors**: Successfully implemented hierarchical Bayesian framework
+1. **Adaptive Priors**: Successfully implemented framework
 2. **HMC Integration**: Enhanced posterior exploration with Hamiltonian Monte Carlo
 3. **Feature Engineering**: Demonstrated importance of non-linear transformations
 4. **Uncertainty Quantification**: Provided reliable prediction intervals with HMC-enhanced estimates
@@ -315,8 +308,72 @@ I need to interpet this figure.
 ### 4.3 Future Research Directions
 1. **HMC Improvements**: 
    - Implement adaptive step sizes
-   - Add NUTS (No U-Turn Sampler) for better exploration
+   - Add NUTS
    - Develop better diagnostics for HMC performance
 2. **Spatial Effects**: Consider climatic factors
 3. **Causal Inference**: Develop methods for causal relationship identification
 4. **Model Calibration**: Improve uncertainty calibration with HMC diagnostics
+
+## 5. Evaluation of HMC Implementation
+
+### 5.1 Advantages of HMC in This Context
+1. **Posterior Exploration**:
+   - HMC provides better exploration of the parameter space compared to basic EM
+   - Particularly useful for the hierarchical prior structure in our ARD model
+   - Helps identify potential multimodal solutions in the posterior
+
+2. **Uncertainty Quantification**:
+   - More accurate uncertainty estimates for predictions
+   - Better handling of parameter uncertainty
+   - Improved confidence intervals for feature importance
+
+3. **Feature Selection**:
+   - More robust feature selection through better posterior exploration
+   - Helps identify truly relevant features by exploring the full parameter space
+   - Reduces sensitivity to initialization
+
+### 5.2 Limitations and Concerns
+1. **Computational Cost**:
+   - HMC is significantly more computationally expensive than basic EM
+   - The current implementation shows high rejection rates in later iterations
+   - May not be necessary for all features, especially those with clear linear relationships
+
+2. **Implementation Complexity**:
+   - Added complexity to the model architecture
+   - Requires careful tuning of step sizes and number of steps
+   - More parameters to monitor and validate
+
+3. **Current Performance Issues**:
+   - The overflow warning in the exponential calculation suggests potential numerical stability issues
+   - Low acceptance rates in later iterations indicate possible inefficiency
+   - May be overkill for some of the simpler feature relationships
+
+### 5.3 Alternative Approaches
+1. **Simpler MCMC Methods**:
+   - Metropolis-Hastings might be sufficient for this problem
+   - Gibbs sampling could be more efficient for the hierarchical structure
+   - Variational inference might provide a good balance of speed and accuracy
+
+2. **Deterministic Methods**:
+   - Enhanced EM with better initialization
+   - Variational Bayes with structured approximations
+   - Laplace approximation for the posterior
+
+### 5.4 Recommendations
+1. **Short-term Improvements**:
+   - Implement adaptive step sizes to address the low acceptance rates
+   - Add better numerical stability checks
+   - Consider feature-specific HMC application
+
+2. **Long-term Considerations**:
+   - Evaluate if the computational cost of HMC is justified by the improvements
+   - Consider hybrid approaches (HMC for important features, simpler methods for others)
+   - Implement proper model comparison metrics to justify HMC's use
+
+3. **Alternative Directions**:
+   - Explore variational inference as a potentially more efficient alternative
+   - Consider structured variational approximations that maintain the benefits of HMC
+   - Investigate whether simpler MCMC methods would suffice
+
+### 5.5 Conclusion
+While HMC provides theoretical benefits for posterior exploration and uncertainty quantification, its implementation in this project may be more complex than necessary. The current results show good performance, but the computational cost and implementation complexity raise questions about its optimality. A more targeted approach, perhaps using HMC only for the most complex feature relationships while using simpler methods for others, might provide a better balance of accuracy and efficiency. Future work should focus on proper model comparison to justify the use of HMC over simpler alternatives.
