@@ -70,6 +70,10 @@ class AdaptivePriorConfig:
         uncertainty_threshold: Threshold for uncertainty-based adaptation
         group_sparsity: Whether to enable group-wise sparsity
         dynamic_shrinkage: Whether to enable dynamic shrinkage parameters
+        use_hmc: Whether to use Hamiltonian Monte Carlo for posterior exploration
+        hmc_steps: Number of HMC steps per iteration
+        hmc_epsilon: HMC step size
+        hmc_leapfrog_steps: Number of leapfrog steps in HMC
     """
     alpha_0: float = 1e-6
     beta_0: float = 1e-6
@@ -82,6 +86,10 @@ class AdaptivePriorConfig:
     uncertainty_threshold: float = 0.1
     group_sparsity: bool = True
     dynamic_shrinkage: bool = True
+    use_hmc: bool = True
+    hmc_steps: int = 10
+    hmc_epsilon: float = 0.01
+    hmc_leapfrog_steps: int = 10
 
 class AdaptivePriorARD:
     """
@@ -253,6 +261,128 @@ class AdaptivePriorARD:
                     (uncertainty > self.config.uncertainty_threshold) * self.config.adaptation_rate
                 )
     
+    def _hmc_step(self, X: np.ndarray, y: np.ndarray, current_w: np.ndarray, 
+                  current_momentum: np.ndarray) -> Tuple[np.ndarray, np.ndarray, float]:
+        """
+        Perform one step of Hamiltonian Monte Carlo
+        
+        Args:
+            X: Input features
+            y: Target values
+            current_w: Current weight vector
+            current_momentum: Current momentum vector
+            
+        Returns:
+            new_w: New weight vector
+            new_momentum: New momentum vector
+            acceptance_prob: Acceptance probability
+        """
+        # Initialize new position and momentum
+        new_w = current_w.copy()
+        new_momentum = current_momentum.copy()
+        
+        # Calculate initial Hamiltonian
+        current_energy = self._calculate_hamiltonian(X, y, current_w, current_momentum)
+        
+        # Leapfrog steps
+        for _ in range(self.config.hmc_leapfrog_steps):
+            # Update momentum (half step)
+            grad = self._calculate_gradient(X, y, new_w)
+            new_momentum = new_momentum - 0.5 * self.config.hmc_epsilon * grad
+            
+            # Update position (full step)
+            new_w = new_w + self.config.hmc_epsilon * new_momentum
+            
+            # Update momentum (half step)
+            grad = self._calculate_gradient(X, y, new_w)
+            new_momentum = new_momentum - 0.5 * self.config.hmc_epsilon * grad
+        
+        # Calculate new Hamiltonian
+        new_energy = self._calculate_hamiltonian(X, y, new_w, new_momentum)
+        
+        # Metropolis acceptance step
+        acceptance_prob = min(1.0, np.exp(current_energy - new_energy))
+        
+        if np.random.random() < acceptance_prob:
+            return new_w, new_momentum, acceptance_prob
+        else:
+            return current_w, current_momentum, acceptance_prob
+    
+    def _calculate_hamiltonian(self, X: np.ndarray, y: np.ndarray, 
+                             w: np.ndarray, momentum: np.ndarray) -> float:
+        """
+        Calculate the Hamiltonian (total energy) of the system
+        
+        Args:
+            X: Input features
+            y: Target values
+            w: Weight vector
+            momentum: Momentum vector
+            
+        Returns:
+            float: Total energy (Hamiltonian)
+        """
+        # Potential energy (negative log posterior)
+        residuals = y - X @ w
+        potential = 0.5 * self.alpha * np.sum(residuals**2)
+        potential += 0.5 * np.sum(w**2 / np.clip(self.beta, 1e-10, None))
+        
+        # Kinetic energy
+        kinetic = 0.5 * np.sum(momentum**2)
+        
+        return potential + kinetic
+    
+    def _calculate_gradient(self, X: np.ndarray, y: np.ndarray, w: np.ndarray) -> np.ndarray:
+        """
+        Calculate the gradient of the negative log posterior
+        
+        Args:
+            X: Input features
+            y: Target values
+            w: Weight vector
+            
+        Returns:
+            np.ndarray: Gradient vector
+        """
+        # Gradient of likelihood
+        grad_likelihood = -self.alpha * X.T @ (y - X @ w)
+        
+        # Gradient of prior
+        grad_prior = w / np.clip(self.beta, 1e-10, None)
+        
+        return grad_likelihood + grad_prior
+    
+    def _hmc_sampling(self, X: np.ndarray, y: np.ndarray, 
+                     initial_w: np.ndarray) -> Tuple[np.ndarray, List[float]]:
+        """
+        Perform HMC sampling to explore the posterior
+        
+        Args:
+            X: Input features
+            y: Target values
+            initial_w: Initial weight vector
+            
+        Returns:
+            np.ndarray: Final weight vector
+            List[float]: Acceptance probabilities
+        """
+        current_w = initial_w.copy()
+        acceptance_probs = []
+        
+        for _ in range(self.config.hmc_steps):
+            # Initialize momentum from standard normal
+            current_momentum = np.random.randn(len(current_w))
+            
+            # Perform HMC step
+            new_w, new_momentum, acceptance_prob = self._hmc_step(
+                X, y, current_w, current_momentum
+            )
+            
+            current_w = new_w
+            acceptance_probs.append(acceptance_prob)
+        
+        return current_w, acceptance_probs
+
     def fit(self, X: np.ndarray, y: np.ndarray) -> 'AdaptivePriorARD':
         """
         Fit the model with adaptive priors and cross-validation
@@ -269,13 +399,13 @@ class AdaptivePriorARD:
         
         n_samples, n_features = X.shape
         
-        # Initialise parameters with numerical stability
+        # Initialize parameters with numerical stability
         self.alpha = np.clip(self.config.alpha_0, 1e-10, None)
         self.beta = np.ones(n_features) * np.clip(self.config.beta_0, 1e-10, None)
         self.m = np.zeros(n_features)
         self.S = np.eye(n_features)
         
-        # Initialise adaptive priors
+        # Initialize adaptive priors
         self._initialize_adaptive_priors(n_features)
         
         # Cross-validation
@@ -306,6 +436,14 @@ class AdaptivePriorARD:
                                          np.diag(np.clip(self.beta, 1e-10, None)) + jitter)
                 
                 self.m = self.alpha * self.S @ X_train_scaled.T @ y_train_scaled
+                
+                # Use HMC for better posterior exploration if enabled
+                if self.config.use_hmc:
+                    self.m, acceptance_probs = self._hmc_sampling(
+                        X_train_scaled, y_train_scaled, self.m
+                    )
+                    logger.info(f"Fold {fold}, Iteration {iteration}: "
+                              f"Mean HMC acceptance rate: {np.mean(acceptance_probs):.3f}")
                 
                 # M-step: Update hyperparameters
                 residuals = y_train_scaled - X_train_scaled @ self.m
