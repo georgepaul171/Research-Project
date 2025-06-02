@@ -15,8 +15,17 @@ Note: PICP and CRPS are explicitly mentioned in my literature review.
 | 95%              | 9.3%            | 95%    |
 | 99%              | 12.2%           | 99%    |
 
-- **CRPS:** 3.9959
-- The PICP values are much lower than their targets, indicating severe underestimation of uncertainty.
+### CRPS Analysis
+- **CRPS Value:** 3.9959
+- The CRPS score of 3.9959 indicates the overall quality of the probabilistic forecasts
+- A lower CRPS value would indicate better probabilistic predictions
+- This relatively high CRPS value aligns with the poor PICP results, suggesting that the model's uncertainty estimates need improvement
+- The CRPS takes into account both the accuracy of the mean predictions and the calibration of the uncertainty estimates
+
+### Visual Analysis
+- The `probabilistic_metrics_plots.png` shows the calibration of prediction intervals across different confidence levels
+- The `uncertainty_vs_error_hist.png` shows the relationship between predicted uncertainties and actual errors, highlighting the systematic underestimation of uncertainty
+- These plots provide visual confirmation of the numerical findings from PICP and CRPS metrics
 
 ### Model Limitation: Underestimated Uncertainty
 - The ARD model's predicted uncertainties (`y_std`) are much smaller than the actual errors (`|y_true - y_pred|`).
