@@ -324,19 +324,16 @@ I need to interpet this figure.
 
 2. **Uncertainty Quantification**:
    - More accurate uncertainty estimates for predictions
-   - Better handling of parameter uncertainty
-   - Improved confidence intervals for feature importance
+   - Improved confidence intervals
 
 3. **Feature Selection**:
    - More robust feature selection through better posterior exploration
-   - Helps identify truly relevant features by exploring the full parameter space
-   - Reduces sensitivity to initialization
 
 ### 5.2 Limitations and Concerns
 1. **Computational Cost**:
-   - HMC is significantly more computationally expensive than basic EM
+   - HMC is more computationally expensive than basic EM
    - The current implementation shows high rejection rates in later iterations
-   - May not be necessary for all features, especially those with clear linear relationships
+   - May not be necessary for all features, eg those with clear linear relationships
 
 2. **Implementation Complexity**:
    - Added complexity to the model architecture
@@ -344,9 +341,9 @@ I need to interpet this figure.
    - More parameters to monitor and validate
 
 3. **Current Performance Issues**:
-   - The overflow warning in the exponential calculation suggests potential numerical stability issues
+   - The overflow warning in the exponential calculation suggests numerical stability issues
    - Low acceptance rates in later iterations indicate possible inefficiency
-   - May be overkill for some of the simpler feature relationships
+   - May be overkill
 
 ### 5.3 Alternative Approaches
 1. **Simpler MCMC Methods**:
@@ -355,25 +352,22 @@ I need to interpet this figure.
    - Variational inference might provide a good balance of speed and accuracy
 
 2. **Deterministic Methods**:
-   - Enhanced EM with better initialization
+   - Enhanced EM
    - Variational Bayes with structured approximations
    - Laplace approximation for the posterior
 
 ### 5.4 Recommendations
-1. **Short-term Improvements**:
-   - Implement adaptive step sizes to address the low acceptance rates
-   - Add better numerical stability checks
-   - Consider feature-specific HMC application
 
-2. **Long-term Considerations**:
+
+1. **Considerations**:
    - Evaluate if the computational cost of HMC is justified by the improvements
    - Consider hybrid approaches (HMC for important features, simpler methods for others)
    - Implement proper model comparison metrics to justify HMC's use
 
-3. **Alternative Directions**:
+2. **Alternative Directions**:
    - Explore variational inference as a potentially more efficient alternative
    - Consider structured variational approximations that maintain the benefits of HMC
    - Investigate whether simpler MCMC methods would suffice
 
 ### 5.5 Conclusion
-While HMC provides theoretical benefits for posterior exploration and uncertainty quantification, its implementation in this project may be more complex than necessary. The current results show good performance, but the computational cost and implementation complexity raise questions about its optimality. A more targeted approach, perhaps using HMC only for the most complex feature relationships while using simpler methods for others, might provide a better balance of accuracy and efficiency. Future work should focus on proper model comparison to justify the use of HMC over simpler alternatives.
+While HMC provides theoretical benefits for posterior exploration and uncertainty quantification, its implementation in this project may be more complex than necessary. Perhaps using HMC only for the most complex feature relationships while using simpler methods for others, might provide a better balance of accuracy and efficiency.
