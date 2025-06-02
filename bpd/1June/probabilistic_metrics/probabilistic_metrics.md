@@ -1,12 +1,3 @@
-# Probabilistic Metrics Report
-
-## Why Include Probabilistic Metrics?
-Traditional regression metrics (like MAE or RMSE) only measure the average error of point predictions. Probabilistic metrics provide:
-
-- **Uncertainty Quantification:** How much trust to place in each prediction.
-- **Risk Assessment:** Ability to make decisions under uncertainty.
-- **Model Calibration:** Whether the predicted confidence intervals match the actual observed frequencies.
-
 ## Metrics Used
 - **PICP (Prediction Interval Coverage Probability):** Measures the proportion of true values that fall within the predicted confidence intervals at various levels (e.g., 50%, 80%, 95%).
 - **CRPS (Continuous Ranked Probability Score):** A proper scoring rule for probabilistic forecasts; lower values indicate better probabilistic predictions.
