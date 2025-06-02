@@ -42,7 +42,7 @@ logging.getLogger().propagate = False
 
 class NumpyEncoder(json.JSONEncoder):
     """
-    Custom JSON encoder for numpy types to handle serialization of numpy arrays and scalars
+    Custom JSON encoder for numpy types to handle serialisation of numpy arrays and scalars
     """
     def default(self, obj):
         if isinstance(obj, np.integer):
