@@ -1,5 +1,79 @@
 # Adaptive Prior ARD Model Analysis Report
 
+## Model Design Rationale
+
+### Motivation and Background
+
+The development of this Adaptive Prior ARD model was driven by several key considerations in building energy consumption prediction:
+
+1. **Handling Non-linear Relationships**
+   - Buildings exhibit complex, non-linear relationships between features and energy consumption
+   - Traditional linear models often fail to capture these relationships
+   - Solution: Implemented squared terms and interaction features to model non-linearities
+
+2. **Uncertainty Quantification**
+   - Energy consumption predictions need reliable uncertainty estimates
+   - Standard models often provide point estimates without uncertainty bounds
+   - Solution: Developed a Bayesian framework with calibrated uncertainty estimates
+
+3. **Feature Selection Challenges**
+   - Building data often contains many correlated features
+   - Some features may be irrelevant or redundant
+   - Solution: Implemented ARD with adaptive priors for automatic feature selection
+
+### Key Design Decisions
+
+1. **Adaptive Prior System**
+   - **Why**: Traditional ARD models use fixed priors, which can be too rigid
+   - **Solution**: Implemented three types of adaptive priors:
+     - Hierarchical prior for structured feature groups
+     - Spike-slab prior for binary feature selection
+     - Horseshoe prior for heavy-tailed shrinkage
+   - **Impact**: Better handling of different types of features and relationships
+
+2. **Robust Noise Modelling**
+   - **Why**: Building energy data often contains outliers and non-Gaussian noise
+   - **Solution**: Implemented Student's t noise model
+   - **Impact**: More robust predictions in presence of outliers
+
+3. **Dynamic Shrinkage**
+   - **Why**: Feature importance can vary across different building types
+   - **Solution**: Added dynamic shrinkage parameters that adapt during training
+   - **Impact**: More flexible feature selection that adapts to data patterns
+
+4. **Uncertainty Calibration**
+   - **Why**: Raw uncertainty estimates often need calibration
+   - **Solution**: Implemented adaptive calibration based on validation performance
+   - **Impact**: More reliable uncertainty estimates for decision-making
+
+5. **Group Sparsity**
+   - **Why**: Related features should be selected or rejected together
+   - **Solution**: Added group sparsity constraints
+   - **Impact**: More interpretable feature selection
+
+### Implementation Challenges and Solutions
+
+1. **Computational Efficiency**
+   - **Challenge**: Bayesian models can be computationally expensive
+   - **Solution**: 
+     - Implemented efficient HMC sampling
+     - Used vectorized operations
+     - Optimised hyperparameter updates
+
+2. **Numerical Stability**
+   - **Challenge**: Bayesian computations can be numerically unstable
+   - **Solution**:
+     - Added numerical stability terms
+     - Implemented clipping for extreme values
+     - Used robust scaling
+
+3. **Model Complexity**
+   - **Challenge**: Balancing model complexity with interpretability
+   - **Solution**:
+     - Modular design with clear component separation
+     - Comprehensive documentation
+     - Detailed analysis tools
+
 ### Architecture Diagram
 
 ```mermaid
@@ -84,7 +158,7 @@ The model demonstrates excellent predictive performance with an R² of 0.946, in
 | ghg_per_area | 1.56 |
 | energy_intensity_ratio | 1.48 |
 
-The analysis reveals that floor area features dominate the feature importance, with the log-transformed floor area being the most significant predictor. This suggests that building size is a crucial factor in energy consumption prediction.
+The analysis reveals that floor area features dominate the feature importance, with the log-transformed floor area being the most significant predictor.
 
 ### Feature Interactions
 
@@ -139,7 +213,7 @@ The prior hyperparameters indicate a balanced approach to feature selection, wit
 
 3. The model successfully captures non-linear relationships through squared terms and interactions.
 
-4. Uncertainty quantification is reliable at higher confidence levels.
+4. Uncertainty quantification is reliable at higher confidence levels - an improvement compared to the previous model in 1June.
 
 5. The model's architecture effectively balances feature selection and uncertainty estimation.
 
@@ -152,5 +226,3 @@ The prior hyperparameters indicate a balanced approach to feature selection, wit
 3. Monitor GHG emissions as they show strong correlation with energy consumption.
 
 4. Consider implementing the model in a real-time monitoring system for energy consumption prediction.
-
-5. Regular model updates with new data to maintain prediction accuracy. 
