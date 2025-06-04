@@ -1,0 +1,7 @@
+{
+    "method": "ensemble",
+    "min_std": 1e-06,
+    "calibration_params": {
+        "ensemble_size": 5
+    }
+}
