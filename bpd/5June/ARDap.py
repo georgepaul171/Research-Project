@@ -171,11 +171,11 @@ class AdaptivePriorARD:
             }
             
         if self.config.group_sparsity:
-            # Initialize feature groups for group sparsity
+            # Initialise feature groups for group sparsity
             self.feature_groups = self._create_feature_groups(n_features)
             
         if self.config.dynamic_shrinkage:
-            # Initialize dynamic shrinkage parameters
+            # Initialise dynamic shrinkage parameters
             self.shrinkage_params = {
                 'kappa': np.ones(n_features) * 0.5,  # Shrinkage strength
                 'eta': np.ones(n_features) * 1.0  # Adaptation rate
@@ -331,7 +331,7 @@ class AdaptivePriorARD:
             new_momentum: New momentum vector
             acceptance_prob: Acceptance probability
         """
-        # Initialize new position and momentum
+        # Initialise new position and momentum
         new_w = current_w.copy()
         new_momentum = current_momentum.copy()
         
@@ -376,12 +376,12 @@ class AdaptivePriorARD:
         Returns:
             float: Total energy (Hamiltonian)
         """
-        # Potential energy (negative log posterior)
+        # Potential (negative log posterior)
         residuals = y - X @ w
         potential = 0.5 * self.alpha * np.sum(residuals**2)
         potential += 0.5 * np.sum(w**2 / np.clip(self.beta, 1e-10, None))
         
-        # Kinetic energy
+        # Kinetic 
         kinetic = 0.5 * np.sum(momentum**2)
         
         return potential + kinetic
@@ -424,7 +424,7 @@ class AdaptivePriorARD:
         acceptance_probs = []
         
         for _ in range(self.config.hmc_steps):
-            # Initialize momentum from standard normal
+            # Initialise momentum from standard normal
             current_momentum = np.random.randn(len(current_w))
             
             # Perform HMC step
@@ -453,13 +453,13 @@ class AdaptivePriorARD:
         
         n_samples, n_features = X.shape
         
-        # Initialize parameters with numerical stability
+        # Initialise parameters with numerical stability
         self.alpha = np.clip(self.config.alpha_0, 1e-10, None)
         self.beta = np.ones(n_features) * np.clip(self.config.beta_0, 1e-10, None)
         self.m = np.zeros(n_features)
         self.S = np.eye(n_features)
         
-        # Initialize adaptive priors
+        # Initialise adaptive priors
         self._initialize_adaptive_priors(n_features)
         
         # Cross-validation
@@ -484,7 +484,7 @@ class AdaptivePriorARD:
                     self.S = np.linalg.inv(self.alpha * X_train_scaled.T @ X_train_scaled + 
                                          np.diag(np.clip(self.beta, 1e-10, None)))
                 except np.linalg.LinAlgError:
-                    # Add to diagonal for stability
+                    # Add to diagonal for numerical stability
                     jitter = 1e-6 * np.eye(n_features)
                     self.S = np.linalg.inv(self.alpha * X_train_scaled.T @ X_train_scaled + 
                                          np.diag(np.clip(self.beta, 1e-10, None)) + jitter)
@@ -969,7 +969,7 @@ def train_and_evaluate_adaptive(X: np.ndarray, y: np.ndarray, feature_names: Lis
     if output_dir is not None:
         os.makedirs(output_dir, exist_ok=True)
     
-    # Initialize and train model
+    # Initialise and train model
     config = AdaptivePriorConfig()
     model = AdaptivePriorARD(config)
     model.fit(X, y)
