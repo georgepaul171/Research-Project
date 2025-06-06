@@ -1,3 +1,23 @@
+"""
+Adaptive Prior Automatic Relevance Determination (ARD) for Building Energy Performance Analysis
+
+This implementation presents a novel Bayesian approach to building energy performance modelling,
+incorporating adaptive prior specifications and uncertainty quantification. The model extends
+traditional ARD by introducing hierarchical priors, dynamic shrinkage parameters, and robust
+noise modeling to better capture the complex relationships in building energy data.
+
+Key innovations:
+1. Adaptive prior specifications that evolve during training
+2. Hierarchical Bayesian structure for improved feature selection
+3. Uncertainty quantification with calibration
+4. Robust noise modeling using Student's t distribution
+5. Group sparsity for structured feature selection
+6. Hamiltonian Monte Carlo for improved posterior exploration
+
+Author: George Paul
+Institution: The University of Bath
+"""
+
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler, RobustScaler
@@ -16,7 +36,7 @@ import scipy.stats as stats
 from scipy.special import digamma, polygamma
 import networkx as nx
 
-# Set up logging configuration
+# Configure logging for detailed model training and evaluation tracking
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
@@ -42,7 +62,9 @@ logging.getLogger().propagate = False
 
 class NumpyEncoder(json.JSONEncoder):
     """
-    Custom JSON encoder for numpy types to handle serialisation of numpy arrays and scalars
+    Custom JSON encoder for numpy types to handle serialisation of numpy arrays and scalars.
+    This is used for saving model parameters and results in a format that can be
+    easily loaded if required.
     """
     def default(self, obj):
         if isinstance(obj, np.integer):
@@ -56,19 +78,29 @@ class NumpyEncoder(json.JSONEncoder):
 @dataclass
 class AdaptivePriorConfig:
     """
-    Configuration class for the Adaptive Prior ARD model parameters
+    Configuration class for the Adaptive Prior ARD model parameters.
+    
+    This class implements a set of hyperparameters that control the behaviour
+    of the Bayesian model, including:
+    - Prior specifications (hierarchical, spike-slab, or horseshoe)
+    - Uncertainty quantification parameters
+    - MCMC sampling parameters
+    - Robust noise modelling parameters
+    
+    The configuration allows for fine-tuning of the model's behaviour to balance between
+    model complexity, computational efficiency, and predictive performance.
     
     Attributes:
-        alpha_0: Initial noise precision
-        beta_0: Initial weight precision
-        max_iter: Maximum number of EM iterations
-        tol: Convergence tolerance
-        n_splits: Number of cross-validation splits
+        alpha_0: Initial noise precision (controls model's sensitivity to data)
+        beta_0: Initial weight precision (controls feature selection strength)
+        max_iter: Maximum number of EM iterations for model convergence
+        tol: Convergence tolerance for EM algorithm
+        n_splits: Number of cross-validation splits for robust evaluation
         random_state: Random seed for reproducibility
         prior_type: Type of prior ('hierarchical', 'spike_slab', or 'horseshoe')
-        adaptation_rate: Rate at which priors adapt
+        adaptation_rate: Rate at which priors adapt during training
         uncertainty_threshold: Threshold for uncertainty-based adaptation
-        group_sparsity: Whether to enable group-wise sparsity
+        group_sparsity: Whether to enable group-wise sparsity for structured feature selection
         dynamic_shrinkage: Whether to enable dynamic shrinkage parameters
         use_hmc: Whether to use Hamiltonian Monte Carlo for posterior exploration
         hmc_steps: Number of HMC steps per iteration
@@ -95,33 +127,63 @@ class AdaptivePriorConfig:
     hmc_epsilon: float = 0.01
     hmc_leapfrog_steps: int = 10
     uncertainty_calibration: bool = True
-    calibration_factor: float = 10.0  # Initial calibration factor
+    calibration_factor: float = 10.0  
     robust_noise: bool = True
-    student_t_df: float = 3.0  # Degrees of freedom for Student's t noise 
+    student_t_df: float = 3.0  
 
 class AdaptivePriorARD:
     """
-    Adaptive Prior ARD model with hierarchical priors and improved uncertainty estimation
+    Adaptive Prior ARD model with hierarchical priors and improved uncertainty estimation.
     
-    This implements a Bayesian linear regression model with:
-    - Automatic relevance determination for feature selection
-    - Adaptive prior specifications
-    - Uncertainty quantification with calibration
-    - Robust noise modeling
-    - Cross-validation for robust evaluation
+    This class implements a novel Bayesian linear regression model that extends traditional
+    Automatic Relevance Determination (ARD) through several key innovations:
+    
+    1. Hierarchical Prior Structure:
+       - Implements a multi-level prior hierarchy for improved feature selection
+       - Allows for adaptive shrinkage of model parameters
+       - Incorporates group-wise sparsity for structured feature selection
+    
+    2. Uncertainty Quantification:
+       - Provides calibrated uncertainty estimates for predictions
+       - Implements robust noise modelling using Student's t distribution
+       - Includes uncertainty calibration based on validation performance
+    
+    3. Advanced Inference:
+       - Uses Hamiltonian Monte Carlo for improved posterior exploration
+       - Implements Expectation-Maximization (EM) algorithm with adaptive updates
+       - Incorporates dynamic shrinkage parameters for better model adaptation
+    
+    4. Model Evaluation:
+       - Implements comprehensive cross-validation
+       - Provides detailed feature importance analysis
+       - Includes uncertainty-aware performance metrics
+    
+    The model is particularly suited for building energy performance analysis due to its:
+    - Ability to handle complex feature interactions
+    - Robust uncertainty quantification
+    - Automatic feature selection
+    - Adaptability to different data characteristics
     """
     def __init__(self, config: Optional[AdaptivePriorConfig] = None):
         """
-        Initialise model with configuration parameters
+        Initialise the Adaptive Prior ARD model.
+        
+        This constructor sets up the model with either provided configuration parameters
+        or default values. The initialisation includes:
+        - Model parameters (weights, precisions, covariance)
+        - Prior components (hyperparameters, feature groups)
+        - Feature engineering components (scalers)
+        - Cross-validation and uncertainty calibration settings
         
         Args:
-            config: Optional configuration object. If None, uses default settings.
+            config: Optional configuration object. If None, uses default settings
+                   that balance model complexity and computational efficiency.
         """
         self.config = config or AdaptivePriorConfig()
         
         # Model parameters
         self.alpha = None  # Noise precision
-        self.beta = None  # Weight precisions (ARD parameters)
+        self.beta = None  # Weight precisions
         self.m = None  # Mean of weights
         self.S = None  # Covariance of weights
         
@@ -143,7 +205,17 @@ class AdaptivePriorARD:
 
     def _initialize_adaptive_priors(self, n_features: int):
         """
-        Initialise adaptive prior parameters based on configuration
+        Initialise adaptive prior parameters based on configuration.
+        
+        This method sets up the prior structure based on the chosen prior type:
+        - Hierarchical: Implements a multi-level prior with global and local shrinkage
+        - Spike-slab: Implements a mixture prior for feature selection
+        - Horseshoe: Implements a heavy-tailed prior for robust feature selection
+        
+        The initialisation includes:
+        - Setting up hyperparameters for the chosen prior
+        - Initialising feature groups for group sparsity
+        - Setting up dynamic shrinkage parameters
         
         Args:
             n_features: Number of features in the model
@@ -318,27 +390,36 @@ class AdaptivePriorARD:
     def _hmc_step(self, X: np.ndarray, y: np.ndarray, current_w: np.ndarray, 
                   current_momentum: np.ndarray) -> Tuple[np.ndarray, np.ndarray, float]:
         """
-        Perform one step of Hamiltonian Monte Carlo
+        Perform one step of Hamiltonian Monte Carlo for posterior exploration.
+        
+        This method implements a single HMC step, which is a key component of the model's
+        advanced inference strategy. HMC combines Hamiltonian dynamics with Metropolis
+        acceptance to efficiently explore the posterior distribution.
+        
+        The implementation includes:
+        - Leapfrog integration for Hamiltonian dynamics
+        - Momentum updates using the gradient of the negative log posterior
+        - Metropolis acceptance step for detailed balance
         
         Args:
-            X: Input features
-            y: Target values
-            current_w: Current weight vector
-            current_momentum: Current momentum vector
+            X: Input features (n_samples, n_features)
+            y: Target values (n_samples,)
+            current_w: Current weight vector (n_features,)
+            current_momentum: Current momentum vector (n_features,)
             
         Returns:
-            new_w: New weight vector
-            new_momentum: New momentum vector
-            acceptance_prob: Acceptance probability
+            new_w: New weight vector after HMC step
+            new_momentum: New momentum vector after HMC step
+            acceptance_prob: Acceptance probability for the Metropolis step
         """
         # Initialise new position and momentum
         new_w = current_w.copy()
         new_momentum = current_momentum.copy()
         
-        # Calculate initial Hamiltonian
+        # Calculate initial Hamiltonian (total energy)
         current_energy = self._calculate_hamiltonian(X, y, current_w, current_momentum)
         
-        # Leapfrog steps
+        # Leapfrog steps for Hamiltonian dynamics
         for _ in range(self.config.hmc_leapfrog_steps):
             # Update momentum (half step)
             grad = self._calculate_gradient(X, y, new_w)
@@ -354,7 +435,7 @@ class AdaptivePriorARD:
         # Calculate new Hamiltonian
         new_energy = self._calculate_hamiltonian(X, y, new_w, new_momentum)
         
-        # Metropolis acceptance step
+        # Metropolis acceptance step for detailed balance
         acceptance_prob = min(1.0, np.exp(current_energy - new_energy))
         
         if np.random.random() < acceptance_prob:
@@ -365,43 +446,55 @@ class AdaptivePriorARD:
     def _calculate_hamiltonian(self, X: np.ndarray, y: np.ndarray, 
                              w: np.ndarray, momentum: np.ndarray) -> float:
         """
-        Calculate the Hamiltonian (total energy) of the system
+        Calculate the Hamiltonian (total energy) of the system.
+        
+        The Hamiltonian is the sum of potential energy (negative log posterior) and
+        kinetic energy (momentum). This is a key component of HMC that ensures
+        proper exploration of the posterior distribution.
         
         Args:
-            X: Input features
-            y: Target values
-            w: Weight vector
-            momentum: Momentum vector
+            X: Input features (n_samples, n_features)
+            y: Target values (n_samples,)
+            w: Weight vector (n_features,)
+            momentum: Momentum vector (n_features,)
             
         Returns:
-            float: Total energy (Hamiltonian)
+            float: Total energy (Hamiltonian) of the system
         """
-        # Potential (negative log posterior)
+        # Potential energy (negative log posterior)
         residuals = y - X @ w
         potential = 0.5 * self.alpha * np.sum(residuals**2)
         potential += 0.5 * np.sum(w**2 / np.clip(self.beta, 1e-10, None))
         
-        # Kinetic 
+        # Kinetic energy
         kinetic = 0.5 * np.sum(momentum**2)
         
         return potential + kinetic
     
     def _calculate_gradient(self, X: np.ndarray, y: np.ndarray, w: np.ndarray) -> np.ndarray:
         """
-        Calculate the gradient of the negative log posterior
+        Calculate the gradient of the negative log posterior.
+        
+        This method computes the gradient of the negative log posterior with respect to
+        the weights. The gradient is used in HMC for momentum updates and is necessary for
+        efficient posterior exploration.
+        
+        The gradient includes:
+        - Likelihood gradient (from the data)
+        - Prior gradient (from the ARD prior)
         
         Args:
-            X: Input features
-            y: Target values
-            w: Weight vector
+            X: Input features (n_samples, n_features)
+            y: Target values (n_samples,)
+            w: Weight vector (n_features,)
             
         Returns:
-            np.ndarray: Gradient vector
+            np.ndarray: Gradient vector (n_features,)
         """
-        # Gradient of likelihood
+        # Gradient of likelihood (data term)
         grad_likelihood = -self.alpha * X.T @ (y - X @ w)
         
-        # Gradient of prior
+        # Gradient of prior (ARD term)
         grad_prior = w / np.clip(self.beta, 1e-10, None)
         
         return grad_likelihood + grad_prior
@@ -409,16 +502,25 @@ class AdaptivePriorARD:
     def _hmc_sampling(self, X: np.ndarray, y: np.ndarray, 
                      initial_w: np.ndarray) -> Tuple[np.ndarray, List[float]]:
         """
-        Perform HMC sampling to explore the posterior
+        Perform HMC sampling to explore the posterior distribution.
+        
+        This method implements multiple HMC steps to explore the posterior distribution
+        of the weights. It is a component of the model's advanced inference strategy,
+        providing better posterior exploration than traditional methods.
+        
+        The implementation includes:
+        - Multiple HMC steps with momentum resampling
+        - Tracking of acceptance probabilities
+        - Numerical stability considerations
         
         Args:
-            X: Input features
-            y: Target values
-            initial_w: Initial weight vector
+            X: Input features (n_samples, n_features)
+            y: Target values (n_samples,)
+            initial_w: Initial weight vector (n_features,)
             
         Returns:
-            np.ndarray: Final weight vector
-            List[float]: Acceptance probabilities
+            np.ndarray: Final weight vector after HMC sampling
+            List[float]: Acceptance probabilities for each HMC step
         """
         current_w = initial_w.copy()
         acceptance_probs = []
@@ -435,18 +537,31 @@ class AdaptivePriorARD:
             current_w = new_w
             acceptance_probs.append(acceptance_prob)
         
-        return current_w, acceptance_probs 
+        return current_w, acceptance_probs
 
     def fit(self, X: np.ndarray, y: np.ndarray) -> 'AdaptivePriorARD':
         """
-        Fit the model with adaptive priors and cross-validation
+        Fit the Adaptive Prior ARD model with cross-validation and uncertainty calibration.
+        
+        This method implements the core training procedure of the model, which includes:
+        1. Cross-validation for robust model evaluation
+        2. EM algorithm with adaptive prior updates
+        3. HMC-based posterior exploration
+        4. Uncertainty calibration
+        5. Robust noise modeling
+        
+        The training process is designed to:
+        - Automatically select relevant features through ARD
+        - Adapt priors based on data characteristics
+        - Provide well-calibrated uncertainty estimates
+        - Handle outliers and noise robustly
         
         Args:
             X: Input features (n_samples, n_features)
             y: Target values (n_samples,)
             
         Returns:
-            self: The fitted model
+            self: The fitted model instance
         """
         # Ensure y is 1D array
         y = np.asarray(y).reshape(-1)
@@ -462,7 +577,7 @@ class AdaptivePriorARD:
         # Initialise adaptive priors
         self._initialize_adaptive_priors(n_features)
         
-        # Cross-validation
+        # Cross-validation for robust evaluation
         kf = KFold(n_splits=self.config.n_splits, shuffle=True, 
                   random_state=self.config.random_state)
         cv_metrics = []
@@ -471,7 +586,7 @@ class AdaptivePriorARD:
             X_train, X_val = X[train_idx], X[val_idx]
             y_train, y_val = y[train_idx], y[val_idx]
             
-            # Scale data
+            # Scale data with robust preprocessing
             X_train_scaled = self.scaler_X.fit_transform(X_train)
             X_val_scaled = self.scaler_X.transform(X_val)
             y_train_scaled = self.scaler_y.fit_transform(y_train.reshape(-1, 1)).ravel()
@@ -484,14 +599,14 @@ class AdaptivePriorARD:
                     self.S = np.linalg.inv(self.alpha * X_train_scaled.T @ X_train_scaled + 
                                          np.diag(np.clip(self.beta, 1e-10, None)))
                 except np.linalg.LinAlgError:
-                    # Add to diagonal for numerical stability
+                    # Add jitter for numerical stability
                     jitter = 1e-6 * np.eye(n_features)
                     self.S = np.linalg.inv(self.alpha * X_train_scaled.T @ X_train_scaled + 
                                          np.diag(np.clip(self.beta, 1e-10, None)) + jitter)
                 
                 self.m = self.alpha * self.S @ X_train_scaled.T @ y_train_scaled
                 
-                # Use HMC for better posterior exploration if enabled
+                # Use HMC for posterior exploration if enabled
                 if self.config.use_hmc:
                     self.m, acceptance_probs = self._hmc_sampling(
                         X_train_scaled, y_train_scaled, self.m
@@ -575,7 +690,7 @@ class AdaptivePriorARD:
                 coverage = np.mean((y_val_orig >= lower) & (y_val_orig <= upper))
                 picp_scores.append(coverage)
             
-            # Calculate CRPS
+            # Calculate CRPS (Continuous Ranked Probability Score)
             crps = np.mean(np.abs(y_pred_orig - y_val_orig)) - 0.5 * np.mean(np.abs(y_std))
             
             metrics = {
@@ -600,20 +715,26 @@ class AdaptivePriorARD:
     
     def predict(self, X: np.ndarray, return_std: bool = False) -> Tuple[np.ndarray, Optional[np.ndarray]]:
         """
-        Make predictions with uncertainty estimates
+        Make predictions with uncertainty estimates.
+        
+        This method provides both point predictions and uncertainty estimates for new data.
+        The uncertainty estimates are calibrated and can include:
+        - Epistemic uncertainty (from model parameters)
+        - Aleatoric uncertainty (from noise model)
+        - Calibrated uncertainty estimates
         
         Args:
-            X: Input features
+            X: Input features (n_samples, n_features)
             return_std: Whether to return standard deviation of predictions
             
         Returns:
-            mean: Mean predictions
-            std: Standard deviation of predictions (if return_std=True)
+            mean: Mean predictions (n_samples,)
+            std: Standard deviation of predictions (n_samples,) if return_std=True
         """
         mean = X @ self.m
         
         if return_std:
-            # Base uncertainty from model
+            # Base uncertainty from model (epistemic)
             base_std = np.sqrt(1/self.alpha + np.sum((X @ self.S) * X, axis=1))
             
             if self.config.uncertainty_calibration:
@@ -623,7 +744,7 @@ class AdaptivePriorARD:
                 std = base_std
                 
             if self.config.robust_noise:
-                # Add Student's t noise component for robustness
+                # Add Student's t noise component for robustness (aleatoric)
                 t_noise = stats.t.rvs(df=self.config.student_t_df, size=len(mean))
                 std = np.sqrt(std**2 + np.abs(t_noise))
                 
@@ -709,15 +830,27 @@ class AdaptivePriorARD:
 
 def feature_engineering(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Perform feature engineering on the dataset
+    Perform feature engineering for building energy performance analysis.
+    
+    This function implements a feature engineering pipeline that:
+    1. Handles outliers and missing values
+    2. Creates non-linear transformations
+    3. Generates interaction features
+    4. Normalises and scales features
+    
+    The engineered features capture:
+    - Building characteristics (area, age)
+    - Energy performance metrics (EUI, energy mix)
+    - Environmental impact (GHG emissions)
+    - Complex interactions between features
     
     Args:
-        df: Input DataFrame
+        df: Input DataFrame containing raw building data
         
     Returns:
         df: DataFrame with engineered features
     """
-    # Floor area features with scaling
+    # Floor area features with robust scaling
     df['floor_area'] = df['floor_area'].clip(
         lower=df['floor_area'].quantile(0.01),
         upper=df['floor_area'].quantile(0.99)
@@ -725,13 +858,13 @@ def feature_engineering(df: pd.DataFrame) -> pd.DataFrame:
     df['floor_area_log'] = np.log1p(df['floor_area'])
     df['floor_area_squared'] = np.log1p(df['floor_area'] ** 2)
     
-    # Energy intensity features
+    # Energy intensity features with ratio analysis
     df['electric_ratio'] = df['electric_eui'] / (df['electric_eui'] + df['fuel_eui'])
     df['fuel_ratio'] = df['fuel_eui'] / (df['electric_eui'] + df['fuel_eui'])
     df['energy_mix'] = df['electric_ratio'] * df['fuel_ratio']
     df['energy_intensity_ratio'] = np.log1p((df['electric_eui'] + df['fuel_eui']) / df['floor_area'])
     
-    # Building age features
+    # Building age features with non-linear transformations
     df['building_age'] = 2025 - df['year_built']
     df['building_age'] = df['building_age'].clip(
         lower=df['building_age'].quantile(0.01),
@@ -740,19 +873,19 @@ def feature_engineering(df: pd.DataFrame) -> pd.DataFrame:
     df['building_age_log'] = np.log1p(df['building_age'])
     df['building_age_squared'] = np.log1p(df['building_age'] ** 2)
     
-    # Energy star rating features
+    # Energy star rating features with normalisation
     df['energy_star_rating'] = pd.to_numeric(df['energy_star_rating'], errors='coerce')
     df['energy_star_rating'] = df['energy_star_rating'].fillna(df['energy_star_rating'].median())
     df['energy_star_rating_normalized'] = df['energy_star_rating'] / 100
     df['energy_star_rating_squared'] = df['energy_star_rating_normalized'] ** 2
     
-    # GHG emissions features
+    # GHG emissions features with intensity metrics
     df['ghg_emissions_int'] = pd.to_numeric(df['ghg_emissions_int'], errors='coerce')
     df['ghg_emissions_int'] = df['ghg_emissions_int'].fillna(df['ghg_emissions_int'].median())
     df['ghg_emissions_int_log'] = np.log1p(df['ghg_emissions_int'])
     df['ghg_per_area'] = np.log1p(df['ghg_emissions_int'] / df['floor_area'])
     
-    # Interaction features
+    # Interaction features capturing complex relationships
     df['age_energy_star_interaction'] = df['building_age_log'] * df['energy_star_rating_normalized']
     df['area_energy_star_interaction'] = df['floor_area_log'] * df['energy_star_rating_normalized']
     df['age_ghg_interaction'] = df['building_age_log'] * df['ghg_emissions_int_log']
@@ -762,19 +895,33 @@ def feature_engineering(df: pd.DataFrame) -> pd.DataFrame:
 def analyze_feature_interactions(X: np.ndarray, y: np.ndarray, feature_names: List[str], 
                                model: AdaptivePriorARD, output_dir: str):
     """
-    Perform detailed analysis of feature interactions and model results
+    Perform comprehensive analysis of feature interactions and model performance.
+    
+    This function implements a detailed analysis pipeline that includes:
+    1. Feature importance analysis with uncertainty
+    2. Correlation analysis and visualisation
+    3. Feature interaction network analysis
+    4. Partial dependence analysis
+    5. Residual and uncertainty analysis
+    6. Model performance metrics
+    
+    The analysis provides insights into:
+    - Key drivers of building energy performance
+    - Complex feature interactions
+    - Model uncertainty and reliability
+    - Areas for potential improvement
     
     Args:
-        X: Input features
-        y: Target values
+        X: Input features (n_samples, n_features)
+        y: Target values (n_samples,)
         feature_names: List of feature names
-        model: Fitted model
+        model: Fitted AdaptivePriorARD model
         output_dir: Directory to save analysis results
     """
     # Ensure y is 1D array
     y = np.asarray(y).reshape(-1)
     
-    # Create a new figure for analysis
+    # Create a new figure for comprehensive analysis
     plt.style.use('default')
     fig = plt.figure(figsize=(20, 25))
     
@@ -784,10 +931,10 @@ def analyze_feature_interactions(X: np.ndarray, y: np.ndarray, feature_names: Li
     sorted_idx = np.argsort(importance)
     plt.barh(range(len(feature_names)), importance[sorted_idx])
     plt.yticks(range(len(feature_names)), [feature_names[i] for i in sorted_idx])
-    plt.xlabel('Normalized Feature Importance')
+    plt.xlabel('Normalised Feature Importance')
     plt.title('Feature Importance Analysis')
     
-    # Add confidence intervals
+    # Add confidence intervals for robustness
     std_importance = np.std([model.get_feature_importance() for _ in range(100)], axis=0)
     plt.errorbar(importance[sorted_idx], range(len(feature_names)),
                 xerr=std_importance[sorted_idx], fmt='none', color='black', alpha=0.3)
@@ -813,11 +960,11 @@ def analyze_feature_interactions(X: np.ndarray, y: np.ndarray, feature_names: Li
                     feat1_data, feat2_data
                 )[0]
     
-    # Plot interaction network
+    # Plot interaction network with threshold
     G = nx.Graph()
     for i, feat1 in enumerate(feature_names):
         for j, feat2 in enumerate(feature_names):
-            if i < j and interaction_strength[i, j] > 0.1:  # Threshold
+            if i < j and interaction_strength[i, j] > 0.1:  # Threshold for significant interactions
                 G.add_edge(feat1, feat2, weight=interaction_strength[i, j])
     
     pos = nx.spring_layout(G)
@@ -827,7 +974,7 @@ def analyze_feature_interactions(X: np.ndarray, y: np.ndarray, feature_names: Li
     
     # Partial Dependence Analysis
     plt.subplot(4, 2, 4)
-    top_features = [feature_names[i] for i in sorted_idx[-3:]]
+    top_features = [feature_names[i] for i in sorted_idx[-3:]]  # Top 3 most important features
     for feat in top_features:
         feat_idx = feature_names.index(feat)
         x_range = np.linspace(X[:, feat_idx].min(), X[:, feat_idx].max(), 100)
@@ -884,7 +1031,7 @@ def analyze_feature_interactions(X: np.ndarray, y: np.ndarray, feature_names: Li
     plt.savefig(os.path.join(output_dir, 'detailed_analysis.png'), dpi=300, bbox_inches='tight')
     plt.close()
     
-    # Save analysis to JSON
+    # Save comprehensive analysis to JSON
     analysis_results = {
         'feature_importance': dict(zip(feature_names, importance)),
         'feature_importance_std': dict(zip(feature_names, std_importance)),
@@ -916,7 +1063,7 @@ def analyze_feature_interactions(X: np.ndarray, y: np.ndarray, feature_names: Li
     with open(os.path.join(output_dir, 'detailed_analysis.json'), 'w') as f:
         json.dump(analysis_results, f, indent=4, cls=NumpyEncoder)
     
-    # Print analysis
+    # Print comprehensive analysis results
     logger.info("\nDetailed Analysis Results:")
     logger.info("\n1. Top Features by Importance:")
     for feat, imp in sorted(zip(feature_names, importance), key=lambda x: x[1], reverse=True)[:5]:
@@ -938,6 +1085,7 @@ def analyze_feature_interactions(X: np.ndarray, y: np.ndarray, feature_names: Li
     logger.info(f"MAE: {analysis_results['model_metrics']['mae']:.4f}")
     logger.info(f"Mean Uncertainty: {analysis_results['model_metrics']['mean_std']:.4f}")
     logger.info(f"CRPS: {analysis_results['model_metrics']['crps']:.4f}")
+    
     logger.info("\n4. Prediction Interval Coverage:")
     for level in ['50', '80', '90', '95', '99']:
         logger.info(f"PICP {level}%: {analysis_results['model_metrics'][f'picp_{level}']:.4f}")
@@ -954,17 +1102,24 @@ def analyze_feature_interactions(X: np.ndarray, y: np.ndarray, feature_names: Li
 def train_and_evaluate_adaptive(X: np.ndarray, y: np.ndarray, feature_names: List[str],
                               output_dir: Optional[str] = None) -> Tuple[AdaptivePriorARD, dict]:
     """
-    Train and evaluate the model
+    Train and evaluate the Adaptive Prior ARD model with comprehensive analysis.
+    
+    This function implements the complete training and evaluation pipeline:
+    1. Model training with cross-validation
+    2. Performance metrics calculation
+    3. Feature importance analysis
+    4. Uncertainty quantification
+    5. Results visualisation and saving
     
     Args:
-        X: Input features
-        y: Target values
+        X: Input features (n_samples, n_features)
+        y: Target values (n_samples,)
         feature_names: List of feature names
         output_dir: Optional directory to save results
         
     Returns:
-        model: Fitted model
-        metrics: Model performance metrics
+        model: Fitted AdaptivePriorARD model
+        metrics: Comprehensive model performance metrics
     """
     if output_dir is not None:
         os.makedirs(output_dir, exist_ok=True)
@@ -982,7 +1137,7 @@ def train_and_evaluate_adaptive(X: np.ndarray, y: np.ndarray, feature_names: Lis
         with open(os.path.join(output_dir, 'metrics.json'), 'w') as f:
             json.dump(metrics, f, indent=4)
         
-        # Perform analysis
+        # Perform comprehensive analysis
         analyze_feature_interactions(X, y, feature_names, model, output_dir)
         
         # Save model
@@ -1005,7 +1160,7 @@ if __name__ == "__main__":
     logger.info("Performing feature engineering")
     df = feature_engineering(df)
     
-    # Select features
+    # Select features for analysis
     features = [
         "ghg_emissions_int_log",
         "floor_area_log",
@@ -1039,7 +1194,7 @@ if __name__ == "__main__":
     y_std_orig = y_std  # Already in original scale due to linearity of std in ARD
     y_true_orig = y  # Already in original scale
     
-    # Save to CSV
+    # Save predictions with uncertainty to CSV
     output_csv = os.path.join(results_dir, 'ard_predictions_with_uncertainty.csv')
     output_df = pd.DataFrame({
         'y_true': y_true_orig,
