@@ -15,6 +15,62 @@ The **feature-group adaptive prior** introduced in `ARDap_groupprior.py` is a no
 
 ---
 
+## Model Architecture
+
+The following diagram illustrates the architecture of the Group Prior ARD model, highlighting its key components and group-specific prior structure:
+
+```mermaid
+graph TB
+    A[Input Features] --> B[Feature Engineering]
+    B --> C[Group-Specific Priors]
+    C --> D[EM Algorithm]
+    D --> E[Posterior Updates]
+    E --> F[Predictions]
+
+    C --> G[Energy Features\nHorseshoe Prior]
+    C --> H[Building Features\nHierarchical Prior]
+    C --> I[Interaction Features\nSpike-and-Slab Prior]
+
+    style A fill:#f9f,stroke:#333,stroke-width:2px
+    style C fill:#bbf,stroke:#333,stroke-width:2px
+    style F fill:#bfb,stroke:#333,stroke-width:2px
+```
+
+### Key Components
+
+1. **Input Features**
+   - Building characteristics
+   - Energy consumption metrics
+   - Environmental factors
+   - Interaction terms
+
+2. **Feature Engineering**
+   - Log transformations
+   - Polynomial features
+   - Interaction terms
+   - Normalization
+
+3. **Group-Specific Priors**
+   - Energy features: Horseshoe prior (robust shrinkage)
+   - Building features: Hierarchical prior (classic ARD behavior)
+   - Interaction features: Spike-and-slab prior (strict selection)
+
+4. **Inference**
+   - Expectation-Maximization (EM) algorithm
+   - Hamiltonian Monte Carlo (HMC)
+   - Uncertainty calibration
+   - Dynamic adaptation
+
+5. **Output**
+   - Point predictions
+   - Uncertainty estimates
+   - Feature importance scores
+   - Model diagnostics
+
+The group prior ARD model's architecture enables the application of different regularisation strategies to each feature group, leveraging domain knowledge for improved interpretability and performance.
+
+---
+
 ## Technical Implementation Differences
 
 The implementation differences between `ARDap.py` (adaptive prior ARD) and `ARDap_groupprior.py` (group prior ARD) reflect the evolution of the prior structure:
