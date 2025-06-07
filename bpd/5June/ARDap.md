@@ -23,6 +23,41 @@ The Adaptive Prior ARD model is a Bayesian linear regression model that combines
 - Feature interaction analysis
 - Dynamic shrinkage parameters
 
+## Key Differences from Previous Models
+
+### 1. Adaptive Prior Structure
+Unlike traditional ARD models that use fixed prior specifications, this model introduces an adaptive prior structure that adjusts to the data characteristics. This adaptation allows for:
+- More flexible feature selection
+- Better handling of varying feature scales
+- Improved robustness to outliers
+
+### 2. Enhanced Uncertainty Quantification
+Previous models often focused primarily on point predictions, while this model provides:
+- Calibrated uncertainty estimates
+- Robust noise modeling using Student's t distribution
+- Empirical coverage tracking
+- Dynamic calibration factors
+
+### 3. Dynamic Shrinkage Mechanism
+Traditional ARD models use static shrinkage parameters, whereas this model implements:
+- Dynamic shrinkage strength ($\kappa$)
+- Adaptive learning rates ($\eta$)
+- Feature-specific adaptation
+
+### 4. Comprehensive Feature Analysis
+While earlier models focused on basic feature selection, this model offers:
+- Detailed feature interaction analysis
+- Network-based feature relationship visualisation
+- Partial dependence analysis
+- Confidence intervals for feature importance
+
+### 5. Robust Implementation
+The model improves upon previous implementations by including:
+- Advanced numerical stability measures
+- Comprehensive cross-validation framework
+- Sophisticated feature engineering capabilities
+- Extensive diagnostic tools
+
 ## Mathematical Foundation
 
 ### 1. Basic Model Structure
