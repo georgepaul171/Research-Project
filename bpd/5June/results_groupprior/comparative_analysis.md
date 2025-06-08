@@ -15,78 +15,53 @@ The **feature-group adaptive prior** introduced in `ARDap_groupprior.py` is an e
 
 ## Model Architecture
 
+The following diagram illustrates the architecture of the Group Prior ARD model, highlighting its key components and group-specific prior structure:
+
 ```mermaid
 graph TB
-    subgraph Input["Input Layer"]
-        A1[Building Features]
-        A2[Energy Features]
-        A3[Interaction Features]
-    end
+    A[Input Features] --> B[Feature Engineering]
+    B --> C[Group-Specific Priors]
+    C --> D[EM Algorithm]
+    D --> E[Posterior Updates]
+    E --> F[Predictions]
 
-    subgraph Preprocessing["Preprocessing Layer"]
-        B1[Feature Engineering]
-        B2[Robust Scaling]
-        B3[Group Assignment]
-    end
+    C --> G[Energy Features\nHorseshoe Prior]
+    C --> H[Building Features\nHierarchical Prior]
+    C --> I[Interaction Features\nSpike-and-Slab Prior]
 
-    subgraph Priors["Prior Layer"]
-        C1[Horseshoe Prior<br/>Energy Features]
-        C2[Hierarchical Prior<br/>Building Features]
-        C3[Spike-Slab Prior<br/>Interaction Features]
-    end
-
-    subgraph Inference["Inference Layer"]
-        D1[EM Algorithm]
-        D2[HMC Sampling]
-        D3[Uncertainty Calibration]
-    end
-
-    subgraph Output["Output Layer"]
-        E1[Point Predictions]
-        E2[Uncertainty Estimates]
-        E3[Feature Importance]
-    end
-
-    %% Connections
-    Input --> Preprocessing
-    Preprocessing --> Priors
-    Priors --> Inference
-    Inference --> Output
-
-    %% Styling
-    classDef input fill:#f9f,stroke:#333,stroke-width:2px
-    classDef process fill:#bbf,stroke:#333,stroke-width:2px
-    classDef output fill:#bfb,stroke:#333,stroke-width:2px
-
-    class A1,A2,A3 input
-    class B1,B2,B3,C1,C2,C3,D1,D2,D3 process
-    class E1,E2,E3 output
+    style A fill:#f9f,stroke:#333,stroke-width:2px
+    style C fill:#bbf,stroke:#333,stroke-width:2px
+    style F fill:#bfb,stroke:#333,stroke-width:2px
 ```
 
 ### Key Components
 
-1. **Input Layer**
-   - Building characteristics (age, area)
-   - Energy metrics (EUI, GHG emissions)
-   - Interaction terms (age-energy, area-energy)
+1. **Input Features**
+   - Building characteristics
+   - Energy consumption metrics
+   - Environmental factors
+   - Interaction terms
 
-2. **Preprocessing Layer**
-   - Feature engineering (log transforms, interactions)
-   - Robust scaling for numerical stability
-   - Feature group assignment
+2. **Feature Engineering**
+   - Log transformations
+   - Polynomial features
+   - Interaction terms
+   - Normalization
 
-3. **Prior Layer**
-   - Energy features: Horseshoe prior for robust feature selection
-   - Building features: Hierarchical prior for structured shrinkage
-   - Interaction features: Spike-slab prior for strict selection
+3. **Group-Specific Priors**
+   - Energy features: Horseshoe prior (robust shrinkage)
+   - Building features: Hierarchical prior (classic ARD behavior)
+   - Interaction features: Spike-and-slab prior (strict selection)
 
-4. **Inference Layer**
-   - Expectation-Maximization algorithm
-   - Hamiltonian Monte Carlo sampling
+4. **Inference**
+   - Expectation-Maximization (EM) algorithm
+   - Hamiltonian Monte Carlo (HMC)
    - Uncertainty calibration
+   - Dynamic adaptation
 
-5. **Output Layer**
-   - Point predictions with uncertainty
+5. **Output**
+   - Point predictions
+   - Uncertainty estimates
    - Feature importance scores
    - Model diagnostics
 
