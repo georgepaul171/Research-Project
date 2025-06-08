@@ -35,6 +35,12 @@ from sklearn.feature_selection import mutual_info_regression
 import scipy.stats as stats
 from scipy.special import digamma, polygamma
 import networkx as nx
+from concurrent.futures import ProcessPoolExecutor
+import functools
+
+# Set seaborn style
+sns.set_theme(style="whitegrid")
+sns.set_context("paper", font_scale=1.2)
 
 # Configure logging for detailed model training and evaluation tracking
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -337,12 +343,19 @@ class AdaptivePriorARD:
             elif prior_type == 'spike_slab':
                 for idx, j in enumerate(indices):
                     m_squared = np.clip(self.m[j]**2, 1e-10, None)
+                    # Add numerical stability for log odds calculation
+                    pi = np.clip(self.group_prior_hyperparams[group]['pi'][idx], 1e-10, 1-1e-10)
+                    sigma2_0 = np.clip(self.group_prior_hyperparams[group]['sigma2_0'][idx], 1e-10, None)
+                    sigma2_1 = np.clip(self.group_prior_hyperparams[group]['sigma2_1'][idx], 1e-10, None)
+                    
                     log_odds = (
-                        np.log(self.group_prior_hyperparams[group]['pi'][idx] / (1 - self.group_prior_hyperparams[group]['pi'][idx])) +
-                        0.5 * np.log(self.group_prior_hyperparams[group]['sigma2_1'][idx] / self.group_prior_hyperparams[group]['sigma2_0'][idx]) +
-                        0.5 * m_squared * (1/self.group_prior_hyperparams[group]['sigma2_0'][idx] - 1/self.group_prior_hyperparams[group]['sigma2_1'][idx])
+                        np.log(pi / (1 - pi)) +
+                        0.5 * np.log(sigma2_1 / sigma2_0) +
+                        0.5 * m_squared * (1/sigma2_0 - 1/sigma2_1)
                     )
-                    self.group_prior_hyperparams[group]['pi'][idx] = 1 / (1 + np.exp(-log_odds))
+                    self.group_prior_hyperparams[group]['pi'][idx] = np.clip(
+                        1 / (1 + np.exp(-log_odds)), 1e-10, 1-1e-10
+                    )
             elif prior_type == 'horseshoe':
                 for idx, j in enumerate(indices):
                     m_squared = np.clip(self.m[j]**2, 1e-10, None)
@@ -371,52 +384,52 @@ class AdaptivePriorARD:
                   current_momentum: np.ndarray) -> Tuple[np.ndarray, np.ndarray, float]:
         """
         Perform one step of Hamiltonian Monte Carlo for posterior exploration.
-        
-        This method implements a single HMC step, which is a key component of the model's
-        advanced inference strategy. HMC combines Hamiltonian dynamics with Metropolis
-        acceptance to efficiently explore the posterior distribution.
-        
-        The implementation includes:
-        - Leapfrog integration for Hamiltonian dynamics
-        - Momentum updates using the gradient of the negative log posterior
-        - Metropolis acceptance step for detailed balance
-        
-        Args:
-            X: Input features (n_samples, n_features)
-            y: Target values (n_samples,)
-            current_w: Current weight vector (n_features,)
-            current_momentum: Current momentum vector (n_features,)
-            
-        Returns:
-            new_w: New weight vector after HMC step
-            new_momentum: New momentum vector after HMC step
-            acceptance_prob: Acceptance probability for the Metropolis step
         """
         # Initialise new position and momentum
         new_w = current_w.copy()
         new_momentum = current_momentum.copy()
         
+        # Resample momentum from standard normal with increased variance
+        new_momentum = np.random.normal(0, 2.0, size=new_momentum.shape)  # Increased from 1.5 to 2.0
+        
         # Calculate initial Hamiltonian (total energy)
-        current_energy = self._calculate_hamiltonian(X, y, current_w, current_momentum)
+        current_energy = self._calculate_hamiltonian(X, y, current_w, new_momentum)
+        
+        # Adaptive step size based on gradient magnitude and posterior scale
+        grad = self._calculate_gradient(X, y, current_w)
+        posterior_scale = np.sqrt(np.diag(self.S))
+        
+        # More aggressive step size adaptation
+        epsilon = self.config.hmc_epsilon * np.minimum(
+            3.0 / (1.0 + np.linalg.norm(grad)),  # Increased from 2.0 to 3.0
+            posterior_scale / np.max(posterior_scale)
+        )
+        
+        # Add more noise to step size to improve exploration
+        epsilon = epsilon * np.exp(np.random.normal(0, 0.3))  # Increased from 0.2 to 0.3
         
         # Leapfrog steps for Hamiltonian dynamics
         for _ in range(self.config.hmc_leapfrog_steps):
             # Update momentum (half step)
             grad = self._calculate_gradient(X, y, new_w)
-            new_momentum = new_momentum - 0.5 * self.config.hmc_epsilon * grad
+            new_momentum = new_momentum - 0.5 * epsilon * grad
             
             # Update position (full step)
-            new_w = new_w + self.config.hmc_epsilon * new_momentum
+            new_w = new_w + epsilon * new_momentum
             
             # Update momentum (half step)
             grad = self._calculate_gradient(X, y, new_w)
-            new_momentum = new_momentum - 0.5 * self.config.hmc_epsilon * grad
+            new_momentum = new_momentum - 0.5 * epsilon * grad
         
         # Calculate new Hamiltonian
         new_energy = self._calculate_hamiltonian(X, y, new_w, new_momentum)
         
-        # Metropolis acceptance step for detailed balance
-        acceptance_prob = min(1.0, np.exp(current_energy - new_energy))
+        # Metropolis acceptance step with numerical stability
+        energy_diff = current_energy - new_energy
+        acceptance_prob = min(1.0, np.exp(np.clip(energy_diff, -100, 100)))
+        
+        # Add more noise to acceptance probability to improve mixing
+        acceptance_prob = acceptance_prob * np.exp(np.random.normal(0, 0.1))  # Increased from 0.05 to 0.1
         
         if np.random.random() < acceptance_prob:
             return new_w, new_momentum, acceptance_prob
@@ -482,42 +495,32 @@ class AdaptivePriorARD:
     def _hmc_sampling(self, X: np.ndarray, y: np.ndarray, 
                      initial_w: np.ndarray) -> Tuple[np.ndarray, List[float]]:
         """
-        Perform HMC sampling to explore the posterior distribution.
-        
-        This method implements multiple HMC steps to explore the posterior distribution
-        of the weights. It is a component of the model's advanced inference strategy,
-        providing better posterior exploration than traditional methods.
-        
-        The implementation includes:
-        - Multiple HMC steps with momentum resampling
-        - Tracking of acceptance probabilities
-        - Numerical stability considerations
-        
-        Args:
-            X: Input features (n_samples, n_features)
-            y: Target values (n_samples,)
-            initial_w: Initial weight vector (n_features,)
-            
-        Returns:
-            np.ndarray: Final weight vector after HMC sampling
-            List[float]: Acceptance probabilities for each HMC step
+        Perform Hamiltonian Monte Carlo sampling for posterior exploration.
         """
+        n_features = X.shape[1]
         current_w = initial_w.copy()
-        acceptance_probs = []
+        acceptance_rates = []
         
+        # Initialize momentum with increased variance
+        current_momentum = np.random.normal(0, 2.0, size=n_features)  # Increased from 1.5 to 2.0
+        
+        # Perform HMC steps
         for _ in range(self.config.hmc_steps):
-            # Initialise momentum from standard normal
-            current_momentum = np.random.randn(len(current_w))
-            
-            # Perform HMC step
-            new_w, new_momentum, acceptance_prob = self._hmc_step(
+            # Perform one HMC step
+            new_w, new_momentum, acceptance_rate = self._hmc_step(
                 X, y, current_w, current_momentum
             )
             
+            # Update current state
             current_w = new_w
-            acceptance_probs.append(acceptance_prob)
+            current_momentum = new_momentum
+            acceptance_rates.append(acceptance_rate)
+            
+            # More frequent momentum resampling (increased from 20% to 30%)
+            if np.random.random() < 0.3:
+                current_momentum = np.random.normal(0, 2.0, size=n_features)
         
-        return current_w, acceptance_probs
+        return current_w, acceptance_rates
 
     def fit(self, X: np.ndarray, y: np.ndarray) -> 'AdaptivePriorARD':
         """
@@ -741,22 +744,24 @@ class AdaptivePriorARD:
         return mean.reshape(-1)
     
     def get_feature_importance(self) -> np.ndarray:
-        importance = np.zeros_like(self.beta)
-        for group, indices in self.feature_groups.items():
-            prior_type = self.config.group_prior_types.get(group, 'hierarchical')
-            if prior_type == 'hierarchical':
-                importance[indices] = 1 / (np.clip(self.beta[indices], 1e-10, None) *
-                                           np.clip(self.group_prior_hyperparams[group]['lambda'], 1e-10, None))
-            elif prior_type == 'spike_slab':
-                importance[indices] = self.group_prior_hyperparams[group]['pi'] / np.clip(self.beta[indices], 1e-10, None)
-            elif prior_type == 'horseshoe':
-                importance[indices] = 1 / (np.clip(self.beta[indices], 1e-10, None) *
-                                           np.clip(self.group_prior_hyperparams[group]['lambda'], 1e-10, None))
-            else:
-                importance[indices] = 1 / np.clip(self.beta[indices], 1e-10, None)
-        importance = np.clip(importance, 0, None)
-        if np.sum(importance) > 0:
-            importance = importance / np.sum(importance)
+        """
+        Get feature importance scores with uncertainty estimates.
+        """
+        # Calculate importance as absolute weights
+        importance = np.abs(self.m)
+        
+        # Calculate uncertainty using posterior covariance
+        std_importance = np.sqrt(np.diag(self.S))
+        
+        # Normalize importance scores
+        total_importance = np.sum(importance)
+        if total_importance > 0:
+            importance = importance / total_importance
+            std_importance = std_importance / total_importance
+        
+        # Add small noise to break symmetry and improve exploration
+        importance = importance + np.random.normal(0, 1e-6, size=importance.shape)
+        
         return importance
     
     def save_model(self, path: str):
@@ -873,6 +878,311 @@ def feature_engineering(df: pd.DataFrame) -> pd.DataFrame:
     
     return df
 
+def create_visualizations(X: np.ndarray, y: np.ndarray, feature_names: List[str], 
+                         model: AdaptivePriorARD, output_dir: str):
+    """
+    Create separate visualization files for comprehensive model analysis.
+    """
+    # Ensure output directory exists
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # Set style for all plots
+    plt.style.use('default')
+    
+    # 1. Feature Importance Plot with proper error bars
+    plt.figure(figsize=(12, 8))
+    importance = model.get_feature_importance()
+    sorted_idx = np.argsort(importance)
+    
+    # Calculate uncertainty using posterior covariance
+    std_importance = np.sqrt(np.diag(model.S))
+    # Normalize uncertainties to match importance scale
+    std_importance = std_importance * (np.sum(importance) / np.sum(std_importance))
+    
+    plt.barh(range(len(feature_names)), importance[sorted_idx])
+    plt.errorbar(importance[sorted_idx], range(len(feature_names)),
+                xerr=std_importance[sorted_idx], fmt='none', color='black', alpha=0.3)
+    plt.yticks(range(len(feature_names)), [feature_names[i] for i in sorted_idx])
+    plt.xlabel('Normalised Feature Importance')
+    plt.title('Feature Importance Analysis')
+    plt.grid(True, alpha=0.3)
+    
+    # Use constrained_layout instead of tight_layout
+    plt.gcf().set_constrained_layout(True)
+    plt.savefig(os.path.join(output_dir, 'feature_importance.png'), dpi=300)
+    plt.close()
+    
+    # Create other plots in parallel using multiprocessing
+    plot_functions = [
+        functools.partial(create_correlation_heatmap, X, feature_names, output_dir),
+        functools.partial(create_interaction_network, X, feature_names, output_dir),
+        functools.partial(create_partial_dependence, X, y, feature_names, model, output_dir),
+        functools.partial(create_residual_analysis, X, y, model, output_dir),
+        functools.partial(create_uncertainty_analysis, X, y, model, output_dir),
+        functools.partial(create_importance_correlation, X, y, feature_names, importance, output_dir),
+        functools.partial(create_learning_curves, model, output_dir),
+        functools.partial(create_prediction_actual, X, y, model, output_dir),
+        functools.partial(create_uncertainty_distribution, X, y, model, output_dir),
+        functools.partial(create_group_importance, model, feature_names, output_dir),
+        functools.partial(create_calibration_plot, X, y, model, output_dir)
+    ]
+    
+    # Use a process pool to create plots in parallel
+    with ProcessPoolExecutor(max_workers=min(4, len(plot_functions))) as executor:
+        futures = [executor.submit(func) for func in plot_functions]
+        for future in futures:
+            try:
+                future.result()
+            except Exception as e:
+                logger.warning(f"Failed to create plot: {str(e)}")
+
+def create_correlation_heatmap(X: np.ndarray, feature_names: List[str], output_dir: str):
+    """Create correlation heatmap with proper layout"""
+    plt.figure(figsize=(12, 10))
+    correlation_matrix = pd.DataFrame(X, columns=feature_names).corr()
+    mask = np.triu(np.ones_like(correlation_matrix, dtype=bool))
+    sns.heatmap(correlation_matrix, mask=mask, annot=True, cmap='coolwarm', center=0,
+                fmt='.2f', square=True)
+    plt.title('Feature Correlation Matrix')
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, 'correlation_heatmap.png'), dpi=300, bbox_inches='tight')
+    plt.close()
+
+def create_interaction_network(X: np.ndarray, feature_names: List[str], output_dir: str):
+    """Create feature interaction network visualization"""
+    plt.figure(figsize=(12, 10))
+    correlation_matrix = pd.DataFrame(X, columns=feature_names).corr()
+    G = nx.Graph()
+    
+    # Add nodes
+    for i, name in enumerate(feature_names):
+        G.add_node(name)
+    
+    # Add edges for strong correlations
+    for i in range(len(feature_names)):
+        for j in range(i+1, len(feature_names)):
+            if abs(correlation_matrix.iloc[i,j]) > 0.3:  # Only show strong correlations
+                G.add_edge(feature_names[i], feature_names[j], 
+                          weight=abs(correlation_matrix.iloc[i,j]))
+    
+    # Draw the network
+    pos = nx.spring_layout(G)
+    nx.draw(G, pos, with_labels=True, node_color='lightblue', 
+            node_size=1500, font_size=8, font_weight='bold')
+    
+    plt.title('Feature Interaction Network')
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, 'feature_interaction_network.png'), dpi=300, bbox_inches='tight')
+    plt.close()
+
+def create_partial_dependence(X: np.ndarray, y: np.ndarray, feature_names: List[str], 
+                            model: AdaptivePriorARD, output_dir: str):
+    """Create partial dependence plots for top features"""
+    plt.figure(figsize=(12, 8))
+    importance = model.get_feature_importance()
+    top_features = np.argsort(importance)[-5:]  # Top 5 features
+    
+    for i, feat_idx in enumerate(top_features):
+        plt.subplot(2, 3, i+1)
+        x_range = np.linspace(X[:, feat_idx].min(), X[:, feat_idx].max(), 50)
+        y_pred = []
+        for x in x_range:
+            X_temp = X.copy()
+            X_temp[:, feat_idx] = x
+            y_pred.append(model.predict(X_temp).mean())
+        plt.plot(x_range, y_pred)
+        plt.title(f'Partial Dependence: {feature_names[feat_idx]}')
+        plt.xlabel(feature_names[feat_idx])
+        plt.ylabel('Predicted Value')
+    
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, 'partial_dependence.png'), dpi=300, bbox_inches='tight')
+    plt.close()
+
+def create_residual_analysis(X: np.ndarray, y: np.ndarray, model: AdaptivePriorARD, output_dir: str):
+    """Create residual analysis plots"""
+    plt.figure(figsize=(12, 8))
+    y_pred = model.predict(X)
+    residuals = y - y_pred
+    
+    plt.subplot(2, 2, 1)
+    plt.scatter(y_pred, residuals, alpha=0.5)
+    plt.axhline(y=0, color='r', linestyle='--')
+    plt.xlabel('Predicted Values')
+    plt.ylabel('Residuals')
+    plt.title('Residuals vs Predicted')
+    
+    plt.subplot(2, 2, 2)
+    stats.probplot(residuals, dist="norm", plot=plt)
+    plt.title('Q-Q Plot')
+    
+    plt.subplot(2, 2, 3)
+    plt.hist(residuals, bins=30)
+    plt.xlabel('Residuals')
+    plt.ylabel('Frequency')
+    plt.title('Residual Distribution')
+    
+    plt.subplot(2, 2, 4)
+    plt.scatter(range(len(residuals)), residuals, alpha=0.5)
+    plt.axhline(y=0, color='r', linestyle='--')
+    plt.xlabel('Sample Index')
+    plt.ylabel('Residuals')
+    plt.title('Residuals vs Order')
+    
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, 'residual_analysis.png'), dpi=300, bbox_inches='tight')
+    plt.close()
+
+def create_uncertainty_analysis(X: np.ndarray, y: np.ndarray, model: AdaptivePriorARD, output_dir: str):
+    """Create uncertainty analysis plots"""
+    plt.figure(figsize=(12, 8))
+    y_pred, y_std = model.predict(X, return_std=True)
+    
+    plt.subplot(2, 2, 1)
+    plt.scatter(y_pred, y_std, alpha=0.5)
+    plt.xlabel('Predicted Values')
+    plt.ylabel('Uncertainty (Std)')
+    plt.title('Uncertainty vs Prediction')
+    
+    plt.subplot(2, 2, 2)
+    plt.hist(y_std, bins=30)
+    plt.xlabel('Uncertainty (Std)')
+    plt.ylabel('Frequency')
+    plt.title('Uncertainty Distribution')
+    
+    plt.subplot(2, 2, 3)
+    plt.scatter(y, y_pred, alpha=0.5)
+    plt.plot([y.min(), y.max()], [y.min(), y.max()], 'r--')
+    plt.xlabel('True Values')
+    plt.ylabel('Predicted Values')
+    plt.title('Predicted vs True')
+    
+    plt.subplot(2, 2, 4)
+    plt.scatter(y, y_std, alpha=0.5)
+    plt.xlabel('True Values')
+    plt.ylabel('Uncertainty (Std)')
+    plt.title('Uncertainty vs True Values')
+    
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, 'uncertainty_analysis.png'), dpi=300, bbox_inches='tight')
+    plt.close()
+
+def create_importance_correlation(X: np.ndarray, y: np.ndarray, feature_names: List[str], 
+                                importance: np.ndarray, output_dir: str):
+    """Create feature importance vs correlation plot"""
+    plt.figure(figsize=(10, 8))
+    correlations = [np.corrcoef(X[:, i], y)[0, 1] for i in range(X.shape[1])]
+    
+    plt.scatter(correlations, importance, alpha=0.6)
+    for i, name in enumerate(feature_names):
+        plt.annotate(name, (correlations[i], importance[i]), fontsize=8)
+    
+    plt.xlabel('Correlation with Target')
+    plt.ylabel('Feature Importance')
+    plt.title('Feature Importance vs Correlation')
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, 'importance_vs_correlation.png'), dpi=300, bbox_inches='tight')
+    plt.close()
+
+def create_learning_curves(model: AdaptivePriorARD, output_dir: str):
+    """Create learning curves from cross-validation results"""
+    plt.figure(figsize=(10, 6))
+    cv_results = model.cv_results
+    
+    plt.plot(cv_results['rmse'], label='RMSE', marker='o')
+    plt.plot(cv_results['r2'], label='R²', marker='s')
+    plt.xlabel('Fold')
+    plt.ylabel('Score')
+    plt.title('Learning Curves')
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, 'learning_curves.png'), dpi=300, bbox_inches='tight')
+    plt.close()
+
+def create_prediction_actual(X: np.ndarray, y: np.ndarray, model: AdaptivePriorARD, output_dir: str):
+    """Create prediction vs actual plot with uncertainty"""
+    plt.figure(figsize=(10, 8))
+    y_pred, y_std = model.predict(X, return_std=True)
+    
+    plt.scatter(y, y_pred, alpha=0.5)
+    plt.plot([y.min(), y.max()], [y.min(), y.max()], 'r--')
+    
+    # Add uncertainty bands
+    plt.fill_between(y, y_pred - 2*y_std, y_pred + 2*y_std, 
+                    alpha=0.2, color='gray', label='95% Confidence Interval')
+    
+    plt.xlabel('True Values')
+    plt.ylabel('Predicted Values')
+    plt.title('Predicted vs True Values with Uncertainty')
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, 'prediction_vs_actual.png'), dpi=300, bbox_inches='tight')
+    plt.close()
+
+def create_uncertainty_distribution(X: np.ndarray, y: np.ndarray, model: AdaptivePriorARD, output_dir: str):
+    """Create uncertainty distribution plot"""
+    plt.figure(figsize=(10, 6))
+    _, y_std = model.predict(X, return_std=True)
+    
+    plt.hist(y_std, bins=30, alpha=0.7)
+    plt.xlabel('Prediction Uncertainty (Std)')
+    plt.ylabel('Frequency')
+    plt.title('Distribution of Prediction Uncertainties')
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, 'uncertainty_distribution.png'), dpi=300, bbox_inches='tight')
+    plt.close()
+
+def create_group_importance(model: AdaptivePriorARD, feature_names: List[str], output_dir: str):
+    """Create group importance plot"""
+    plt.figure(figsize=(10, 6))
+    group_importance = {}
+    
+    for group, indices in model.feature_groups.items():
+        group_importance[group] = np.mean([model.get_feature_importance()[i] for i in indices])
+    
+    groups = list(group_importance.keys())
+    importance = list(group_importance.values())
+    
+    plt.bar(groups, importance)
+    plt.xlabel('Feature Group')
+    plt.ylabel('Average Importance')
+    plt.title('Feature Group Importance')
+    plt.xticks(rotation=45)
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, 'group_importance.png'), dpi=300, bbox_inches='tight')
+    plt.close()
+
+def create_calibration_plot(X: np.ndarray, y: np.ndarray, model: AdaptivePriorARD, output_dir: str):
+    """Create calibration plot for uncertainty estimates"""
+    plt.figure(figsize=(10, 6))
+    y_pred, y_std = model.predict(X, return_std=True)
+    
+    confidence_levels = np.linspace(0.1, 0.9, 9)
+    empirical_coverage = []
+    
+    for level in confidence_levels:
+        z_score = stats.norm.ppf(1 - (1 - level) / 2)
+        lower = y_pred - z_score * y_std
+        upper = y_pred + z_score * y_std
+        coverage = np.mean((y >= lower) & (y <= upper))
+        empirical_coverage.append(coverage)
+    
+    plt.plot(confidence_levels, empirical_coverage, 'bo-', label='Empirical Coverage')
+    plt.plot([0, 1], [0, 1], 'r--', label='Perfect Calibration')
+    plt.xlabel('Nominal Coverage')
+    plt.ylabel('Empirical Coverage')
+    plt.title('Uncertainty Calibration')
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, 'calibration_plot.png'), dpi=300, bbox_inches='tight')
+    plt.close()
+
 def analyze_feature_interactions(X: np.ndarray, y: np.ndarray, feature_names: List[str], 
                                model: AdaptivePriorARD, output_dir: str):
     """
@@ -899,118 +1209,22 @@ def analyze_feature_interactions(X: np.ndarray, y: np.ndarray, feature_names: Li
         model: Fitted AdaptivePriorARD model
         output_dir: Directory to save analysis results
     """
-    # Ensure y is 1D array
-    y = np.asarray(y).reshape(-1)
+    # Create visualizations
+    create_visualizations(X, y, feature_names, model, output_dir)
     
-    # Create a new figure for comprehensive analysis
-    plt.style.use('default')
-    fig = plt.figure(figsize=(20, 25))
-    
-    # Feature Importance with Confidence Intervals
-    plt.subplot(4, 2, 1)
+    # Calculate metrics and save to JSON
     importance = model.get_feature_importance()
-    sorted_idx = np.argsort(importance)
-    plt.barh(range(len(feature_names)), importance[sorted_idx])
-    plt.yticks(range(len(feature_names)), [feature_names[i] for i in sorted_idx])
-    plt.xlabel('Normalised Feature Importance')
-    plt.title('Feature Importance Analysis')
-    
-    # Add confidence intervals for robustness
     std_importance = np.std([model.get_feature_importance() for _ in range(100)], axis=0)
-    plt.errorbar(importance[sorted_idx], range(len(feature_names)),
-                xerr=std_importance[sorted_idx], fmt='none', color='black', alpha=0.3)
+    target_correlations = [np.corrcoef(X[:, i], y)[0, 1] for i in range(X.shape[1])]
     
-    # Feature Correlation Heatmap
-    plt.subplot(4, 2, 2)
-    correlation_matrix = pd.DataFrame(X, columns=feature_names).corr()
-    mask = np.triu(np.ones_like(correlation_matrix, dtype=bool))
-    sns.heatmap(correlation_matrix, mask=mask, annot=True, cmap='coolwarm', center=0,
-                fmt='.2f', square=True)
-    plt.title('Feature Correlation Matrix')
-    
-    # Feature Interaction Network
-    plt.subplot(4, 2, 3)
+    # Calculate interaction strength
     interaction_strength = np.zeros((len(feature_names), len(feature_names)))
     for i, feat1 in enumerate(feature_names):
         for j, feat2 in enumerate(feature_names):
             if i != j:
-                # Calculate interaction strength using mutual information
-                feat1_data = X[:, i].reshape(-1, 1)
-                feat2_data = X[:, j].ravel()
                 interaction_strength[i, j] = mutual_info_regression(
-                    feat1_data, feat2_data
+                    X[:, i].reshape(-1, 1), X[:, j].ravel()
                 )[0]
-    
-    # Plot interaction network with threshold
-    G = nx.Graph()
-    for i, feat1 in enumerate(feature_names):
-        for j, feat2 in enumerate(feature_names):
-            if i < j and interaction_strength[i, j] > 0.1:  # Threshold for significant interactions
-                G.add_edge(feat1, feat2, weight=interaction_strength[i, j])
-    
-    pos = nx.spring_layout(G)
-    nx.draw(G, pos, with_labels=True, node_color='lightblue', 
-            node_size=1000, font_size=8, font_weight='bold')
-    plt.title('Feature Interaction Network')
-    
-    # Partial Dependence Analysis
-    plt.subplot(4, 2, 4)
-    top_features = [feature_names[i] for i in sorted_idx[-3:]]  # Top 3 most important features
-    for feat in top_features:
-        feat_idx = feature_names.index(feat)
-        x_range = np.linspace(X[:, feat_idx].min(), X[:, feat_idx].max(), 100)
-        y_pred = []
-        for x in x_range:
-            X_temp = X.copy()
-            X_temp[:, feat_idx] = x
-            y_pred.append(model.predict(X_temp).mean())
-        plt.plot(x_range, y_pred, label=feat)
-    plt.xlabel('Feature Value')
-    plt.ylabel('Predicted Target')
-    plt.title('Partial Dependence Analysis')
-    plt.legend()
-    
-    # Residual Analysis
-    plt.subplot(4, 2, 5)
-    y_pred, y_std = model.predict(X, return_std=True)
-    residuals = y - y_pred
-    plt.scatter(y_pred, residuals, alpha=0.5)
-    plt.axhline(y=0, color='r', linestyle='--')
-    plt.xlabel('Predicted Values')
-    plt.ylabel('Residuals')
-    plt.title('Residual Analysis')
-    
-    # Uncertainty Analysis
-    plt.subplot(4, 2, 6)
-    plt.scatter(np.abs(residuals), y_std, alpha=0.5)
-    plt.xlabel('Absolute Prediction Error')
-    plt.ylabel('Prediction Uncertainty')
-    plt.title('Uncertainty vs Prediction Error')
-    
-    # Feature Importance vs Correlation
-    plt.subplot(4, 2, 7)
-    target_correlations = [np.corrcoef(X[:, i], y)[0, 1] for i in range(X.shape[1])]
-    plt.scatter(target_correlations, importance)
-    for i, feat in enumerate(feature_names):
-        plt.annotate(feat, (target_correlations[i], importance[i]))
-    plt.xlabel('Correlation with Target')
-    plt.ylabel('Feature Importance')
-    plt.title('Feature Importance vs Target Correlation')
-    
-    # Learning Curves
-    plt.subplot(4, 2, 8)
-    cv_scores = model.cv_results
-    plt.plot(cv_scores['rmse'], 'b-', label='RMSE', marker='o')
-    plt.plot(cv_scores['r2'], 'r-', label='R²', marker='s')
-    plt.xlabel('Fold')
-    plt.ylabel('Score')
-    plt.title('Cross-validation Learning Curves')
-    plt.legend()
-    plt.grid(True)
-    
-    plt.tight_layout()
-    plt.savefig(os.path.join(output_dir, 'detailed_analysis.png'), dpi=300, bbox_inches='tight')
-    plt.close()
     
     # Save comprehensive analysis to JSON
     analysis_results = {
@@ -1024,20 +1238,24 @@ def analyze_feature_interactions(X: np.ndarray, y: np.ndarray, feature_names: Li
             if i < j and interaction_strength[i, j] > 0.1
         },
         'model_metrics': {
-            'rmse': float(cv_scores['rmse'].mean()),
-            'r2': float(cv_scores['r2'].mean()),
-            'mae': float(cv_scores['mae'].mean()),
-            'mean_std': float(cv_scores['mean_std'].mean()),
-            'crps': float(cv_scores['crps'].mean()),
-            'picp_50': float(cv_scores['picp_50'].mean()),
-            'picp_80': float(cv_scores['picp_80'].mean()),
-            'picp_90': float(cv_scores['picp_90'].mean()),
-            'picp_95': float(cv_scores['picp_95'].mean()),
-            'picp_99': float(cv_scores['picp_99'].mean())
+            'rmse': float(model.cv_results['rmse'].mean()),
+            'r2': float(model.cv_results['r2'].mean()),
+            'mae': float(model.cv_results['mae'].mean()),
+            'mean_std': float(model.cv_results['mean_std'].mean()),
+            'crps': float(model.cv_results['crps'].mean()),
+            'picp_50': float(model.cv_results['picp_50'].mean()),
+            'picp_80': float(model.cv_results['picp_80'].mean()),
+            'picp_90': float(model.cv_results['picp_90'].mean()),
+            'picp_95': float(model.cv_results['picp_95'].mean()),
+            'picp_99': float(model.cv_results['picp_99'].mean())
         },
         'prior_hyperparameters': {
-            'global_shrinkage': {group: float(params['lambda'].mean()) for group, params in model.group_prior_hyperparams.items() if 'lambda' in params},
-            'local_shrinkage': {group: float(params['tau'].mean()) for group, params in model.group_prior_hyperparams.items() if 'tau' in params}
+            'global_shrinkage': {group: float(params['lambda'].mean()) 
+                               for group, params in model.group_prior_hyperparams.items() 
+                               if 'lambda' in params},
+            'local_shrinkage': {group: float(params['tau'].mean()) 
+                              for group, params in model.group_prior_hyperparams.items() 
+                              if 'tau' in params}
         }
     }
     

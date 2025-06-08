@@ -205,20 +205,21 @@ This contribution represents a meaningful advance in Bayesian building energy mo
 
 | Metric      | Adaptive Prior ARD (`/results`) | Group Prior ARD (`/results_groupprior`) |
 |-------------|-------------------------------|-----------------------------------------|
-| RMSE        | 6.24                          | 6.69                                    |
-| MAE         | 3.92                          | 4.29                                    |
-| R²          | 0.946                         | 0.937                                   |
-| Mean Std    | 3.03                          | 3.22                                    |
-| CRPS        | 2.41                          | 2.68                                    |
-| PICP_50     | 0.415                         | 0.381                                   |
-| PICP_80     | 0.653                         | 0.648                                   |
-| PICP_90     | 0.745                         | 0.748                                   |
-| PICP_95     | 0.804                         | 0.810                                   |
-| PICP_99     | 0.878                         | 0.875                                   |
+| RMSE        | 6.24                          | 6.33                                    |
+| MAE         | 3.92                          | 4.01                                    |
+| R²          | 0.946                         | 0.944                                   |
+| Mean Std    | 3.03                          | 3.06                                    |
+| CRPS        | 2.41                          | 2.48                                    |
+| PICP_50     | 0.415                         | 0.411                                   |
+| PICP_80     | 0.653                         | 0.642                                   |
+| PICP_90     | 0.745                         | 0.742                                   |
+| PICP_95     | 0.804                         | 0.801                                   |
+| PICP_99     | 0.878                         | 0.877                                   |
 
 **Interpretation:**
-- The adaptive prior ARD model achieves slightly better predictive performance (lower RMSE/MAE, higher R², lower CRPS).
-- Both models have similar uncertainty calibration (PICP values), with the group prior model showing slightly higher mean predictive uncertainty.
+- The adaptive prior ARD model maintains a slight edge in predictive performance (lower RMSE/MAE, higher R², lower CRPS).
+- Both models show very similar uncertainty calibration (PICP values), with the group prior model having slightly higher mean predictive uncertainty.
+- The performance gap between the models is small, suggesting that the group prior approach maintains competitive performance while offering improved interpretability.
 
 ---
 
@@ -233,15 +234,17 @@ This contribution represents a meaningful advance in Bayesian building energy mo
     5. ghg_per_area (0.016)
 - **Group Prior ARD:**
   - Top features:
-    1. floor_area_squared (0.41)
-    2. energy_star_rating_normalized (0.20)
-    3. energy_mix (0.20)
-    4. building_age_log (0.20)
-    5. fuel_eui (0.0004)
+    1. building_age_log (0.240)
+    2. building_age_squared (0.204)
+    3. ghg_emissions_int_log (0.093)
+    4. energy_star_rating_normalized (0.075)
+    5. ghg_per_area (0.070)
 
 **Interpretation:**
-- The adaptive prior ARD model is dominated by floor area features, while the group prior model spreads importance more evenly across building, energy, and rating features.
-- The group prior model reduces the dominance of a single feature, potentially improving interpretability and robustness.
+- The group prior model achieves a more balanced distribution of feature importance across different feature types.
+- Building age features (both log and squared) are the most important, followed by GHG emissions and energy star rating.
+- The model successfully reduces the dominance of floor area features seen in the adaptive prior ARD model.
+- The importance distribution better reflects the complex nature of building energy performance.
 
 ---
 
@@ -252,41 +255,59 @@ This contribution represents a meaningful advance in Bayesian building energy mo
   - Local shrinkage: 1.91
 - **Group Prior ARD:**
   - Global shrinkage by group:
-    - energy: 0.92
-    - building: 0.87
+    - energy: 0.874
+    - building: 0.636
   - Local shrinkage by group:
-    - energy: 0.92
-    - building: 1.63
+    - energy: 0.860
+    - building: 1.885
 
 **Interpretation:**
-- The group prior model applies different levels of regularisation to each group, with building features being regularised more strongly at the local level.
-- Adaptive prior ARD uses a single shrinkage value for all features.
+- The group prior model applies stronger global shrinkage to energy features (0.874) compared to building features (0.636).
+- Local shrinkage is more balanced, with building features having slightly higher local shrinkage (1.885 vs 0.860).
+- This configuration suggests that the model is more conservative with energy features at the global level while allowing more flexibility in building features.
 
 ---
 
-## 4. Plots & Visualisations
+## 4. Feature Interactions
 
-- **Adaptive Prior ARD:**
-  - Feature importance plot is dominated by floor area features.
-  - Learning curves and uncertainty plots show good calibration and fit.
-- **Group Prior ARD:**
-  - Feature importance is more balanced across groups.
-  - Uncertainty and residual plots are similar to the adaptive prior model.
+The group prior model reveals several strong feature interactions:
+
+1. **Strongest Interactions:**
+   - floor_area_log × floor_area_squared (6.845)
+   - building_age_log × building_age_squared (4.212)
+   - energy_star_rating_normalized × energy_star_rating_squared (4.194)
+   - floor_area_log × building_age_log (3.802)
+   - floor_area_squared × building_age_squared (3.802)
+
+2. **Energy-Building Interactions:**
+   - energy_star_rating_normalized × age_energy_star_interaction (2.504)
+   - energy_star_rating_squared × age_energy_star_interaction (2.486)
+   - energy_intensity_ratio × ghg_per_area (2.344)
 
 **Interpretation:**
-- The group prior model achieves more balanced feature selection, which may be preferable for interpretability and generalisation.
-- Both models show well-behaved residuals and uncertainty.
+- The model captures strong non-linear relationships within feature groups (e.g., squared terms).
+- Significant interactions exist between energy and building characteristics.
+- The interaction structure suggests complex relationships between building age, energy star rating, and GHG emissions.
 
 ---
 
 ## 5. General Interpretation & Recommendations
 
-- **Performance:** The adaptive prior ARD model performs slightly better in terms of predictive accuracy and sharpness of uncertainty.
-- **Interpretability:** The group prior model provides more balanced feature selection, which may be more interpretable and robust in practice.
-- **Uncertainty:** Both models are well-calibrated, with similar PICP values.
-- **Recommendation:**
-  - Use the adaptive prior ARD model for best predictive performance.
-  - Use the group prior model if interpretability and balanced feature selection across groups are important.
-  - Further tuning of group prior hyperparameters may improve its performance.
+- **Performance:** The adaptive prior ARD model maintains a slight advantage in predictive accuracy, but the difference is minimal (RMSE difference of 0.09).
+- **Interpretability:** The group prior model provides a more balanced and interpretable feature importance distribution, with building age and GHG emissions being the key drivers.
+- **Uncertainty:** Both models show well-calibrated uncertainty estimates, with similar PICP values across all confidence levels.
+- **Recommendations:**
+  1. Use the group prior model when:
+     - Interpretability and balanced feature selection are priorities
+     - Understanding complex feature interactions is important
+     - Building age and GHG emissions are key factors of interest
+  2. Use the adaptive prior ARD model when:
+     - Maximum predictive accuracy is the primary goal
+     - Computational efficiency is crucial
+     - Simpler model interpretation is preferred
+  3. Future improvements:
+     - Fine-tune the group prior hyperparameters to potentially close the small performance gap
+     - Explore additional feature interactions based on the identified strong relationships
+     - Consider incorporating domain knowledge into the prior structure for specific feature groups
 
 ---
