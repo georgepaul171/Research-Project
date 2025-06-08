@@ -99,10 +99,25 @@ The implementation differences between `ARDap.py` (adaptive prior ARD) and `ARDa
       for group, prior_type in self.config.group_prior_types.items():
           if prior_type == 'horseshoe':
               # Initialize horseshoe prior for energy features
+              self.group_prior_hyperparams[group] = {
+                  'lambda': np.ones(len(indices)),
+                  'tau': 1.0,
+                  'c2': 1.0
+              }
           elif prior_type == 'hierarchical':
               # Initialize hierarchical prior for building features
+              self.group_prior_hyperparams[group] = {
+                  'lambda': np.ones(len(indices)) * self.config.beta_0,
+                  'tau': np.ones(len(indices)) * 1.0,
+                  'nu': np.ones(len(indices)) * 2.0
+              }
           elif prior_type == 'spike_slab':
               # Initialize spike-and-slab prior for interaction features
+              self.group_prior_hyperparams[group] = {
+                  'pi': np.ones(len(indices)) * 0.5,
+                  'sigma2_0': np.ones(len(indices)) * 1e-6,
+                  'sigma2_1': np.ones(len(indices)) * 1.0
+              }
   ```
 
 ### 3. Prior Updates
@@ -110,13 +125,36 @@ The implementation differences between `ARDap.py` (adaptive prior ARD) and `ARDa
 - **Group Prior ARD**: Updates each group according to its specific prior type:
   ```python
   def _update_adaptive_priors(self, iteration: int):
-      for group, prior_type in self.config.group_prior_types.items():
+      for group, indices in self.feature_groups.items():
+          prior_type = self.config.group_prior_types.get(group, 'hierarchical')
           if prior_type == 'horseshoe':
               # Update horseshoe prior parameters
+              diag_S = np.clip(np.diag(self.S)[indices], 1e-10, None)
+              m_squared = np.clip(self.m[indices]**2, 1e-10, None)
+              self.group_prior_hyperparams[group]['lambda'] = (
+                  (1 + self.group_prior_hyperparams[group]['c2']) /
+                  (m_squared + diag_S + self.group_prior_hyperparams[group]['tau'])
+              )
           elif prior_type == 'hierarchical':
               # Update hierarchical prior parameters
+              diag_S = np.clip(np.diag(self.S)[indices], 1e-10, None)
+              m_squared = np.clip(self.m[indices]**2, 1e-10, None)
+              self.group_prior_hyperparams[group]['lambda'] = (
+                  (self.group_prior_hyperparams[group]['nu'] + 1) /
+                  (m_squared + diag_S + 2 * self.group_prior_hyperparams[group]['tau'])
+              )
           elif prior_type == 'spike_slab':
               # Update spike-and-slab prior parameters
+              diag_S = np.clip(np.diag(self.S)[indices], 1e-10, None)
+              m_squared = np.clip(self.m[indices]**2, 1e-10, None)
+              self.group_prior_hyperparams[group]['pi'] = (
+                  self.group_prior_hyperparams[group]['pi'] * 
+                  np.exp(-0.5 * m_squared / self.group_prior_hyperparams[group]['sigma2_1']) /
+                  (self.group_prior_hyperparams[group]['pi'] * 
+                   np.exp(-0.5 * m_squared / self.group_prior_hyperparams[group]['sigma2_1']) +
+                   (1 - self.group_prior_hyperparams[group]['pi']) * 
+                   np.exp(-0.5 * m_squared / self.group_prior_hyperparams[group]['sigma2_0']))
+              )
   ```
 
 ### 4. Feature Importance Calculation
@@ -125,13 +163,29 @@ The implementation differences between `ARDap.py` (adaptive prior ARD) and `ARDa
   ```python
   def get_feature_importance(self) -> np.ndarray:
       importance = np.zeros(len(self.beta))
-      for group, prior_type in self.config.group_prior_types.items():
+      for group, indices in self.feature_groups.items():
+          prior_type = self.config.group_prior_types.get(group, 'hierarchical')
           if prior_type == 'horseshoe':
               # Calculate importance using horseshoe prior
+              importance[indices] = np.abs(self.m[indices]) * np.sqrt(
+                  self.group_prior_hyperparams[group]['lambda'] * 
+                  self.group_prior_hyperparams[group]['tau']
+              )
           elif prior_type == 'hierarchical':
               # Calculate importance using hierarchical prior
+              importance[indices] = np.abs(self.m[indices]) * np.sqrt(
+                  self.group_prior_hyperparams[group]['lambda'] * 
+                  self.group_prior_hyperparams[group]['tau']
+              )
           elif prior_type == 'spike_slab':
               # Calculate importance using spike-and-slab prior
+              importance[indices] = np.abs(self.m[indices]) * (
+                  self.group_prior_hyperparams[group]['pi'] * 
+                  np.sqrt(self.group_prior_hyperparams[group]['sigma2_1']) +
+                  (1 - self.group_prior_hyperparams[group]['pi']) * 
+                  np.sqrt(self.group_prior_hyperparams[group]['sigma2_0'])
+              )
+      return importance
   ```
 
 ### 5. Results Storage
@@ -307,5 +361,3 @@ The group prior model reveals several strong feature interactions:
      - Fine-tune the group prior hyperparameters to potentially close the small performance gap
      - Explore additional feature interactions based on the identified strong relationships
      - Consider incorporating domain knowledge into the prior structure for specific feature groups
-
----
