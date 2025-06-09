@@ -1,0 +1,17 @@
+{
+    "ghg_emissions_int_log": 0.09841023982673852,
+    "floor_area_log": 0.0005987832275328792,
+    "electric_eui": 0.047269811757644116,
+    "fuel_eui": 0.0530603704470293,
+    "energy_star_rating_normalized": 0.07809135606409667,
+    "energy_mix": 0.001842111008117688,
+    "building_age_log": 0.21778817547935053,
+    "floor_area_squared": 0.02319318880503177,
+    "energy_intensity_ratio": 0.06839138890035164,
+    "building_age_squared": 0.17972060059978553,
+    "energy_star_rating_squared": 0.0072464038334722845,
+    "ghg_per_area": 0.08004191771839442,
+    "age_energy_star_interaction": 0.049317735210305066,
+    "area_energy_star_interaction": 0.04352673111608546,
+    "age_ghg_interaction": 0.05149641306313483
+}

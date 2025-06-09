@@ -37,6 +37,10 @@ from scipy.special import digamma, polygamma
 import networkx as nx
 from concurrent.futures import ProcessPoolExecutor
 import functools
+import shap
+from tqdm import tqdm
+import warnings
+warnings.filterwarnings('ignore')
 
 # Set seaborn style
 sns.set_theme(style="whitegrid")
@@ -122,7 +126,7 @@ class AdaptivePriorConfig:
     beta_0: float = 1e-6
     max_iter: int = 200
     tol: float = 1e-4
-    n_splits: int = 5
+    n_splits: int = 3
     random_state: int = 42
     prior_type: str = 'hierarchical'
     adaptation_rate: float = 0.1
@@ -878,6 +882,79 @@ def feature_engineering(df: pd.DataFrame) -> pd.DataFrame:
     
     return df
 
+def create_shap_analysis(X: np.ndarray, y: np.ndarray, feature_names: List[str], 
+                        model: AdaptivePriorARD, output_dir: str):
+    """Create SHAP analysis plots"""
+    logger.info("Computing SHAP values...")
+    
+    # Create a background dataset using k-means clustering
+    background = shap.kmeans(X, 10)
+    
+    # Initialize SHAP explainer
+    explainer = shap.KernelExplainer(model.predict, background)
+    
+    # Calculate SHAP values for a subset of data (for computational efficiency)
+    sample_size = min(1000, X.shape[0])
+    sample_indices = np.random.choice(X.shape[0], sample_size, replace=False)
+    X_sample = X[sample_indices]
+    
+    # Calculate SHAP values with progress bar
+    shap_values = explainer.shap_values(X_sample)
+    
+    # 1. Summary Plot
+    plt.figure(figsize=(12, 8))
+    shap.summary_plot(shap_values, X_sample, feature_names=feature_names, show=False)
+    plt.title('SHAP Summary Plot')
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, 'shap_summary.png'), dpi=300, bbox_inches='tight')
+    plt.close()
+    
+    # 2. Dependence Plots for top features
+    plt.figure(figsize=(15, 10))
+    importance = model.get_feature_importance()
+    top_features = np.argsort(importance)[-5:]  # Top 5 features
+    
+    for i, feat_idx in enumerate(top_features):
+        plt.subplot(2, 3, i+1)
+        shap.dependence_plot(feat_idx, shap_values, X_sample, 
+                           feature_names=feature_names, show=False)
+        plt.title(f'SHAP Dependence: {feature_names[feat_idx]}')
+    
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, 'shap_dependence.png'), dpi=300, bbox_inches='tight')
+    plt.close()
+    
+    # 3. Force Plot for individual samples
+    for i in range(min(5, len(X_sample))):
+        plt.figure(figsize=(20, 4))
+        shap.force_plot(explainer.expected_value, shap_values[i:i+1], X_sample[i:i+1],
+                       feature_names=feature_names, matplotlib=True, show=False)
+        plt.title(f'SHAP Force Plot (Sample {i+1})')
+        plt.tight_layout()
+        plt.savefig(os.path.join(output_dir, f'shap_force_sample_{i+1}.png'), dpi=300, bbox_inches='tight')
+        plt.close()
+    
+    # 4. Decision Plot
+    plt.figure(figsize=(12, 8))
+    shap.decision_plot(explainer.expected_value, shap_values[:5], X_sample[:5],
+                      feature_names=feature_names, show=False)
+    plt.title('SHAP Decision Plot (First 5 Samples)')
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, 'shap_decision.png'), dpi=300, bbox_inches='tight')
+    plt.close()
+    
+    # Save SHAP values for further analysis
+    np.save(os.path.join(output_dir, 'shap_values.npy'), shap_values)
+    
+    # Calculate and save SHAP importance
+    shap_importance = np.abs(shap_values).mean(axis=0)
+    shap_importance_dict = dict(zip(feature_names, shap_importance))
+    
+    with open(os.path.join(output_dir, 'shap_importance.json'), 'w') as f:
+        json.dump(shap_importance_dict, f, indent=4)
+    
+    logger.info("SHAP analysis completed and saved")
+
 def create_visualizations(X: np.ndarray, y: np.ndarray, feature_names: List[str], 
                          model: AdaptivePriorARD, output_dir: str):
     """
@@ -889,52 +966,56 @@ def create_visualizations(X: np.ndarray, y: np.ndarray, feature_names: List[str]
     # Set style for all plots
     plt.style.use('default')
     
-    # 1. Feature Importance Plot with proper error bars
-    plt.figure(figsize=(12, 8))
-    importance = model.get_feature_importance()
-    sorted_idx = np.argsort(importance)
-    
-    # Calculate uncertainty using posterior covariance
-    std_importance = np.sqrt(np.diag(model.S))
-    # Normalize uncertainties to match importance scale
-    std_importance = std_importance * (np.sum(importance) / np.sum(std_importance))
-    
-    plt.barh(range(len(feature_names)), importance[sorted_idx])
-    plt.errorbar(importance[sorted_idx], range(len(feature_names)),
-                xerr=std_importance[sorted_idx], fmt='none', color='black', alpha=0.3)
-    plt.yticks(range(len(feature_names)), [feature_names[i] for i in sorted_idx])
-    plt.xlabel('Normalised Feature Importance')
-    plt.title('Feature Importance Analysis')
-    plt.grid(True, alpha=0.3)
-    
-    # Use constrained_layout instead of tight_layout
-    plt.gcf().set_constrained_layout(True)
-    plt.savefig(os.path.join(output_dir, 'feature_importance.png'), dpi=300)
-    plt.close()
-    
-    # Create other plots in parallel using multiprocessing
-    plot_functions = [
-        functools.partial(create_correlation_heatmap, X, feature_names, output_dir),
-        functools.partial(create_interaction_network, X, feature_names, output_dir),
-        functools.partial(create_partial_dependence, X, y, feature_names, model, output_dir),
-        functools.partial(create_residual_analysis, X, y, model, output_dir),
-        functools.partial(create_uncertainty_analysis, X, y, model, output_dir),
-        functools.partial(create_importance_correlation, X, y, feature_names, importance, output_dir),
-        functools.partial(create_learning_curves, model, output_dir),
-        functools.partial(create_prediction_actual, X, y, model, output_dir),
-        functools.partial(create_uncertainty_distribution, X, y, model, output_dir),
-        functools.partial(create_group_importance, model, feature_names, output_dir),
-        functools.partial(create_calibration_plot, X, y, model, output_dir)
-    ]
-    
-    # Use a process pool to create plots in parallel
-    with ProcessPoolExecutor(max_workers=min(4, len(plot_functions))) as executor:
-        futures = [executor.submit(func) for func in plot_functions]
-        for future in futures:
-            try:
-                future.result()
-            except Exception as e:
-                logger.warning(f"Failed to create plot: {str(e)}")
+    # Create progress bar for visualization creation
+    with tqdm(total=12, desc="Creating visualizations") as pbar:
+        # 1. Feature Importance Plot
+        plt.figure(figsize=(12, 8))
+        importance = model.get_feature_importance()
+        sorted_idx = np.argsort(importance)
+        
+        std_importance = np.sqrt(np.diag(model.S))
+        std_importance = std_importance * (np.sum(importance) / np.sum(std_importance))
+        
+        plt.barh(range(len(feature_names)), importance[sorted_idx])
+        plt.errorbar(importance[sorted_idx], range(len(feature_names)),
+                    xerr=std_importance[sorted_idx], fmt='none', color='black', alpha=0.3)
+        plt.yticks(range(len(feature_names)), [feature_names[i] for i in sorted_idx])
+        plt.xlabel('Normalised Feature Importance')
+        plt.title('Feature Importance Analysis')
+        plt.grid(True, alpha=0.3)
+        plt.gcf().set_constrained_layout(True)
+        plt.savefig(os.path.join(output_dir, 'feature_importance.png'), dpi=300)
+        plt.close()
+        pbar.update(1)
+        
+        # Create other plots in parallel using multiprocessing
+        plot_functions = [
+            functools.partial(create_correlation_heatmap, X, feature_names, output_dir),
+            functools.partial(create_interaction_network, X, feature_names, output_dir),
+            functools.partial(create_partial_dependence, X, y, feature_names, model, output_dir),
+            functools.partial(create_residual_analysis, X, y, model, output_dir),
+            functools.partial(create_uncertainty_analysis, X, y, model, output_dir),
+            functools.partial(create_importance_correlation, X, y, feature_names, importance, output_dir),
+            functools.partial(create_learning_curves, model, output_dir),
+            functools.partial(create_prediction_actual, X, y, model, output_dir),
+            functools.partial(create_uncertainty_distribution, X, y, model, output_dir),
+            functools.partial(create_group_importance, model, feature_names, output_dir),
+            functools.partial(create_calibration_plot, X, y, model, output_dir)
+        ]
+        
+        # Use a process pool to create plots in parallel
+        with ProcessPoolExecutor(max_workers=min(4, len(plot_functions))) as executor:
+            futures = [executor.submit(func) for func in plot_functions]
+            for future in futures:
+                try:
+                    future.result()
+                    pbar.update(1)
+                except Exception as e:
+                    logger.warning(f"Failed to create plot: {str(e)}")
+        
+        # Create SHAP analysis
+        create_shap_analysis(X, y, feature_names, model, output_dir)
+        pbar.update(1)
 
 def create_correlation_heatmap(X: np.ndarray, feature_names: List[str], output_dir: str):
     """Create correlation heatmap with proper layout"""
@@ -1187,28 +1268,9 @@ def analyze_feature_interactions(X: np.ndarray, y: np.ndarray, feature_names: Li
                                model: AdaptivePriorARD, output_dir: str):
     """
     Perform comprehensive analysis of feature interactions and model performance.
-    
-    This function implements a detailed analysis pipeline that includes:
-    1. Feature importance analysis with uncertainty
-    2. Correlation analysis and visualisation
-    3. Feature interaction network analysis
-    4. Partial dependence analysis
-    5. Residual and uncertainty analysis
-    6. Model performance metrics
-    
-    The analysis provides insights into:
-    - Key drivers of building energy performance
-    - Complex feature interactions
-    - Model uncertainty and reliability
-    - Areas for potential improvement
-    
-    Args:
-        X: Input features (n_samples, n_features)
-        y: Target values (n_samples,)
-        feature_names: List of feature names
-        model: Fitted AdaptivePriorARD model
-        output_dir: Directory to save analysis results
     """
+    logger.info("Starting comprehensive feature analysis...")
+    
     # Create visualizations
     create_visualizations(X, y, feature_names, model, output_dir)
     
@@ -1218,6 +1280,7 @@ def analyze_feature_interactions(X: np.ndarray, y: np.ndarray, feature_names: Li
     target_correlations = [np.corrcoef(X[:, i], y)[0, 1] for i in range(X.shape[1])]
     
     # Calculate interaction strength
+    logger.info("Calculating feature interaction strengths...")
     interaction_strength = np.zeros((len(feature_names), len(feature_names)))
     for i, feat1 in enumerate(feature_names):
         for j, feat2 in enumerate(feature_names):
@@ -1225,6 +1288,13 @@ def analyze_feature_interactions(X: np.ndarray, y: np.ndarray, feature_names: Li
                 interaction_strength[i, j] = mutual_info_regression(
                     X[:, i].reshape(-1, 1), X[:, j].ravel()
                 )[0]
+    
+    # Load SHAP values if available
+    shap_values = None
+    shap_importance = None
+    if os.path.exists(os.path.join(output_dir, 'shap_values.npy')):
+        shap_values = np.load(os.path.join(output_dir, 'shap_values.npy'))
+        shap_importance = np.abs(shap_values).mean(axis=0)
     
     # Save comprehensive analysis to JSON
     analysis_results = {
@@ -1259,6 +1329,9 @@ def analyze_feature_interactions(X: np.ndarray, y: np.ndarray, feature_names: Li
         }
     }
     
+    if shap_importance is not None:
+        analysis_results['shap_importance'] = dict(zip(feature_names, shap_importance))
+    
     with open(os.path.join(output_dir, 'detailed_analysis.json'), 'w') as f:
         json.dump(analysis_results, f, indent=4, cls=NumpyEncoder)
     
@@ -1268,7 +1341,12 @@ def analyze_feature_interactions(X: np.ndarray, y: np.ndarray, feature_names: Li
     for feat, imp in sorted(zip(feature_names, importance), key=lambda x: x[1], reverse=True)[:5]:
         logger.info(f"{feat}: {imp:.4f} ± {std_importance[feature_names.index(feat)]:.4f}")
     
-    logger.info("\n2. Strongest Feature Interactions:")
+    if shap_importance is not None:
+        logger.info("\n2. Top Features by SHAP Importance:")
+        for feat, imp in sorted(zip(feature_names, shap_importance), key=lambda x: x[1], reverse=True)[:5]:
+            logger.info(f"{feat}: {imp:.4f}")
+    
+    logger.info("\n3. Strongest Feature Interactions:")
     strong_interactions = sorted(
         [(interaction, strength) 
          for interaction, strength in analysis_results['interaction_strength'].items()],
@@ -1278,69 +1356,107 @@ def analyze_feature_interactions(X: np.ndarray, y: np.ndarray, feature_names: Li
     for interaction, strength in strong_interactions:
         logger.info(f"{interaction}: {strength:.4f}")
     
-    logger.info("\n3. Model Performance Metrics:")
+    logger.info("\n4. Model Performance Metrics:")
     logger.info(f"RMSE: {analysis_results['model_metrics']['rmse']:.4f}")
     logger.info(f"R²: {analysis_results['model_metrics']['r2']:.4f}")
     logger.info(f"MAE: {analysis_results['model_metrics']['mae']:.4f}")
     logger.info(f"Mean Uncertainty: {analysis_results['model_metrics']['mean_std']:.4f}")
     logger.info(f"CRPS: {analysis_results['model_metrics']['crps']:.4f}")
     
-    logger.info("\n4. Prediction Interval Coverage:")
+    logger.info("\n5. Prediction Interval Coverage:")
     for level in ['50', '80', '90', '95', '99']:
         logger.info(f"PICP {level}%: {analysis_results['model_metrics'][f'picp_{level}']:.4f}")
     
-    logger.info("\n5. Prior Hyperparameters:")
+    logger.info("\n6. Prior Hyperparameters:")
     logger.info(f"Global Shrinkage: {analysis_results['prior_hyperparameters']['global_shrinkage']}")
     logger.info(f"Local Shrinkage: {analysis_results['prior_hyperparameters']['local_shrinkage']}")
     
-    logger.info("\n6. Feature Correlations with Target:")
+    logger.info("\n7. Feature Correlations with Target:")
     for feat, corr in sorted(zip(feature_names, target_correlations), 
                            key=lambda x: abs(x[1]), reverse=True)[:5]:
         logger.info(f"{feat}: {corr:.4f}")
+    
+    logger.info("\nAnalysis complete. Results saved to %s", output_dir)
 
 def train_and_evaluate_adaptive(X: np.ndarray, y: np.ndarray, feature_names: List[str],
                               output_dir: Optional[str] = None) -> Tuple[AdaptivePriorARD, dict]:
     """
     Train and evaluate the Adaptive Prior ARD model with comprehensive analysis.
-    
-    This function implements the complete training and evaluation pipeline:
-    1. Model training with cross-validation
-    2. Performance metrics calculation
-    3. Feature importance analysis
-    4. Uncertainty quantification
-    5. Results visualisation and saving
-    
-    Args:
-        X: Input features (n_samples, n_features)
-        y: Target values (n_samples,)
-        feature_names: List of feature names
-        output_dir: Optional directory to save results
-        
-    Returns:
-        model: Fitted AdaptivePriorARD model
-        metrics: Comprehensive model performance metrics
     """
     if output_dir is not None:
         os.makedirs(output_dir, exist_ok=True)
     
+    logger.info("Starting model training and evaluation...")
+    logger.info(f"Input data shape: X={X.shape}, y={y.shape}")
+    logger.info(f"Number of features: {len(feature_names)}")
+    
     # Initialise and train model
     config = AdaptivePriorConfig()
+    logger.info("Model configuration:")
+    logger.info(f"- Number of folds: {config.n_splits}")
+    logger.info(f"- Maximum iterations: {config.max_iter}")
+    logger.info(f"- Prior type: {config.prior_type}")
+    logger.info(f"- Using HMC: {config.use_hmc}")
+    logger.info(f"- Robust noise: {config.robust_noise}")
+    
     model = AdaptivePriorARD(config)
+    
+    # Train model with progress tracking
+    logger.info("Training model...")
     model.fit(X, y)
     
     # Get cross-validation metrics
     metrics = model.cv_results.mean().to_dict()
+    
+    # Print detailed fold-wise metrics
+    logger.info("\nFold-wise Performance Metrics:")
+    for fold in range(config.n_splits):
+        fold_metrics = model.cv_results.iloc[fold]
+        logger.info(f"\nFold {fold + 1}:")
+        logger.info(f"RMSE: {fold_metrics['rmse']:.4f}")
+        logger.info(f"R²: {fold_metrics['r2']:.4f}")
+        logger.info(f"MAE: {fold_metrics['mae']:.4f}")
+        logger.info(f"Mean Uncertainty: {fold_metrics['mean_std']:.4f}")
+        logger.info(f"CRPS: {fold_metrics['crps']:.4f}")
+    
+    # Print overall metrics
+    logger.info("\nOverall Performance Metrics:")
+    logger.info(f"Mean RMSE: {metrics['rmse']:.4f} ± {model.cv_results['rmse'].std():.4f}")
+    logger.info(f"Mean R²: {metrics['r2']:.4f} ± {model.cv_results['r2'].std():.4f}")
+    logger.info(f"Mean MAE: {metrics['mae']:.4f} ± {model.cv_results['mae'].std():.4f}")
+    logger.info(f"Mean Uncertainty: {metrics['mean_std']:.4f} ± {model.cv_results['mean_std'].std():.4f}")
+    logger.info(f"Mean CRPS: {metrics['crps']:.4f} ± {model.cv_results['crps'].std():.4f}")
+    
+    # Print prediction interval coverage
+    logger.info("\nPrediction Interval Coverage:")
+    for level in ['50', '80', '90', '95', '99']:
+        mean_coverage = metrics[f'picp_{level}']
+        std_coverage = model.cv_results[f'picp_{level}'].std()
+        logger.info(f"{level}% PICP: {mean_coverage:.4f} ± {std_coverage:.4f}")
     
     if output_dir is not None:
         # Save metrics
         with open(os.path.join(output_dir, 'metrics.json'), 'w') as f:
             json.dump(metrics, f, indent=4)
         
+        # Save fold-wise metrics
+        fold_metrics = model.cv_results.to_dict('records')
+        with open(os.path.join(output_dir, 'fold_metrics.json'), 'w') as f:
+            json.dump(fold_metrics, f, indent=4)
+        
         # Perform comprehensive analysis
         analyze_feature_interactions(X, y, feature_names, model, output_dir)
         
         # Save model
         model.save_model(os.path.join(output_dir, 'adaptive_prior_model.joblib'))
+        
+        # Save feature importance
+        importance = model.get_feature_importance()
+        importance_dict = dict(zip(feature_names, importance))
+        with open(os.path.join(output_dir, 'feature_importance.json'), 'w') as f:
+            json.dump(importance_dict, f, indent=4)
+        
+        logger.info(f"\nAll results saved to {output_dir}")
     
     return model, metrics
 
@@ -1352,12 +1468,15 @@ if __name__ == "__main__":
     target = "site_eui"
     
     # Load and preprocess data
+    logger.info(f"Loading data from {data_csv_path}")
     na_vals = ['No Value', '', 'NA', 'N/A', 'null', 'Null', 'nan', 'NaN']
     df = pd.read_csv(data_csv_path, na_values=na_vals, low_memory=False)
+    logger.info(f"Loaded {len(df)} samples with {len(df.columns)} features")
     
     # Enhanced feature engineering
-    logger.info("Performing feature engineering")
+    logger.info("Performing feature engineering...")
     df = feature_engineering(df)
+    logger.info("Feature engineering completed")
     
     # Select features for analysis
     features = [
@@ -1379,19 +1498,50 @@ if __name__ == "__main__":
     ]
     feature_names = features.copy()
     
+    logger.info(f"Selected {len(features)} features for analysis")
+    logger.info("Features: " + ", ".join(features))
+    
     X = df[features].values.astype(np.float32)
     y = df[target].values.astype(np.float32).reshape(-1)
     
+    # Print data statistics
+    logger.info("\nData Statistics:")
+    logger.info(f"X shape: {X.shape}")
+    logger.info(f"y shape: {y.shape}")
+    logger.info(f"X mean: {X.mean():.4f}")
+    logger.info(f"X std: {X.std():.4f}")
+    logger.info(f"y mean: {y.mean():.4f}")
+    logger.info(f"y std: {y.std():.4f}")
+    
     # Train and evaluate model
     results_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'results_groupprior')
+    logger.info(f"\nTraining model and saving results to {results_dir}")
     model, metrics = train_and_evaluate_adaptive(X, y, feature_names, output_dir=results_dir)
     
     # Predict on all data for CSV output
+    logger.info("\nGenerating predictions for all data...")
     X_scaled = model.scaler_X.transform(X)
     y_pred, y_std = model.predict(X_scaled, return_std=True)
     y_pred_orig = model.scaler_y.inverse_transform(y_pred.reshape(-1, 1)).ravel()
     y_std_orig = y_std  # Already in original scale due to linearity of std in ARD
     y_true_orig = y  # Already in original scale
+    
+    # Calculate and print prediction statistics
+    logger.info("\nPrediction Statistics:")
+    logger.info(f"Mean prediction: {y_pred_orig.mean():.4f}")
+    logger.info(f"Std of predictions: {y_pred_orig.std():.4f}")
+    logger.info(f"Mean uncertainty: {y_std_orig.mean():.4f}")
+    logger.info(f"Std of uncertainty: {y_std_orig.std():.4f}")
+    
+    # Calculate and print error metrics
+    mae = mean_absolute_error(y_true_orig, y_pred_orig)
+    rmse = np.sqrt(mean_squared_error(y_true_orig, y_pred_orig))
+    r2 = r2_score(y_true_orig, y_pred_orig)
+    
+    logger.info("\nOverall Error Metrics:")
+    logger.info(f"MAE: {mae:.4f}")
+    logger.info(f"RMSE: {rmse:.4f}")
+    logger.info(f"R²: {r2:.4f}")
     
     # Save predictions with uncertainty to CSV
     output_csv = os.path.join(results_dir, 'ard_predictions_with_uncertainty.csv')
@@ -1401,6 +1551,6 @@ if __name__ == "__main__":
         'y_std': y_std_orig
     })
     output_df.to_csv(output_csv, index=False)
-    logger.info(f"Predictions with uncertainty saved to {output_csv}")
+    logger.info(f"\nPredictions with uncertainty saved to {output_csv}")
     
-    logger.info("Complete. Results saved to %s", results_dir) 
+    logger.info("\nAnalysis complete. All results saved to %s", results_dir) 
