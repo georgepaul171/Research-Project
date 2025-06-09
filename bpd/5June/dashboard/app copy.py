@@ -12,7 +12,6 @@ from sklearn.preprocessing import StandardScaler
 # Page config
 st.set_page_config(
     page_title="Group Prior ARD Model Analysis",
-    page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded"
 )

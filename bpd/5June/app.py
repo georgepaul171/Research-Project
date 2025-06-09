@@ -8,11 +8,17 @@ import os
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import RBF, WhiteKernel
 from sklearn.preprocessing import StandardScaler
+import seaborn as sns
+import matplotlib.pyplot as plt
+import io
+import base64
+import time
+from PIL import Image
 
 # Page config
 st.set_page_config(
     page_title="Group Prior ARD Model Analysis",
-    page_icon="📊",
+    page_icon="",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -70,6 +76,17 @@ with st.sidebar:
     st.markdown("- Feature Analysis")
     st.markdown("- Prior Analysis")
     st.markdown("- Predictions")
+    
+    st.markdown("---")
+    st.markdown("### Data Upload")
+    uploaded_file = st.file_uploader("Upload your data (CSV format)", type=['csv'])
+    if uploaded_file is not None:
+        try:
+            data = pd.read_csv(uploaded_file)
+            st.success("Data uploaded successfully!")
+            st.session_state['uploaded_data'] = data
+        except Exception as e:
+            st.error(f"Error uploading file: {str(e)}")
 
 # Title and Description
 st.title("Group Prior ARD Model Analysis")
@@ -108,57 +125,52 @@ def initialize_model():
     )
     return model
 
+# Add help tooltips
+def add_help_tooltip(text, help_text):
+    return f"{text} ℹ️", help_text
+
 # Tab 1: Model Overview
 with tab1:
     st.header("1. Model Performance")
     metrics = analysis_results['model_metrics']
 
-    # Create metric cards
+    # Add help tooltips to metrics
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        st.metric("RMSE", f"{metrics['rmse']:.2f}")
+        st.metric(*add_help_tooltip("RMSE", "Root Mean Square Error: Measures the average magnitude of prediction errors"))
     with col2:
-        st.metric("R² Score", f"{metrics['r2']:.3f}")
+        st.metric(*add_help_tooltip("R² Score", "Coefficient of Determination: Measures the proportion of variance explained by the model"))
     with col3:
-        st.metric("MAE", f"{metrics['mae']:.2f}")
+        st.metric(*add_help_tooltip("MAE", "Mean Absolute Error: Measures the average absolute difference between predictions and actual values"))
     with col4:
-        st.metric("Mean Uncertainty", f"{metrics['mean_std']:.2f}")
+        st.metric(*add_help_tooltip("Mean Uncertainty", "Average prediction uncertainty across all samples"))
 
-    # Prediction Interval Coverage
-    st.subheader("Prediction Interval Coverage")
-    picp_data = {
-        'Coverage Level': ['50%', '80%', '90%', '95%', '99%'],
-        'Empirical Coverage': [
-            metrics['picp_50'],
-            metrics['picp_80'],
-            metrics['picp_90'],
-            metrics['picp_95'],
-            metrics['picp_99']
-        ],
-        'Target Coverage': [0.5, 0.8, 0.9, 0.95, 0.99]
-    }
+    # Add residual analysis plot
+    st.subheader("Residual Analysis")
+    residual_img_path = os.path.join(results_dir, "residual_analysis.png")
+    if os.path.exists(residual_img_path):
+        image = Image.open(residual_img_path)
+        st.image(image, caption="Residual Analysis", use_container_width=True)
+    else:
+        st.warning("Residual analysis plot not found.")
 
-    fig = go.Figure()
-    fig.add_trace(go.Bar(
-        name='Empirical Coverage',
-        x=picp_data['Coverage Level'],
-        y=picp_data['Empirical Coverage'],
-        marker_color='rgb(55, 83, 109)'
-    ))
-    fig.add_trace(go.Scatter(
-        name='Target Coverage',
-        x=picp_data['Coverage Level'],
-        y=picp_data['Target Coverage'],
-        mode='lines+markers',
-        line=dict(color='red', dash='dash')
-    ))
-    fig.update_layout(
-        title='Prediction Interval Coverage',
-        xaxis_title='Coverage Level',
-        yaxis_title='Coverage',
-        showlegend=True
-    )
-    st.plotly_chart(fig, use_container_width=True)
+    # Add calibration plot
+    st.subheader("Calibration Plot")
+    calibration_img_path = os.path.join(results_dir, "calibration_plot.png")
+    if os.path.exists(calibration_img_path):
+        image = Image.open(calibration_img_path)
+        st.image(image, caption="Calibration Plot", use_container_width=True)
+    else:
+        st.warning("Calibration plot not found.")
+
+    # Add learning curves plot
+    st.subheader("Learning Curves")
+    learning_img_path = os.path.join(results_dir, "learning_curves.png")
+    if os.path.exists(learning_img_path):
+        image = Image.open(learning_img_path)
+        st.image(image, caption="Learning Curves", use_container_width=True)
+    else:
+        st.warning("Learning curves plot not found.")
 
 # Tab 2: Feature Analysis
 with tab2:
@@ -166,106 +178,56 @@ with tab2:
 
     # Feature Importance
     st.subheader("Feature Importance")
-    importance_data = pd.DataFrame({
-        'Feature': list(analysis_results['feature_importance'].keys()),
-        'Importance': list(analysis_results['feature_importance'].values()),
-        'Uncertainty': list(analysis_results['feature_importance_std'].values())
-    })
-    importance_data = importance_data.sort_values('Importance', ascending=True)
-
-    fig = px.bar(
-        importance_data,
-        x='Importance',
-        y='Feature',
-        error_x='Uncertainty',
-        orientation='h',
-        title='Feature Importance with Uncertainty'
-    )
-    st.plotly_chart(fig, use_container_width=True)
+    importance_img_path = os.path.join(results_dir, "feature_importance.png")
+    if os.path.exists(importance_img_path):
+        image = Image.open(importance_img_path)
+        st.image(image, caption="Feature Importance", use_container_width=True)
+    else:
+        st.warning("Feature importance plot not found.")
 
     # Feature Correlations
     st.subheader("Feature Correlations with Target")
-    correlation_data = pd.DataFrame({
-        'Feature': list(analysis_results['target_correlations'].keys()),
-        'Correlation': list(analysis_results['target_correlations'].values())
-    })
-    correlation_data = correlation_data.sort_values('Correlation', ascending=True)
+    corr_img_path = os.path.join(results_dir, "importance_vs_correlation.png")
+    if os.path.exists(corr_img_path):
+        image = Image.open(corr_img_path)
+        st.image(image, caption="Feature Importance vs Correlation", use_container_width=True)
+    else:
+        st.warning("Importance vs Correlation plot not found.")
 
-    fig = px.bar(
-        correlation_data,
-        x='Correlation',
-        y='Feature',
-        orientation='h',
-        title='Feature Correlations with Target Variable'
-    )
-    st.plotly_chart(fig, use_container_width=True)
+    # Feature Correlation Matrix
+    st.subheader("Feature Correlation Matrix")
+    correlation_img_path = os.path.join(results_dir, "correlation_heatmap.png")
+    if os.path.exists(correlation_img_path):
+        image = Image.open(correlation_img_path)
+        st.image(image, caption="Feature Correlation Matrix", use_container_width=True)
+    else:
+        st.warning("Correlation heatmap not found.")
 
-    # Feature Distribution Analysis
+    # Feature Distribution Analysis (optional: keep or remove if you have a plot)
     st.subheader("Feature Distribution Analysis")
-    if 'feature_distributions' in analysis_results:
-        selected_feature = st.selectbox(
-            "Select Feature to Analyze",
-            options=list(analysis_results['feature_distributions'].keys())
-        )
-        
-        dist_data = analysis_results['feature_distributions'][selected_feature]
-        fig = go.Figure()
-        fig.add_trace(go.Histogram(
-            x=dist_data['values'],
-            name='Distribution',
-            nbinsx=30
-        ))
-        fig.update_layout(
-            title=f'Distribution of {selected_feature}',
-            xaxis_title=selected_feature,
-            yaxis_title='Frequency'
-        )
-        st.plotly_chart(fig, use_container_width=True)
+    dist_img_path = os.path.join(results_dir, "uncertainty_distribution.png")
+    if os.path.exists(dist_img_path):
+        image = Image.open(dist_img_path)
+        st.image(image, caption="Uncertainty Distribution", use_container_width=True)
+    else:
+        st.warning("Uncertainty distribution plot not found.")
 
 # Tab 3: Prior Analysis
 with tab3:
     st.header("3. Prior Analysis")
 
-    # Group Prior Hyperparameters
+    # Group Prior Hyperparameters (optional: keep code or use image if available)
     st.subheader("Group Prior Hyperparameters")
-    prior_data = {
-        'Group': list(analysis_results['prior_hyperparameters']['global_shrinkage'].keys()),
-        'Global Shrinkage': list(analysis_results['prior_hyperparameters']['global_shrinkage'].values()),
-        'Local Shrinkage': list(analysis_results['prior_hyperparameters']['local_shrinkage'].values())
-    }
+    group_img_path = os.path.join(results_dir, "group_importance.png")
+    if os.path.exists(group_img_path):
+        image = Image.open(group_img_path)
+        st.image(image, caption="Group Importance", use_container_width=True)
+    else:
+        st.warning("Group importance plot not found.")
 
-    fig = go.Figure()
-    fig.add_trace(go.Bar(
-        name='Global Shrinkage',
-        x=prior_data['Group'],
-        y=prior_data['Global Shrinkage'],
-        marker_color='rgb(55, 83, 109)'
-    ))
-    fig.add_trace(go.Bar(
-        name='Local Shrinkage',
-        x=prior_data['Group'],
-        y=prior_data['Local Shrinkage'],
-        marker_color='rgb(26, 118, 255)'
-    ))
-    fig.update_layout(
-        title='Group Prior Hyperparameters',
-        xaxis_title='Feature Group',
-        yaxis_title='Shrinkage Value',
-        barmode='group'
-    )
-    st.plotly_chart(fig, use_container_width=True)
-
-    # Prior Sensitivity Analysis
+    # Prior Sensitivity Analysis (optional: add if you have a plot)
     st.subheader("Prior Sensitivity Analysis")
-    if 'prior_sensitivity' in analysis_results:
-        sensitivity_data = pd.DataFrame(analysis_results['prior_sensitivity'])
-        fig = px.line(
-            sensitivity_data,
-            x='parameter_value',
-            y='performance_metric',
-            title='Prior Parameter Sensitivity'
-        )
-        st.plotly_chart(fig, use_container_width=True)
+    # If you have a plot, display it here
 
 # Tab 4: Predictions
 with tab4:
@@ -302,34 +264,41 @@ with tab4:
                 help=f"Enter the value for {feature}"
             )
     
+    # Add progress bar for prediction
     if st.button("Make Prediction"):
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+        
         try:
             # Prepare input data
+            status_text.text("Preparing input data...")
             input_data = pd.DataFrame([feature_inputs])
+            time.sleep(0.5)  # Add small delay for visual feedback
+            progress_bar.progress(25)
             
             # Ensure all required features are present
+            status_text.text("Validating features...")
             missing_features = set(feature_names) - set(input_data.columns)
             if missing_features:
                 st.error(f"Missing features: {', '.join(missing_features)}")
                 st.stop()
+            time.sleep(0.5)
+            progress_bar.progress(50)
             
             # Scale the input data
+            status_text.text("Scaling input data...")
             scaler = StandardScaler()
             input_scaled = scaler.fit_transform(input_data)
-            
-            # Initialize and train a simple model for demonstration
-            model = initialize_model()
-            
-            # Create some dummy training data based on feature importance
-            n_samples = 100
-            X_train = np.random.randn(n_samples, len(feature_names))
-            y_train = np.sum(X_train * np.array(list(analysis_results['feature_importance'].values())), axis=1)
-            
-            # Train the model
-            model.fit(X_train, y_train)
+            time.sleep(0.5)
+            progress_bar.progress(75)
             
             # Make prediction
+            status_text.text("Making prediction...")
+            model = initialize_model()
             prediction, uncertainty = model.predict(input_scaled, return_std=True)
+            time.sleep(0.5)
+            progress_bar.progress(100)
+            status_text.text("Prediction complete!")
             
             # Display results
             st.markdown("### Prediction Results")
@@ -355,9 +324,37 @@ with tab4:
                     <p>Upper bound: {upper:.2f}</p>
                 </div>
                 """, unsafe_allow_html=True)
+                
+            # Add download button for predictions
+            if st.button("Download Predictions"):
+                prediction_df = pd.DataFrame({
+                    'Feature': list(feature_inputs.keys()),
+                    'Value': list(feature_inputs.values())
+                })
+                prediction_df['Predicted Value'] = prediction[0]
+                prediction_df['Uncertainty'] = uncertainty[0]
+                st.markdown(download_dataframe(prediction_df, 'predictions.csv'), unsafe_allow_html=True)
+                
         except Exception as e:
             st.error(f"Error making prediction: {str(e)}")
+            progress_bar.empty()
+            status_text.empty()
 
 # Footer
 st.markdown("---")
-st.markdown("Group Prior ARD Model Analysis Dashboard | Created with Streamlit") 
+st.markdown("Group Prior ARD Model Analysis Dashboard | Created with Streamlit")
+
+# Add new functions after the existing imports
+def plot_correlation_matrix(correlation_data):
+    # Create correlation matrix
+    corr_matrix = pd.DataFrame(correlation_data).set_index('Feature')
+    plt.figure(figsize=(10, 8))
+    sns.heatmap(corr_matrix, annot=True, cmap='coolwarm', center=0)
+    plt.title('Feature Correlation Matrix')
+    return plt
+
+def download_dataframe(df, filename):
+    csv = df.to_csv(index=False)
+    b64 = base64.b64encode(csv.encode()).decode()
+    href = f'<a href="data:file/csv;base64,{b64}" download="{filename}">Download CSV</a>'
+    return href 
