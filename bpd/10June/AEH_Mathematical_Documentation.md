@@ -1,5 +1,38 @@
 # Mathematical Documentation of Adaptive Elastic Horseshoe (AEH) Prior
 
+## Why These Properties Matter in the Energy Domain
+
+Building energy datasets are characterised by high heterogeneity, complex feature interactions, and varying levels of sparsity and density among predictors. In this domain:
+
+- **Feature Importance is Highly Variable:** Some features (e.g., building size, HVAC type) have strong, direct effects, while others (e.g., occupancy, weather) may have subtle or context-dependent impacts. A prior must adaptively balance between selecting a few strong predictors and allowing for dense, distributed effects.
+
+- **Sparsity and Density Coexist:** Energy data often contains both sparse signals (few important features) and dense signals (many small but relevant features). Traditional priors may over-shrink or under-shrink, missing important patterns.
+
+- **Uncertainty Quantification:** Decisions in energy management and policy require not just point estimates, but also reliable measures of uncertainty. The prior must provide robust uncertainty quantification, especially when data is noisy or incomplete.
+
+- **Multi-Scale and Correlated Features:** Features can be correlated and operate at different scales (e.g., hourly weather vs. annual building characteristics). The prior must be stable and flexible enough to handle these complexities.
+
+The AEH prior addresses these needs by:
+- **Adaptive Regularization:** Balancing L1 (sparse) and L2 (dense) penalties to match the underlying data structure.
+- **Heavy-Tailed Shrinkage:** Allowing large coefficients for important features while strongly shrinking irrelevant ones, thanks to the horseshoe component.
+- **Momentum-Based Updates:** Ensuring stable and efficient learning, even in the presence of noisy or highly variable data.
+- **Robust Uncertainty Quantification:** Providing reliable estimates of both feature importance and uncertainty.
+
+These properties make the AEH prior especially well-suited for the challenges of building energy analysis, enabling more accurate, interpretable, and actionable models.
+
+## Automatic Relevance Determination (ARD) in the AEH Prior
+
+The AEH prior incorporates the principle of Automatic Relevance Determination (ARD), a Bayesian approach that allows the model to automatically infer the importance of each feature. In classical ARD, each feature is assigned its own relevance (shrinkage) parameter, so that unimportant features are strongly shrunk towards zero while important features are retained.
+
+In the AEH prior, this is achieved through the use of local shrinkage parameters `lambda_i` for each feature weight `w_i`. These parameters are updated adaptively during training:
+
+- Each `lambda_i` acts as a feature-specific regularization strength.
+- If a feature is unimportant, its `lambda_i` will decrease, leading to stronger shrinkage of `w_i` towards zero.
+- If a feature is important, its `lambda_i` will remain larger, allowing `w_i` to stay nonzero.
+- The update rule `lambda_{t+1} = lambda_t + momentum_{t+1}` ensures that each feature's relevance is learned from the data.
+
+This ARD-like mechanism enables the AEH prior to perform **automatic feature selection and relevance weighting**, making it especially effective for high-dimensional and heterogeneous datasets such as those found in the energy domain.
+
 ## 1. Mathematical Formulation
 
 ### 1.1 Prior Structure
@@ -104,43 +137,4 @@ To ensure numerical stability, the following operations are performed:
 
 2. **Small Constant Addition**:
 
-   `stable_div(a, b) = a / (b + epsilon)`
-   
-   where `epsilon = 1e-10` is a small constant.
-
-### 3.2 Computational Complexity
-
-The computational complexity of the AEH prior is:
-- Time complexity: O(p) per update, where p is the number of features
-- Space complexity: O(p) for storing parameters and momentum
-
-## 4. Proofs
-
-### 4.1 Bounded Updates Proof
-
-**Theorem:** The momentum updates in the AEH prior are bounded.
-
-**Proof:**
-
-```
-||momentum_{t+1}|| = ||rho * momentum_t + gamma * grad_w log p(w_t)||
-                  <= rho * ||momentum_t|| + gamma * ||grad_w log p(w_t)||
-                  <= rho * (gamma / (1 - rho)) * ||grad_w log p(w_{t-1})|| + gamma * ||grad_w log p(w_t)||
-                  <= gamma / (1 - rho) * ||grad_w log p(w_t)||
-```
-
-### 4.2 Convergence Proof
-
-**Theorem:** The AEH prior's update mechanism converges to a local maximum of the posterior.
-
-**Proof:**
-1. The momentum updates are bounded (from previous proof)
-2. The parameter updates are bounded by the clipping operations
-3. The objective function is continuous and differentiable
-4. By the bounded convergence theorem, the sequence must converge to a local maximum
-
-## 5. References
-
-1. Carvalho, C. M., Polson, N. G., & Scott, J. G. (2010). "The horseshoe estimator for sparse signals"
-2. Zou, H., & Hastie, T. (2005). "Regularization and variable selection via the elastic net"
-3. Kingma, D. P., & Ba, J. (2014). "Adam: A method for stochastic optimization" 
+   `
