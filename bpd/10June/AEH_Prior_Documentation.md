@@ -6,6 +6,41 @@ The Adaptive Elastic Horseshoe (AEH) prior is a novel Bayesian prior that combin
 
 The AEH prior represents a significant advancement in Bayesian modeling for building energy analysis. Traditional priors often struggle with the complex, multi-scale nature of energy data, where features can exhibit both sparse and dense patterns simultaneously. The AEH prior addresses this challenge by introducing an adaptive mechanism that can seamlessly transition between different regularization regimes based on the underlying data structure.
 
+## Architecture
+
+```mermaid
+graph TD
+    subgraph "AEH Prior Architecture"
+        A[Input Features] --> B[Elastic Net Component]
+        A --> C[Horseshoe Component]
+        
+        subgraph "Elastic Net"
+            B --> D[L1 Regularization]
+            B --> E[L2 Regularization]
+            D --> F[Adaptive Mixing α]
+            E --> F
+        end
+        
+        subgraph "Horseshoe"
+            C --> G[Global Shrinkage τ]
+            C --> H[Local Shrinkage λ]
+        end
+        
+        F --> I[Combined Prior]
+        G --> I
+        H --> I
+        
+        subgraph "Adaptive Updates"
+            I --> J[Momentum Update]
+            J --> K[Parameter Updates]
+            K --> L[α, β, λ, τ Updates]
+        end
+        
+        L --> B
+        L --> C
+    end
+```
+
 ## Mathematical Formulation
 
 ### Prior Structure
