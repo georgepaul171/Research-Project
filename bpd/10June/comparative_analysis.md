@@ -1,4 +1,4 @@
-# Detailed Comparative Analysis: Adaptive Prior ARD Models (5June vs 10June)
+# Comparative Analysis: (5June vs 10June)
 
 ## 1. Model Architecture and Prior Specifications
 
@@ -17,7 +17,7 @@ group_prior_types = {
 **10June Model (Adaptive Elastic Horseshoe Prior)**:
 ```python
 group_prior_types = {
-    'energy': 'adaptive_elastic_horseshoe',  # Enhanced prior
+    'energy': 'adaptive_elastic_horseshoe',  # MY prior :)
     'building': 'hierarchical',
     'interaction': 'spike_slab'
 }
@@ -25,7 +25,7 @@ group_prior_types = {
 
 ### 1.2 Theoretical Foundation of the New Prior
 
-The `adaptive_elastic_horseshoe` prior combines three powerful statistical concepts:
+The `adaptive_elastic_horseshoe` prior combines three interesting concepts:
 
 1. **Horseshoe Prior Properties**:
    - Heavy-tailed distribution for global shrinkage
@@ -55,7 +55,7 @@ The `adaptive_elastic_horseshoe` prior combines three powerful statistical conce
 **Technical Analysis**:
 - The increase in RMSE (0.4497) represents approximately 7.2% degradation in point prediction accuracy
 - The R² reduction of 0.0082 indicates a small but measurable decrease in explained variance
-- These changes suggest the new prior is more conservative in its predictions
+- Such changes in metrics suggest the new prior is more conservative in its predictions
 
 ### 2.2 Uncertainty Quantification
 
