@@ -566,7 +566,7 @@ class AdaptivePriorARD:
         current_w = initial_w.copy()
         acceptance_rates = []
         
-        # Initialize momentum with increased variance
+        # Initialise momentum with increased variance
         current_momentum = np.random.normal(0, 2.0, size=n_features)  # Increased from 1.5 to 2.0
         
         # Perform HMC steps

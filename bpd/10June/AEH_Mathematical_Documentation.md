@@ -7,9 +7,9 @@
 The AEH prior combines three key components:
 
 1. **Elastic Net Component**:
-   ```math
+   \[
    \text{elastic\_penalty}(w) = \alpha \|w\|_1 + (1-\alpha)\|w\|_2^2
-   ```
+   \]
    where:
    - $w \in \mathbb{R}^p$ is the parameter vector
    - $\alpha \in [0.1, 0.9]$ is the adaptive mixing parameter
