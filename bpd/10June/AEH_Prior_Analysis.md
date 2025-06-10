@@ -1,14 +1,14 @@
-# Adaptive Elastic Horseshoe (AEH) Prior: Performance Analysis
+# Adaptive Elastic Horseshoe Prior: Performance Analysis
 
 ## Overview of Results
 
-This document provides a comprehensive analysis of the Adaptive Elastic Horseshoe (AEH) prior's performance in building energy analysis. The analysis examines model metrics, feature importance, uncertainty quantification, and various visualizations to understand the prior's effectiveness.
+This document provides an analysis of the Adaptive Elastic Horseshoe (AEH) prior's performance in building energy analysis. The examines model metrics, feature importance, uncertainty quantification, and various visualisations to understand the prior's effectiveness.
 
 ## Model Performance Metrics
 
 ### Core Metrics
 - **R² Score**: 0.937 (93.7%)
-  - Indicates excellent model fit
+  - Indicates good model fit
   - Shows strong predictive power
   - Suggests the model captures most of the variance in the data
 
@@ -20,7 +20,7 @@ This document provides a comprehensive analysis of the Adaptive Elastic Horsesho
 
 ### Uncertainty Quantification
 - **Mean Standard Deviation**: 2.94
-  - Indicates reasonable uncertainty estimates
+  - Indicates reasonable uncertainty estimates, especially for such noisy data
   - Suggests well-calibrated predictions
 
 - **Prediction Interval Coverage**:
@@ -57,7 +57,7 @@ Strongest Correlations:
 4. `fuel_eui`: 0.626
 5. `energy_star_rating_squared`: -0.578
 
-## Visualization Analysis
+## Visualisation Analysis
 
 ### 1. Feature Importance Plot
 - Shows clear dominance of floor area features
@@ -69,14 +69,12 @@ Strongest Correlations:
   - Floor area features
   - Energy consumption metrics
   - Building age features
-- Shows complex interaction patterns
 
 ### 3. Feature Interaction Network
 - Identifies key interaction clusters:
   - Floor area and building characteristics
   - Energy consumption and emissions
   - Building age and energy performance
-- Demonstrates the complex relationships in the data
 
 ### 4. Partial Dependence Plots
 - Shows non-linear relationships for:
@@ -91,7 +89,7 @@ Strongest Correlations:
   - Indicates homoscedasticity
 - Q-Q Plot:
   - Suggests approximately normal distribution
-  - Some deviation in tails
+  - Some deviation in tails, as expected in building dat
 - Residual Distribution:
   - Approximately normal
   - Slight right skew
@@ -122,7 +120,7 @@ Strongest Correlations:
 
 ### 9. Learning Curves
 - Shows stable learning across folds
-- Indicates good generalization
+- Indicates good generalisation
 - Demonstrates consistent performance
 
 ## Prior Hyperparameters
@@ -130,12 +128,12 @@ Strongest Correlations:
 ### Energy Group
 - Global Shrinkage: 0.0101
 - Local Shrinkage: 0.0058
-- Indicates strong regularization for energy features
+- Indicates strong regularisation for energy features
 
 ### Building Group
 - Global Shrinkage: 0.7492
 - Local Shrinkage: 1.8745
-- Shows moderate regularization for building features
+- Shows moderate regularisation for building features
 
 ## Key Findings
 
@@ -163,7 +161,7 @@ Strongest Correlations:
 
 1. **Adaptive Learning**:
    - Successfully adapts to feature importance
-   - Maintains stability in optimization
+   - Maintains stability in optimisation
    - Provides robust feature selection
 
 2. **Uncertainty Handling**:
@@ -184,7 +182,7 @@ Strongest Correlations:
    - More consistent uncertainty estimates
 
 2. **Feature Selection**:
-   - Consider stronger regularization for some interactions
+   - Consider stronger regularisation for some interactions
    - Better handling of highly correlated features
    - More aggressive shrinkage for some energy features
 
@@ -210,11 +208,11 @@ The overwhelming importance of floor area features (`floor_area_squared` and `fl
 The significant role of energy metrics (`ghg_emissions_int_log`, `fuel_eui`, `electric_eui`) indicates:
 - **Emissions-Energy Link**: Strong correlation (0.939) between GHG emissions and energy use suggests:
   - Energy efficiency directly impacts environmental performance
-  - Carbon reduction strategies should focus on energy optimization
+  - Carbon reduction strategies should focus on energy optimisation
 - **Fuel vs. Electric Split**: Different importance of fuel and electric EUI suggests:
-  - Different optimization strategies needed for different energy types
+  - Different optimisation strategies needed for different energy types
   - Potential for fuel switching opportunities
-  - Importance of energy mix optimization
+  - Importance of energy mix optimisation
 
 #### 3. Building Age Effects
 The interaction between building age and energy performance reveals:
@@ -222,7 +220,7 @@ The interaction between building age and energy performance reveals:
   - Older buildings have different energy consumption patterns
   - Age-related degradation affects energy efficiency
   - Retrofit opportunities in older buildings
-- **Modernization Impact**: The negative correlation with energy star rating suggests:
+- **Modernisation Impact**: The negative correlation with energy star rating suggests:
   - Modern buildings show better energy performance
   - Building updates can significantly improve efficiency
   - Importance of regular maintenance and upgrades
@@ -258,7 +256,7 @@ The interaction network reveals complex relationships:
 - **Floor Area Effects**:
   - Strong interaction with energy consumption
   - Different scaling for different building types
-  - Importance of space utilization efficiency
+  - Importance of space utilisation efficiency
 - **Building Characteristics**:
   - Age-energy star rating interaction
   - Impact of building design on energy use
@@ -280,11 +278,11 @@ The GHG emissions relationships show:
 #### 1. Energy Management
 The model's insights can be applied to:
 - **Building Operations**:
-  - Optimize energy use based on building size
+  - Optimise energy use based on building size
   - Implement targeted efficiency measures
   - Monitor and adjust energy consumption
 - **Retrofit Planning**:
-  - Prioritize buildings for upgrades
+  - Prioritise buildings for upgrades
   - Select appropriate efficiency measures
   - Estimate energy savings potential
 
@@ -293,7 +291,7 @@ The results support:
 - **Energy Standards**:
   - Size-specific efficiency requirements
   - Age-based retrofit mandates
-  - Energy mix optimization guidelines
+  - Energy mix optimisation guidelines
 - **Incentive Programs**:
   - Targeted energy efficiency incentives
   - Building upgrade support
@@ -336,7 +334,7 @@ Potential extensions to:
 
 ## Conclusion
 
-The Adaptive Elastic Horseshoe prior has demonstrated excellent performance in building energy analysis. It successfully combines the strengths of elastic net regularization and horseshoe priors while maintaining stability and providing good uncertainty quantification. The prior shows particular strength in feature selection and handling complex interactions, making it well-suited for building energy analysis.
+The Adaptive Elastic Horseshoe prior has demonstrated excellent performance in building energy analysis. It successfully combines the strengths of elastic net regularisation and horseshoe priors while maintaining stability and providing good uncertainty quantification. The prior shows particular strength in feature selection and handling complex interactions, making it well-suited for building energy analysis.
 
 ## Future Work
 
