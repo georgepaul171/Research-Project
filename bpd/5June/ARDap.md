@@ -136,6 +136,65 @@ p_lambda_j = "Half-Cauchy(0, 1)"
 p_tau = "Half-Cauchy(0, 1)"
 ```
 
+### 3. Prior Selection Rationale for Energy Data
+
+The choice of priors in this model is specifically tailored to address the unique characteristics of building energy data:
+
+1. **Hierarchical Prior for Building Characteristics**
+   - Building features (age, size, type) often exhibit strong hierarchical relationships
+   - The hierarchical structure allows for:
+     - Group-wise shrinkage of related building parameters
+     - Automatic handling of varying scales between different building types
+     - Robust handling of missing or uncertain building metadata
+   - Particularly suitable for building energy data due to:
+     - Natural grouping of building characteristics
+     - Varying reliability of different building parameters
+     - Need for adaptive shrinkage based on data quality
+
+2. **Horseshoe Prior for Energy Features**
+   - Energy consumption patterns often follow heavy-tailed distributions
+   - The horseshoe prior is ideal because:
+     - It handles the sparsity in energy-related features effectively
+     - Provides strong shrinkage for irrelevant energy parameters
+     - Maintains uncertainty for important energy drivers
+   - Well-suited for energy data due to:
+     - Presence of extreme energy consumption values
+     - Need for robust feature selection in energy parameters
+     - Handling of complex energy-related interactions
+
+3. **Spike-Slab Prior for Interaction Terms**
+   - Building-energy interactions are often sparse but important
+   - The spike-slab prior is chosen because:
+     - It explicitly models feature inclusion/exclusion
+     - Handles the binary nature of many building-energy interactions
+     - Provides clear feature selection decisions
+   - Particularly valuable for energy data because:
+     - Many potential interactions are irrelevant
+     - Some interactions are crucial for energy performance
+     - Need for interpretable feature selection in energy models
+
+4. **Robust Noise Modeling**
+   - Energy data often contains outliers and non-Gaussian noise
+   - Student's t distribution is used because:
+     - It handles heavy-tailed noise in energy measurements
+     - Provides robustness against outliers in energy consumption data
+     - Better models the uncertainty in energy measurements
+   - Essential for energy data due to:
+     - Measurement errors in energy meters
+     - Extreme weather events affecting consumption
+     - Irregular building operations
+
+5. **Dynamic Adaptation**
+   - Energy patterns change over time and across different building types
+   - Dynamic shrinkage is implemented because:
+     - It allows priors to adapt to local energy patterns
+     - Handles varying reliability of energy data
+     - Provides flexible feature selection
+   - Critical for energy data because:
+     - Energy consumption patterns vary by building type
+     - Data quality varies across different energy parameters
+     - Need for adaptive modeling of energy relationships
+
 ## Inference and Learning
 
 ### 1. Expectation-Maximization (EM) Algorithm
