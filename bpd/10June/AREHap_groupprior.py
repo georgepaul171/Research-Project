@@ -557,35 +557,161 @@ class AdaptivePriorARD:
         
         return grad_likelihood + grad_prior
     
-    def _hmc_sampling(self, X: np.ndarray, y: np.ndarray, 
-                     initial_w: np.ndarray) -> Tuple[np.ndarray, List[float]]:
+    def _calculate_gelman_rubin(self, chains: List[np.ndarray]) -> Tuple[float, Dict[str, float]]:
         """
-        Perform Hamiltonian Monte Carlo sampling for posterior exploration.
+        Calculate Gelman-Rubin R² statistics for MCMC convergence diagnostics.
+        
+        The Gelman-Rubin statistic (R²) compares the within-chain and between-chain variances
+        to assess MCMC convergence. Values close to 1.0 indicate good convergence.
+        
+        Args:
+            chains: List of arrays containing samples from different chains
+        
+        Returns:
+            Tuple containing:
+            - Overall R² statistic
+            - Dictionary of R² statistics for each parameter
+        """
+        n_chains = len(chains)
+        n_samples = chains[0].shape[0]
+        n_params = chains[0].shape[1]
+        
+        # Calculate within-chain variance
+        within_chain_var = np.zeros(n_params)
+        for chain in chains:
+            within_chain_var += np.var(chain, axis=0, ddof=1)
+        within_chain_var /= n_chains
+        
+        # Calculate between-chain variance
+        chain_means = np.array([np.mean(chain, axis=0) for chain in chains])
+        between_chain_var = np.var(chain_means, axis=0, ddof=1) * n_samples
+        
+        # Calculate R² statistics
+        r_hat_stats = {}
+        for j in range(n_params):
+            r_hat = np.sqrt((between_chain_var[j] + within_chain_var[j]) / within_chain_var[j])
+            r_hat_stats[f'weight_{j}'] = float(r_hat)
+        
+        # Calculate overall R²
+        overall_r_hat = np.mean(list(r_hat_stats.values()))
+        
+        return overall_r_hat, r_hat_stats
+
+    def _calculate_effective_sample_size(self, chains: List[np.ndarray]) -> Tuple[float, Dict[str, float]]:
+        """
+        Calculate effective sample size (ESS) for MCMC chains.
+        
+        ESS estimates the number of independent samples in the MCMC output,
+        accounting for autocorrelation. Higher ESS indicates better mixing.
+        
+        Args:
+            chains: List of arrays containing samples from different chains
+        
+        Returns:
+            Tuple containing:
+            - Overall ESS
+            - Dictionary of ESS for each parameter
+        """
+        n_chains = len(chains)
+        n_samples = chains[0].shape[0]
+        n_params = chains[0].shape[1]
+        
+        ess_stats = {}
+        total_ess = 0
+        
+        for j in range(n_params):
+            # Combine samples from all chains
+            all_samples = np.concatenate([chain[:, j] for chain in chains])
+            
+            # Calculate autocorrelation
+            acf = np.correlate(all_samples, all_samples, mode='full')
+            acf = acf[len(acf)//2:]
+            acf = acf / acf[0]  # Normalize
+            
+            # Find where autocorrelation becomes negligible
+            cutoff = np.where(acf < 0.05)[0]
+            if len(cutoff) > 0:
+                max_lag = cutoff[0]
+            else:
+                max_lag = len(acf) - 1
+            
+            # Calculate ESS using initial monotone sequence estimator
+            rho = acf[1:max_lag+1]
+            rho_plus = np.maximum(rho, 0)
+            ess = n_samples * n_chains / (1 + 2 * np.sum(rho_plus))
+            
+            ess_stats[f'weight_{j}'] = float(ess)
+            total_ess += ess
+        
+        # Calculate overall ESS
+        overall_ess = total_ess / n_params
+        
+        return overall_ess, ess_stats
+
+    def _hmc_sampling(self, X: np.ndarray, y: np.ndarray, 
+                     initial_w: np.ndarray, n_chains: int = 4) -> Tuple[np.ndarray, List[float], Dict[str, float], Dict[str, float]]:
+        """
+        Perform Hamiltonian Monte Carlo sampling with multiple chains for convergence diagnostics.
+        
+        Args:
+            X: Input features
+            y: Target values
+            initial_w: Initial weight vector
+            n_chains: Number of independent chains to run
+        
+        Returns:
+            Tuple containing:
+            - Final weight vector (average across chains)
+            - List of acceptance rates
+            - Dictionary of Gelman-Rubin statistics
+            - Dictionary of effective sample sizes
         """
         n_features = X.shape[1]
-        current_w = initial_w.copy()
-        acceptance_rates = []
+        chains = []
+        all_acceptance_rates = []
         
-        # Initialise momentum with increased variance
-        current_momentum = np.random.normal(0, 2.0, size=n_features)  # Increased from 1.5 to 2.0
-        
-        # Perform HMC steps
-        for _ in range(self.config.hmc_steps):
-            # Perform one HMC step
-            new_w, new_momentum, acceptance_rate = self._hmc_step(
-                X, y, current_w, current_momentum
-            )
+        # Run multiple chains
+        for chain in range(n_chains):
+            # Initialize chain with different starting points
+            if chain == 0:
+                current_w = initial_w.copy()
+            else:
+                current_w = initial_w + np.random.normal(0, 0.1, size=n_features)
             
-            # Update current state
-            current_w = new_w
-            current_momentum = new_momentum
-            acceptance_rates.append(acceptance_rate)
+            current_momentum = np.random.normal(0, 2.0, size=n_features)
+            chain_samples = []
+            acceptance_rates = []
             
-            # More frequent momentum resampling (increased from 20% to 30%)
-            if np.random.random() < 0.3:
-                current_momentum = np.random.normal(0, 2.0, size=n_features)
+            # Perform HMC steps
+            for _ in range(self.config.hmc_steps):
+                # Perform one HMC step
+                new_w, new_momentum, acceptance_rate = self._hmc_step(
+                    X, y, current_w, current_momentum
+                )
+                
+                # Update current state
+                current_w = new_w
+                current_momentum = new_momentum
+                chain_samples.append(current_w)
+                acceptance_rates.append(acceptance_rate)
+                
+                # More frequent momentum resampling
+                if np.random.random() < 0.3:
+                    current_momentum = np.random.normal(0, 2.0, size=n_features)
+            
+            chains.append(np.array(chain_samples))
+            all_acceptance_rates.extend(acceptance_rates)
         
-        return current_w, acceptance_rates
+        # Calculate Gelman-Rubin statistics
+        overall_r_hat, r_hat_stats = self._calculate_gelman_rubin(chains)
+        
+        # Calculate effective sample size
+        overall_ess, ess_stats = self._calculate_effective_sample_size(chains)
+        
+        # Use the average of the final samples from each chain
+        final_w = np.mean([chain[-1] for chain in chains], axis=0)
+        
+        return final_w, all_acceptance_rates, r_hat_stats, ess_stats
 
     def fit(self, X: np.ndarray, y: np.ndarray) -> 'AdaptivePriorARD':
         """
@@ -656,11 +782,27 @@ class AdaptivePriorARD:
                 
                 # Use HMC for posterior exploration if enabled
                 if self.config.use_hmc:
-                    self.m, acceptance_probs = self._hmc_sampling(
+                    self.m, acceptance_probs, r_hat_stats, ess_stats = self._hmc_sampling(
                         X_train_scaled, y_train_scaled, self.m
                     )
                     logger.info(f"Fold {fold}, Iteration {iteration}: "
                               f"Mean HMC acceptance rate: {np.mean(acceptance_probs):.3f}")
+                    logger.info(f"Gelman-Rubin R²: {np.mean(list(r_hat_stats.values())):.3f}")
+                    logger.info(f"Effective Sample Size: {np.mean(list(ess_stats.values())):.1f}")
+                    
+                    # Store convergence diagnostics
+                    if not hasattr(self, 'convergence_history'):
+                        self.convergence_history = []
+                    self.convergence_history.append({
+                        'fold': fold,
+                        'iteration': iteration,
+                        'r_hat_mean': np.mean(list(r_hat_stats.values())),
+                        'r_hat_std': np.std(list(r_hat_stats.values())),
+                        'r_hat_stats': r_hat_stats,
+                        'ess_mean': np.mean(list(ess_stats.values())),
+                        'ess_std': np.std(list(ess_stats.values())),
+                        'ess_stats': ess_stats
+                    })
                 
                 # M-step: Update hyperparameters
                 residuals = y_train_scaled - X_train_scaled @ self.m
@@ -848,7 +990,9 @@ class AdaptivePriorARD:
             'scaler_y': self.scaler_y,
             'config': self.config,
             'uncertainty_calibration_factor': self.uncertainty_calibration_factor,
-            'uncertainty_calibration_history': self.uncertainty_calibration_history
+            'uncertainty_calibration_history': self.uncertainty_calibration_history,
+            'r_hat_history': self.r_hat_history,
+            'convergence_history': self.convergence_history
         }
         joblib.dump(model_data, path)
         logger.info(f"Model saved to {path}")
@@ -877,6 +1021,8 @@ class AdaptivePriorARD:
         model.scaler_y = model_data['scaler_y']
         model.uncertainty_calibration_factor = model_data['uncertainty_calibration_factor']
         model.uncertainty_calibration_history = model_data['uncertainty_calibration_history']
+        model.r_hat_history = model_data['r_hat_history']
+        model.convergence_history = model_data['convergence_history']
         return model
 
 def feature_engineering(df: pd.DataFrame) -> pd.DataFrame:
@@ -1438,6 +1584,39 @@ def analyze_feature_interactions(X: np.ndarray, y: np.ndarray, feature_names: Li
         logger.info(f"{feat}: {corr:.4f}")
     
     logger.info("\nAnalysis complete. Results saved to %s", output_dir)
+    
+    # Add Gelman-Rubin statistics to analysis results
+    if hasattr(self, 'r_hat_history'):
+        r_hat_summary = {
+            'mean_r_hat': np.mean([entry['r_hat_mean'] for entry in self.r_hat_history]),
+            'std_r_hat': np.std([entry['r_hat_mean'] for entry in self.r_hat_history]),
+            'final_r_hat': self.r_hat_history[-1]['r_hat_mean'],
+            'convergence_status': 'Good' if self.r_hat_history[-1]['r_hat_mean'] < 1.1 else 'Poor'
+        }
+        analysis_results['gelman_rubin_stats'] = r_hat_summary
+    
+    # Add convergence diagnostics to analysis results
+    if hasattr(self, 'convergence_history'):
+        convergence_summary = {
+            'mean_r_hat': np.mean([entry['r_hat_mean'] for entry in self.convergence_history]),
+            'std_r_hat': np.std([entry['r_hat_mean'] for entry in self.convergence_history]),
+            'final_r_hat': self.convergence_history[-1]['r_hat_mean'],
+            'convergence_status': 'Good' if self.convergence_history[-1]['r_hat_mean'] < 1.1 else 'Poor',
+            'mean_ess': np.mean([entry['ess_mean'] for entry in self.convergence_history]),
+            'std_ess': np.std([entry['ess_mean'] for entry in self.convergence_history]),
+            'final_ess': self.convergence_history[-1]['ess_mean'],
+            'mixing_status': 'Good' if self.convergence_history[-1]['ess_mean'] > 100 else 'Poor'
+        }
+        analysis_results['convergence_diagnostics'] = convergence_summary
+        
+        # Save detailed convergence diagnostics
+        convergence_details = {
+            'r_hat_history': [entry['r_hat_stats'] for entry in self.convergence_history],
+            'ess_history': [entry['ess_stats'] for entry in self.convergence_history],
+            'acceptance_rates': [entry.get('acceptance_rate', None) for entry in self.convergence_history]
+        }
+        with open(os.path.join(output_dir, 'convergence_diagnostics.json'), 'w') as f:
+            json.dump(convergence_details, f, indent=4, cls=NumpyEncoder)
 
 def train_and_evaluate_adaptive(X: np.ndarray, y: np.ndarray, feature_names: List[str],
                               output_dir: Optional[str] = None) -> Tuple[AdaptivePriorARD, dict]:
