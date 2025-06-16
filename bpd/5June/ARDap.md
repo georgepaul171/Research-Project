@@ -145,7 +145,6 @@ The choice of priors in this model is specifically tailored to address the uniqu
    - The hierarchical structure allows for:
      - Group-wise shrinkage of related building parameters
      - Automatic handling of varying scales between different building types
-     - Robust handling of missing or uncertain building metadata
    - Particularly suitable for building energy data due to:
      - Natural grouping of building characteristics
      - Varying reliability of different building parameters
@@ -170,7 +169,6 @@ The choice of priors in this model is specifically tailored to address the uniqu
      - Provides clear feature selection decisions
    - Particularly valuable for energy data because:
      - Many potential interactions are irrelevant
-     - Some interactions are crucial for energy performance
      - Need for interpretable feature selection in energy models
 
 4. **Robust Noise Modeling**
