@@ -1,5 +1,85 @@
 # Mathematical Documentation of Adaptive Elastic Horseshoe (AEH) Prior
 
+## Novel Contributions
+
+The AEH prior introduces several novel mathematical innovations that distinguish it from existing approaches:
+
+### 1. Adaptive Elastic-Horseshoe Coupling
+
+The primary novelty lies in the coupling of elastic net regularization with the horseshoe prior through an adaptive mechanism:
+
+```math
+prior_scale(w_g) = \frac{1}{\frac{w_g^2}{2\tau_g} + \beta_g \cdot [\alpha_g \|w_g\|_1 + (1-\alpha_g)\|w_g\|_2^2]}
+```
+
+This coupling is novel because:
+- It allows the prior to adaptively balance between L1 (sparse) and L2 (dense) regularization based on the data structure
+- The horseshoe component provides heavy-tailed shrinkage that can accommodate both strong and weak signals
+- The elastic net component provides structured regularization that can handle correlated features
+
+### 2. Group-Specific Adaptive Regularization
+
+The AEH prior introduces a novel group-specific adaptation mechanism:
+
+```math
+\alpha_{t+1,g} = \text{clip}(\alpha_{t,g} + \gamma \cdot (0.5 - \text{importance\_ratio}_g), 0.1, 0.9)
+\beta_{t+1,g} = \text{clip}(\beta_{t,g} + \gamma \cdot (1.0 - \text{uncertainty\_ratio}_g), 0.1, 10.0)
+```
+
+This is novel because:
+- It allows different feature groups to have different regularization regimes
+- The adaptation is based on both feature importance and uncertainty
+- The parameters are bounded to ensure numerical stability
+
+### 3. Momentum-Based Parameter Updates
+
+The AEH prior introduces a novel momentum-based update mechanism for the shrinkage parameters:
+
+```math
+\text{momentum}_{t+1,g} = \rho \cdot \text{momentum}_{t,g} + \gamma \cdot \nabla_w \log p(w_t)
+\lambda_{t+1,g} = \lambda_{t,g} + \text{momentum}_{t+1,g}
+```
+
+This is novel because:
+- It provides stable updates even in the presence of noisy gradients
+- The momentum term helps escape local optima
+- The updates are group-specific, allowing for different learning dynamics
+
+### 4. Uncertainty-Aware Dynamic Shrinkage
+
+The AEH prior introduces a novel uncertainty-aware dynamic shrinkage mechanism:
+
+```math
+\kappa_{t+1} = \kappa_t \cdot (1 - \eta) + \text{importance} \cdot \eta
+\eta_{t+1} = \eta_t \cdot (1 - \eta) + (\text{uncertainty} > \theta) \cdot \eta
+```
+
+This is novel because:
+- It adapts the shrinkage strength based on both feature importance and uncertainty
+- The adaptation is smooth and bounded
+- It provides a principled way to handle varying levels of uncertainty in the data
+
+### 5. Theoretical Guarantees
+
+The AEH prior provides novel theoretical guarantees:
+
+1. **Bounded Updates**:
+```math
+\|\text{momentum}_{t+1}\| \leq \frac{\gamma}{1-\rho} \cdot \|\nabla_w \log p(w_t)\|
+```
+
+2. **Convergence Properties**:
+```math
+\lim_{t \to \infty} \|\lambda_{t+1} - \lambda_t\| < \epsilon_1
+\lim_{t \to \infty} \|\alpha_{t+1} - \alpha_t\| < \epsilon_2
+\lim_{t \to \infty} \|\beta_{t+1} - \beta_t\| < \epsilon_3
+```
+
+These guarantees ensure:
+- Stable learning dynamics
+- Convergence to a local maximum
+- Bounded parameter updates
+
 ## Why These Properties Matter in the Energy Domain
 
 Building energy datasets are characterised by high heterogeneity, complex feature interactions, and varying levels of sparsity and density among predictors. In this domain:
@@ -37,38 +117,41 @@ This ARD-like mechanism enables the AEH prior to perform **automatic feature sel
 
 ### 1.1 Prior Structure
 
-The AEH prior combines three key components:
+The AEH prior combines multiple components in a hierarchical structure:
 
-1. **Elastic Net Component**:
+1. **Group-Based Prior Types**:
+   For each feature group g ∈ G:
+   - Energy features: Adaptive Elastic Horseshoe
+   - Building features: Hierarchical prior
+   - Interaction features: Spike-slab prior
 
-   `elastic_penalty(w) = alpha * ||w||_1 + (1 - alpha) * ||w||_2^2`
+2. **Elastic Net Component** (for energy features):
+   `elastic_penalty(w_g) = alpha_g * ||w_g||_1 + (1 - alpha_g) * ||w_g||_2^2`
    
    where:
-   - `w` is a vector of parameters in R^p
-   - `alpha` is the adaptive mixing parameter in [0.1, 0.9]
-   - `||w||_1 = sum_{i=1}^p |w_i|` is the L1 norm
-   - `||w||_2^2 = sum_{i=1}^p w_i^2` is the L2 norm
+   - `w_g` is a vector of parameters for group g
+   - `alpha_g` is the adaptive mixing parameter in [0.1, 0.9]
+   - `||w_g||_1` and `||w_g||_2^2` are L1 and L2 norms respectively
 
-2. **Horseshoe Component**:
-
-   `horseshoe_scale(w) = 1 / (w^2 / (2 * tau) + beta * elastic_penalty(w))`
+3. **Horseshoe Component** (for energy features):
+   `horseshoe_scale(w_g) = 1 / (w_g^2 / (2 * tau_g) + beta_g * elastic_penalty(w_g))`
    
    where:
-   - `tau > 0` is the global shrinkage parameter
-   - `beta > 0` is the adaptive regularisation strength
+   - `tau_g > 0` is the global shrinkage parameter for group g
+   - `beta_g > 0` is the adaptive regularisation strength
 
-3. **Combined Prior**:
-
-   `p(w | alpha, beta, tau, lambda) ∝ prod_{i=1}^p [1 / sqrt(2 * pi * lambda_i)] * exp(-w_i^2 / (2 * lambda_i)) * horseshoe_scale(w)`
+4. **Combined Prior**:
+   `p(w | alpha, beta, tau, lambda) ∝ prod_{g∈G} prod_{i∈g} [1 / sqrt(2 * pi * lambda_i)] * exp(-w_i^2 / (2 * lambda_i)) * prior_scale_g(w_g)`
    
-   where `lambda_i > 0` are local shrinkage parameters.
+   where:
+   - `lambda_i > 0` are local shrinkage parameters
+   - `prior_scale_g` is the appropriate scale function for group g's prior type
 
 ### 1.2 Adaptive Update Mechanism
 
-The update mechanism follows a momentum-based approach:
+The update mechanism follows a momentum-based approach with group-specific components:
 
 1. **Momentum Update**:
-
    `momentum_{t+1} = rho * momentum_t + gamma * grad_w log p(w_t)`
    
    where:
@@ -76,12 +159,25 @@ The update mechanism follows a momentum-based approach:
    - `gamma` is the learning rate
    - `grad_w log p(w_t)` is the gradient of the log-posterior
 
-2. **Parameter Updates**:
-
+2. **Group-Specific Parameter Updates**:
+   For each group g:
    ```
-   lambda_{t+1} = lambda_t + momentum_{t+1}
-   alpha_{t+1} = clip(alpha_t + gamma * (0.5 - importance_ratio), 0.1, 0.9)
-   beta_{t+1} = clip(beta_t + gamma * (1.0 - uncertainty_ratio), 0.1, 10.0)
+   lambda_{t+1,g} = lambda_{t,g} + momentum_{t+1,g}
+   alpha_{t+1,g} = clip(alpha_{t,g} + gamma * (0.5 - importance_ratio_g), 0.1, 0.9)
+   beta_{t+1,g} = clip(beta_{t,g} + gamma * (1.0 - uncertainty_ratio_g), 0.1, 10.0)
+   ```
+
+3. **Dynamic Shrinkage Updates**:
+   ```
+   kappa_{t+1} = kappa_t * (1 - adaptation_rate) + importance * adaptation_rate
+   eta_{t+1} = eta_t * (1 - adaptation_rate) + (uncertainty > threshold) * adaptation_rate
+   ```
+
+4. **Uncertainty Calibration**:
+   For Student's t noise model:
+   ```
+   weights = (df + 1) / (df + residuals^2)
+   alpha_new = sum(weights) / (sum(weights * residuals^2) + trace(X @ S @ X^T))
    ```
 
 ## 2. Theoretical Properties
@@ -132,20 +228,24 @@ The AEH prior's update mechanism satisfies the following properties:
 To ensure numerical stability, the following operations are performed:
 
 1. **Clipping Operations**:
-
    `clip(x, a, b) = max(a, min(b, x))`
 
 2. **Small Constant Addition**:
-
    `stable_div(a, b) = a / (b + epsilon)`
+   where `epsilon = 1e-10`
 
-   where `epsilon = 1e-10` is a small constant.
+3. **Group-Specific Stability**:
+   For each group g:
+   ```
+   m_squared_g = clip(m_g^2, 1e-10, None)
+   diag_S_g = clip(diag(S_g), 1e-10, None)
+   ```
 
 ### 3.2 Computational Complexity
 
 The computational complexity of the AEH prior is:
-- Time complexity: O(p) per update, where p is the number of features
-- Space complexity: O(p) for storing parameters and momentum
+- Time complexity: O(p + |G|) per update, where p is the number of features and |G| is the number of groups
+- Space complexity: O(p + |G|) for storing parameters and momentum
 
 ## 4. Proofs
 
