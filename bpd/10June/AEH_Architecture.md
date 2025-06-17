@@ -88,20 +88,20 @@ graph TB
 ```mermaid
 flowchart LR
     subgraph Parameters[Key Parameters]
-        alpha[α: Mixing Parameter]
-        beta[β: Regularization Strength]
-        tau[τ: Global Shrinkage]
-        lambda[λ: Local Shrinkage]
+        alpha["α: Mixing Parameter"]
+        beta["β: Regularization Strength"]
+        tau["τ: Global Shrinkage"]
+        lambda["λ: Local Shrinkage"]
     end
 
     subgraph Updates[Update Rules]
-        alpha_update[α_{t+1} = clip(α_t + γ * (0.5 - importance_ratio), 0.1, 0.9)]
-        beta_update[β_{t+1} = clip(β_t + γ * (1.0 - uncertainty_ratio), 0.1, 10.0)]
-        lambda_update[λ_{t+1} = λ_t + momentum_{t+1}]
+        alpha_update["α_t+1 = clip(α_t + γ * (0.5 - importance_ratio), 0.1, 0.9)"]
+        beta_update["β_t+1 = clip(β_t + γ * (1.0 - uncertainty_ratio), 0.1, 10.0)"]
+        lambda_update["λ_t+1 = λ_t + momentum_t+1"]
     end
 
     subgraph Momentum[Momentum System]
-        momentum[momentum_{t+1} = ρ * momentum_t + γ * grad_w log p(w_t)]
+        momentum["momentum_t+1 = ρ * momentum_t + γ * grad_w log p(w_t)"]
     end
 
     Parameters --> Updates
