@@ -181,6 +181,112 @@ plt.title('Gelman-Rubin R² Statistics')
 plt.show()
 ```
 
+## Feature Grouping and Group-wise Prior Specification
+
+### Group-wise Prior Allocation
+```mermaid
+graph TB
+    subgraph Raw_Features[Raw Features]
+        RF[Input Features]
+    end
+
+    subgraph Feature_Groups[Feature Groups]
+        G1[G₁: Energy Features]
+        G2[G₂: Building Features]
+        G3[G₃: Interaction Features]
+    end
+
+    subgraph Priors[Prior Assignments]
+        AEH[Adaptive Elastic Horseshoe Prior]
+        HARD[Hierarchical ARD Prior]
+        SS[Spike-and-Slab Prior]
+    end
+
+    RF --> G1
+    RF --> G2
+    RF --> G3
+
+    G1 --> AEH
+    G2 --> HARD
+    G3 --> SS
+
+    classDef group fill:#f9f,stroke:#333,stroke-width:2px
+    classDef prior fill:#bbf,stroke:#333,stroke-width:2px
+    class G1,G2,G3 group
+    class AEH,HARD,SS prior
+```
+
+**Rationale for Prior Assignments:**
+- **Energy Features (G₁)**: Adaptive Elastic Horseshoe prior is used for its ability to handle heavy-tailed distributions and provide adaptive shrinkage, ideal for energy consumption patterns that often show extreme values.
+- **Building Features (G₂)**: Hierarchical ARD prior is employed to capture the hierarchical structure of building characteristics while maintaining interpretability.
+- **Interaction Features (G₃)**: Spike-and-Slab prior is chosen for its ability to effectively model sparse interactions between features, helping identify truly significant feature interactions.
+
+## Model Training and Inference
+
+### Inference Strategy
+
+#### EM and HMC Integration Flow
+```mermaid
+graph TB
+    subgraph Initial[Initial Parameters]
+        IP[Initial Parameters]
+    end
+
+    subgraph EM[EM Algorithm Loop]
+        E[E-step]
+        M[M-step]
+        WS[Warm Start]
+        APU[Adaptive Prior Updates]
+    end
+
+    subgraph HMC[Hamiltonian Monte Carlo]
+        LI[Leapfrog Integration]
+        MR[Momentum Resampling]
+        MA[Metropolis Acceptance]
+    end
+
+    subgraph Output[Output]
+        PD[Full Posterior Distributions]
+        UQ[Uncertainty Quantified Predictions]
+    end
+
+    IP --> EM
+    EM --> WS
+    WS --> HMC
+    HMC --> PD
+    PD --> UQ
+
+    E --> M
+    M --> APU
+    APU --> E
+
+    LI --> MR
+    MR --> MA
+    MA --> LI
+
+    classDef process fill:#f9f,stroke:#333,stroke-width:2px
+    classDef output fill:#bbf,stroke:#333,stroke-width:2px
+    class E,M,LI,MR,MA process
+    class PD,UQ output
+```
+
+**Inference Process Description:**
+1. **EM Algorithm**:
+   - E-step: Computes expected values of latent variables
+   - M-step: Updates model parameters
+   - Adaptive Prior Updates: Refines prior parameters based on data evidence
+   - Provides warm start for HMC
+
+2. **Hamiltonian Monte Carlo**:
+   - Leapfrog Integration: Simulates Hamiltonian dynamics
+   - Momentum Resampling: Ensures proper exploration
+   - Metropolis Acceptance: Maintains detailed balance
+   - Produces full posterior distributions
+
+3. **Output**:
+   - Full posterior distributions for all parameters
+   - Uncertainty-quantified predictions with confidence intervals
+
 ## API Reference
 
 ### Class: AdaptivePriorARD
