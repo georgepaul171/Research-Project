@@ -218,6 +218,8 @@ class AdaptivePriorARD:
         # Uncertainty calibration
         self.uncertainty_calibration_factor = self.config.calibration_factor
         self.uncertainty_calibration_history = []
+        self.r_hat_history = []
+        self.convergence_history = []
 
     def _initialize_adaptive_priors(self, n_features: int):
         """
@@ -1504,6 +1506,15 @@ def analyze_feature_interactions(X: np.ndarray, y: np.ndarray, feature_names: Li
         shap_importance = np.abs(shap_values).mean(axis=0)
     
     # Save comprehensive analysis to JSON
+    # --- ADDED: Extract alpha and beta for each group if present ---
+    group_mixing = {}
+    group_regularization = {}
+    for group, params in model.group_prior_hyperparams.items():
+        if 'alpha' in params:
+            group_mixing[group] = float(params['alpha'])
+        if 'beta' in params:
+            group_regularization[group] = float(params['beta'])
+    # --- END ADDED ---
     analysis_results = {
         'feature_importance': dict(zip(feature_names, importance)),
         'feature_importance_std': dict(zip(feature_names, std_importance)),
@@ -1532,7 +1543,9 @@ def analyze_feature_interactions(X: np.ndarray, y: np.ndarray, feature_names: Li
                                if 'lambda' in params},
             'local_shrinkage': {group: float(params['tau'].mean()) 
                               for group, params in model.group_prior_hyperparams.items() 
-                              if 'tau' in params}
+                              if 'tau' in params},
+            'mixing_parameter': group_mixing,  # ADDED
+            'regularization_strength': group_regularization  # ADDED
         }
     }
     
@@ -1586,34 +1599,34 @@ def analyze_feature_interactions(X: np.ndarray, y: np.ndarray, feature_names: Li
     logger.info("\nAnalysis complete. Results saved to %s", output_dir)
     
     # Add Gelman-Rubin statistics to analysis results
-    if hasattr(self, 'r_hat_history'):
+    if hasattr(model, 'r_hat_history') and model.r_hat_history:
         r_hat_summary = {
-            'mean_r_hat': np.mean([entry['r_hat_mean'] for entry in self.r_hat_history]),
-            'std_r_hat': np.std([entry['r_hat_mean'] for entry in self.r_hat_history]),
-            'final_r_hat': self.r_hat_history[-1]['r_hat_mean'],
-            'convergence_status': 'Good' if self.r_hat_history[-1]['r_hat_mean'] < 1.1 else 'Poor'
+            'mean_r_hat': np.mean([entry['r_hat_mean'] for entry in model.r_hat_history]),
+            'std_r_hat': np.std([entry['r_hat_mean'] for entry in model.r_hat_history]),
+            'final_r_hat': model.r_hat_history[-1]['r_hat_mean'],
+            'convergence_status': 'Good' if model.r_hat_history[-1]['r_hat_mean'] < 1.1 else 'Poor'
         }
         analysis_results['gelman_rubin_stats'] = r_hat_summary
     
     # Add convergence diagnostics to analysis results
-    if hasattr(self, 'convergence_history'):
+    if hasattr(model, 'convergence_history') and model.convergence_history:
         convergence_summary = {
-            'mean_r_hat': np.mean([entry['r_hat_mean'] for entry in self.convergence_history]),
-            'std_r_hat': np.std([entry['r_hat_mean'] for entry in self.convergence_history]),
-            'final_r_hat': self.convergence_history[-1]['r_hat_mean'],
-            'convergence_status': 'Good' if self.convergence_history[-1]['r_hat_mean'] < 1.1 else 'Poor',
-            'mean_ess': np.mean([entry['ess_mean'] for entry in self.convergence_history]),
-            'std_ess': np.std([entry['ess_mean'] for entry in self.convergence_history]),
-            'final_ess': self.convergence_history[-1]['ess_mean'],
-            'mixing_status': 'Good' if self.convergence_history[-1]['ess_mean'] > 100 else 'Poor'
+            'mean_r_hat': np.mean([entry['r_hat_mean'] for entry in model.convergence_history]),
+            'std_r_hat': np.std([entry['r_hat_mean'] for entry in model.convergence_history]),
+            'final_r_hat': model.convergence_history[-1]['r_hat_mean'],
+            'convergence_status': 'Good' if model.convergence_history[-1]['r_hat_mean'] < 1.1 else 'Poor',
+            'mean_ess': np.mean([entry['ess_mean'] for entry in model.convergence_history]),
+            'std_ess': np.std([entry['ess_mean'] for entry in model.convergence_history]),
+            'final_ess': model.convergence_history[-1]['ess_mean'],
+            'mixing_status': 'Good' if model.convergence_history[-1]['ess_mean'] > 100 else 'Poor'
         }
         analysis_results['convergence_diagnostics'] = convergence_summary
         
         # Save detailed convergence diagnostics
         convergence_details = {
-            'r_hat_history': [entry['r_hat_stats'] for entry in self.convergence_history],
-            'ess_history': [entry['ess_stats'] for entry in self.convergence_history],
-            'acceptance_rates': [entry.get('acceptance_rate', None) for entry in self.convergence_history]
+            'r_hat_history': [entry['r_hat_stats'] for entry in model.convergence_history],
+            'ess_history': [entry['ess_stats'] for entry in model.convergence_history],
+            'acceptance_rates': [entry.get('acceptance_rate', None) for entry in model.convergence_history]
         }
         with open(os.path.join(output_dir, 'convergence_diagnostics.json'), 'w') as f:
             json.dump(convergence_details, f, indent=4, cls=NumpyEncoder)
