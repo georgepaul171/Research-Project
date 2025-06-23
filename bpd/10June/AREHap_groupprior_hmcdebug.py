@@ -124,7 +124,7 @@ class AdaptivePriorConfig:
     """
     alpha_0: float = 1e-6
     beta_0: float = 1e-6
-    max_iter: int = 200
+    max_iter: int = 100
     tol: float = 1e-4
     n_splits: int = 3
     random_state: int = 42
@@ -134,11 +134,11 @@ class AdaptivePriorConfig:
     group_sparsity: bool = True
     dynamic_shrinkage: bool = True
     use_hmc: bool = True
-    hmc_steps: int = 100
-    hmc_epsilon: float = 0.01
+    hmc_steps: int = 200
+    hmc_epsilon: float = 0.001
     hmc_leapfrog_steps: int = 10
     uncertainty_calibration: bool = True
-    calibration_factor: float = 10.0  
+    calibration_factor: float = 20.0  
     robust_noise: bool = True
     student_t_df: float = 3.0  
     group_prior_types: dict = field(default_factory=lambda: {
@@ -449,61 +449,31 @@ class AdaptivePriorARD:
     
     def _hmc_step(self, X: np.ndarray, y: np.ndarray, current_w: np.ndarray, 
                   current_momentum: np.ndarray) -> Tuple[np.ndarray, np.ndarray, float]:
-        """
-        Perform one step of Hamiltonian Monte Carlo for posterior exploration.
-        """
-        # Initialise new position and momentum
         new_w = current_w.copy()
         new_momentum = current_momentum.copy()
-        
-        # Resample momentum from standard normal with increased variance
-        new_momentum = np.random.normal(0, 2.0, size=new_momentum.shape)  # Increased from 1.5 to 2.0
-        
-        # Calculate initial Hamiltonian (total energy)
         current_energy = self._calculate_hamiltonian(X, y, current_w, new_momentum)
-        
-        # Adaptive step size based on gradient magnitude and posterior scale
-        grad = self._calculate_gradient(X, y, current_w)
-        posterior_scale = np.sqrt(np.diag(self.S))
-        
-        # More aggressive step size adaptation
-        epsilon = self.config.hmc_epsilon * np.minimum(
-            3.0 / (1.0 + np.linalg.norm(grad)),  # Increased from 2.0 to 3.0
-            posterior_scale / np.max(posterior_scale)
-        )
-        
-        # Add more noise to step size to improve exploration
-        epsilon = epsilon * np.exp(np.random.normal(0, 0.3))  # Increased from 0.2 to 0.3
-        
-        # Leapfrog steps for Hamiltonian dynamics
+        epsilon = float(self.config.hmc_epsilon) * np.exp(np.random.normal(0, 0.1))
         for _ in range(self.config.hmc_leapfrog_steps):
-            # Update momentum (half step)
             grad = self._calculate_gradient(X, y, new_w)
+            if np.any(np.isnan(grad)) or np.any(np.isinf(grad)):
+                print("NaN or Inf detected in gradient!")
             new_momentum = new_momentum - 0.5 * epsilon * grad
-            
-            # Update position (full step)
             new_w = new_w + epsilon * new_momentum
-            
-            # Update momentum (half step)
             grad = self._calculate_gradient(X, y, new_w)
             new_momentum = new_momentum - 0.5 * epsilon * grad
-        
-        # Calculate new Hamiltonian
         new_energy = self._calculate_hamiltonian(X, y, new_w, new_momentum)
-        
-        # Metropolis acceptance step with numerical stability
+        if np.isnan(current_energy) or np.isnan(new_energy) or np.isinf(current_energy) or np.isinf(new_energy):
+            print(f"NaN or Inf in Hamiltonian: current={current_energy}, new={new_energy}")
         energy_diff = current_energy - new_energy
         acceptance_prob = min(1.0, np.exp(np.clip(energy_diff, -100, 100)))
-        
-        # Add more noise to acceptance probability to improve mixing
-        acceptance_prob = acceptance_prob * np.exp(np.random.normal(0, 0.1))  # Increased from 0.05 to 0.1
-        
+        acceptance_prob = acceptance_prob * np.exp(np.random.normal(0, 0.1))
+        print(f"HMC step: current_energy={current_energy:.4f}, new_energy={new_energy:.4f}, acceptance_prob={acceptance_prob:.4f}")
+        if np.any(np.isnan(new_w)) or np.any(np.isinf(new_w)):
+            print("NaN or Inf detected in weights!")
         if np.random.random() < acceptance_prob:
             return new_w, new_momentum, acceptance_prob
         else:
             return current_w, current_momentum, acceptance_prob
-        
-        
     
     def _calculate_hamiltonian(self, X: np.ndarray, y: np.ndarray, 
                              w: np.ndarray, momentum: np.ndarray) -> float:
@@ -667,10 +637,11 @@ class AdaptivePriorARD:
                 current_w = initial_w.copy()
             else:
                 current_w = initial_w + np.random.normal(0, 0.1, size=n_features)
-            current_momentum = np.random.normal(0, 2.0, size=n_features)
             chain_samples = []
             acceptance_rates = []
             for _ in range(self.config.hmc_steps):
+                # Resample momentum ONCE per proposal
+                current_momentum = np.random.normal(0, 2.0, size=n_features)
                 new_w, new_momentum, acceptance_rate = self._hmc_step(
                     X, y, current_w, current_momentum
                 )
