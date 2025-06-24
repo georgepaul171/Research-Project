@@ -7,7 +7,6 @@ This script trains the Adaptive Prior ARD model on building energy data, but:
 
 Author: George Paul (modification by AI)
 """
-import scipy.stats as stats
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler, RobustScaler
@@ -22,6 +21,11 @@ from typing import Tuple, List, Optional, Dict, Union
 from dataclasses import dataclass, field
 import logging
 import warnings
+import scipy.stats as stats
+from AREHap_groupprior_hmcdebug import analyze_feature_interactions
+
+warnings.filterwarnings('ignore')
+
 class AdaptivePriorConfig:
     """
     Configuration class for the Adaptive Prior ARD model parameters.
@@ -1010,4 +1014,6 @@ if __name__ == "__main__":
     importance_dict = dict(zip(feature_names, importance))
     with open(os.path.join(results_dir, 'feature_importance.json'), 'w') as f:
         json.dump(importance_dict, f, indent=4)
+    # Generate all additional outputs (visualizations, SHAP, diagnostics, etc.)
+    analyze_feature_interactions(X, y, feature_names, model, results_dir)
     logger.info(f"\nAll results saved to {results_dir}") 
