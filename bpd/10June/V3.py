@@ -623,36 +623,36 @@ class AdaptivePriorARD:
         em_progress_log_path = os.path.join(output_dir, 'em_progress_log.txt')
         aeh_hyperparams_log_path = os.path.join(output_dir, 'aeh_hyperparams_log.txt')
         with open(beta_tau_log_path, 'w') as beta_tau_log, open(em_progress_log_path, 'w') as em_progress_log, open(aeh_hyperparams_log_path, 'w') as aeh_log:
-            for fold, (train_idx, val_idx) in enumerate(kf.split(X), 1):
-                X_train, X_val = X[train_idx], X[val_idx]
-                y_train, y_val = y[train_idx], y[val_idx]
-                X_train_scaled = self.scaler_X.fit_transform(X_train)
-                X_val_scaled = self.scaler_X.transform(X_val)
-                y_train_scaled = self.scaler_y.fit_transform(y_train.reshape(-1, 1)).ravel()
-                y_val_scaled = self.scaler_y.transform(y_val.reshape(-1, 1)).ravel()
-                for iteration in range(self.config.max_iter):
-                    try:
-                        self.S = np.linalg.inv(self.alpha * X_train_scaled.T @ X_train_scaled + 
-                                             np.diag(np.clip(self.beta, 1e-10, None)))
-                    except np.linalg.LinAlgError:
-                        jitter = 1e-6 * np.eye(n_features)
-                        self.S = np.linalg.inv(self.alpha * X_train_scaled.T @ X_train_scaled + 
-                                             np.diag(np.clip(self.beta, 1e-10, None)) + jitter)
-                    self.m = self.alpha * self.S @ X_train_scaled.T @ y_train_scaled
-                    # Use HMC for posterior exploration if enabled
-                    if self.config.use_hmc:
+        for fold, (train_idx, val_idx) in enumerate(kf.split(X), 1):
+            X_train, X_val = X[train_idx], X[val_idx]
+            y_train, y_val = y[train_idx], y[val_idx]
+            X_train_scaled = self.scaler_X.fit_transform(X_train)
+            X_val_scaled = self.scaler_X.transform(X_val)
+            y_train_scaled = self.scaler_y.fit_transform(y_train.reshape(-1, 1)).ravel()
+            y_val_scaled = self.scaler_y.transform(y_val.reshape(-1, 1)).ravel()
+            for iteration in range(self.config.max_iter):
+                try:
+                    self.S = np.linalg.inv(self.alpha * X_train_scaled.T @ X_train_scaled + 
+                                         np.diag(np.clip(self.beta, 1e-10, None)))
+                except np.linalg.LinAlgError:
+                    jitter = 1e-6 * np.eye(n_features)
+                    self.S = np.linalg.inv(self.alpha * X_train_scaled.T @ X_train_scaled + 
+                                         np.diag(np.clip(self.beta, 1e-10, None)) + jitter)
+                self.m = self.alpha * self.S @ X_train_scaled.T @ y_train_scaled
+                # Use HMC for posterior exploration if enabled
+                if self.config.use_hmc:
                         print("[DEBUG] HMC is running! Fold:", fold, "Iteration:", iteration)
-                        # Only for the first fold, store chains for trace plots
-                        if fold == 1:
-                            self.m, acceptance_probs, r_hat_stats, ess_stats, chains = self._hmc_sampling(
-                                X_train_scaled, y_train_scaled, self.m, return_chains=True
-                            )
+                    # Only for the first fold, store chains for trace plots
+                    if fold == 1:
+                        self.m, acceptance_probs, r_hat_stats, ess_stats, chains = self._hmc_sampling(
+                            X_train_scaled, y_train_scaled, self.m, return_chains=True
+                        )
                             print("[DEBUG] HMC chains generated for trace plots and diagnostics.")
-                            # Plot trace plots for top 5 features if feature_names provided
-                            if feature_names is not None and output_dir is not None:
-                                importance = np.abs(self.m)
-                                top_indices = np.argsort(importance)[-5:]
-                                self._plot_trace_chains(chains, feature_names, output_dir, top_indices, fold=fold)
+                        # Plot trace plots for top 5 features if feature_names provided
+                        if feature_names is not None and output_dir is not None:
+                            importance = np.abs(self.m)
+                            top_indices = np.argsort(importance)[-5:]
+                            self._plot_trace_chains(chains, feature_names, output_dir, top_indices, fold=fold)
                                 # Save trace diagnostics for top 5 features
                                 trace_diag_path = os.path.join(output_dir, 'trace_diagnostics.txt')
                                 with open(trace_diag_path, 'w') as f:
@@ -693,44 +693,44 @@ class AdaptivePriorARD:
                     y_pred_em_unscaled = self.scaler_y.inverse_transform(y_pred_em.reshape(-1, 1)).ravel()
                     em_progress_log.write(f"Fold {fold}, Iter {iteration}: min_w={self.m.min()}, max_w={self.m.max()}, min_pred={y_pred_em.min()}, max_pred={y_pred_em.max()}, min_pred_unscaled={y_pred_em_unscaled.min()}, max_pred_unscaled={y_pred_em_unscaled.max()}\n")
                     em_progress_log.flush()
-                    residuals = y_train_scaled - X_train_scaled @ self.m
-                    if self.config.robust_noise:
-                        df = self.config.student_t_df
-                        weights = (df + 1) / (df + residuals**2)
-                        alpha_new = np.sum(weights) / (np.sum(weights * residuals**2) + 
-                                                    np.trace(X_train_scaled @ self.S @ X_train_scaled.T))
-                    else:
-                        alpha_new = n_samples / (np.sum(residuals**2) + 
-                                               np.trace(X_train_scaled @ self.S @ X_train_scaled.T))
-                    alpha_new = np.clip(alpha_new, 1e-10, None)
-                    beta_new = np.zeros_like(self.beta)
-                    for group, indices in self.feature_groups.items():
-                        prior_type = self.config.group_prior_types.get(group, 'hierarchical')
-                        if prior_type == 'hierarchical':
-                            for idx, j in enumerate(indices):
+                residuals = y_train_scaled - X_train_scaled @ self.m
+                if self.config.robust_noise:
+                    df = self.config.student_t_df
+                    weights = (df + 1) / (df + residuals**2)
+                    alpha_new = np.sum(weights) / (np.sum(weights * residuals**2) + 
+                                                np.trace(X_train_scaled @ self.S @ X_train_scaled.T))
+                else:
+                    alpha_new = n_samples / (np.sum(residuals**2) + 
+                                           np.trace(X_train_scaled @ self.S @ X_train_scaled.T))
+                alpha_new = np.clip(alpha_new, 1e-10, None)
+                beta_new = np.zeros_like(self.beta)
+                for group, indices in self.feature_groups.items():
+                    prior_type = self.config.group_prior_types.get(group, 'hierarchical')
+                    if prior_type == 'hierarchical':
+                        for idx, j in enumerate(indices):
                                 # Standard Bayesian update (no + 2 * tau)
-                                beta_new[j] = 1 / (np.clip(self.m[j]**2, 1e-10, None) +
+                            beta_new[j] = 1 / (np.clip(self.m[j]**2, 1e-10, None) +
                                                    np.clip(np.diag(self.S)[j], 1e-10, None))
-                        elif prior_type == 'spike_slab':
-                            for idx, j in enumerate(indices):
-                                pi = self.group_prior_hyperparams[group]['pi'][idx]
-                                sigma2_0 = self.group_prior_hyperparams[group]['sigma2_0'][idx]
-                                sigma2_1 = self.group_prior_hyperparams[group]['sigma2_1'][idx]
-                                beta_new[j] = (pi / np.clip(sigma2_1, 1e-10, None) +
-                                               (1 - pi) / np.clip(sigma2_0, 1e-10, None))
-                        elif prior_type == 'horseshoe':
-                            for idx, j in enumerate(indices):
-                                tau = self.group_prior_hyperparams[group]['tau']
-                                lambd = self.group_prior_hyperparams[group]['lambda'][idx]
-                                beta_new[j] = 1 / (np.clip(self.m[j]**2, 1e-10, None) / (2 * tau) + lambd)
-                    if self.config.group_sparsity:
-                        for group, indices in self.feature_groups.items():
-                            group_beta = np.mean(beta_new[indices])
-                            beta_new[indices] = group_beta
-                    if self.config.dynamic_shrinkage:
-                        kappa = np.clip(self.shrinkage_params['kappa'], 0, 1)
-                        beta_new = beta_new * (1 - kappa) + self.beta * kappa
-                    self._update_adaptive_priors(iteration)
+                    elif prior_type == 'spike_slab':
+                        for idx, j in enumerate(indices):
+                            pi = self.group_prior_hyperparams[group]['pi'][idx]
+                            sigma2_0 = self.group_prior_hyperparams[group]['sigma2_0'][idx]
+                            sigma2_1 = self.group_prior_hyperparams[group]['sigma2_1'][idx]
+                            beta_new[j] = (pi / np.clip(sigma2_1, 1e-10, None) +
+                                           (1 - pi) / np.clip(sigma2_0, 1e-10, None))
+                    elif prior_type == 'horseshoe':
+                        for idx, j in enumerate(indices):
+                            tau = self.group_prior_hyperparams[group]['tau']
+                            lambd = self.group_prior_hyperparams[group]['lambda'][idx]
+                            beta_new[j] = 1 / (np.clip(self.m[j]**2, 1e-10, None) / (2 * tau) + lambd)
+                if self.config.group_sparsity:
+                    for group, indices in self.feature_groups.items():
+                        group_beta = np.mean(beta_new[indices])
+                        beta_new[indices] = group_beta
+                if self.config.dynamic_shrinkage:
+                    kappa = np.clip(self.shrinkage_params['kappa'], 0, 1)
+                    beta_new = beta_new * (1 - kappa) + self.beta * kappa
+                self._update_adaptive_priors(iteration)
                     # AEH diagnostics: log hyperparameters after update
                     if hasattr(self, 'group_prior_hyperparams'):
                         for group, params in self.group_prior_hyperparams.items():
@@ -740,47 +740,47 @@ class AdaptivePriorARD:
                                     if pname in params:
                                         aeh_log.write(f"  {pname}: {params[pname]}\n")
                                 aeh_log.flush()
-                    beta_diff = np.abs(np.clip(beta_new, 1e-10, None) - np.clip(self.beta, 1e-10, None))
-                    alpha_diff = np.abs(alpha_new - self.alpha)
-                    if (alpha_diff < self.config.tol and np.all(beta_diff < self.config.tol)):
+                beta_diff = np.abs(np.clip(beta_new, 1e-10, None) - np.clip(self.beta, 1e-10, None))
+                alpha_diff = np.abs(alpha_new - self.alpha)
+                if (alpha_diff < self.config.tol and np.all(beta_diff < self.config.tol)):
                         print(f"[DEBUG] EM converged at iteration {iteration} for fold {fold}")
                         em_progress_log.write(f"[DEBUG] EM converged at iteration {iteration} for fold {fold}\n")
-                        break
-                    self.alpha = alpha_new
-                    self.beta = np.clip(beta_new, 1e-10, None)
-                self._update_uncertainty_calibration(X_val_scaled, y_val_scaled)
-                y_pred, y_std = self.predict(X_val_scaled, return_std=True)
-                y_pred_orig = self.scaler_y.inverse_transform(y_pred.reshape(-1, 1)).ravel()
-                y_val_orig = self.scaler_y.inverse_transform(y_val_scaled.reshape(-1, 1)).ravel()
-                y_pred_orig = y_pred_orig.reshape(-1)
-                y_val_orig = y_val_orig.reshape(-1)
-                confidence_levels = [0.5, 0.8, 0.9, 0.95, 0.99]
-                picp_scores = []
-                for level in confidence_levels:
-                    z_score = stats.norm.ppf(1 - (1 - level) / 2)
-                    lower = y_pred_orig - z_score * y_std
-                    upper = y_pred_orig + z_score * y_std
-                    coverage = np.mean((y_val_orig >= lower) & (y_val_orig <= upper))
-                    picp_scores.append(coverage)
-                crps = np.mean(np.abs(y_pred_orig - y_val_orig)) - 0.5 * np.mean(np.abs(y_std))
-                metrics = {
-                    'fold': fold,
-                    'rmse': np.sqrt(mean_squared_error(y_val_orig, y_pred_orig)),
-                    'mae': mean_absolute_error(y_val_orig, y_pred_orig),
-                    'r2': r2_score(y_val_orig, y_pred_orig),
-                    'mean_std': np.mean(y_std),
-                    'crps': crps,
-                    'picp_50': picp_scores[0],
-                    'picp_80': picp_scores[1],
-                    'picp_90': picp_scores[2],
-                    'picp_95': picp_scores[3],
-                    'picp_99': picp_scores[4]
-                }
-                cv_metrics.append(metrics)
-                # Only plot trace for first fold
-                if fold == 1 and feature_names is not None and output_dir is not None and 'chains' in locals():
-                    # Also plot alpha trace if possible (here, alpha is updated per EM, not per HMC step, so we skip unless you want EM trace)
-                    pass  # If you want, you can store alpha per EM iteration and plot here
+                    break
+                self.alpha = alpha_new
+                self.beta = np.clip(beta_new, 1e-10, None)
+            self._update_uncertainty_calibration(X_val_scaled, y_val_scaled)
+            y_pred, y_std = self.predict(X_val_scaled, return_std=True)
+            y_pred_orig = self.scaler_y.inverse_transform(y_pred.reshape(-1, 1)).ravel()
+            y_val_orig = self.scaler_y.inverse_transform(y_val_scaled.reshape(-1, 1)).ravel()
+            y_pred_orig = y_pred_orig.reshape(-1)
+            y_val_orig = y_val_orig.reshape(-1)
+            confidence_levels = [0.5, 0.8, 0.9, 0.95, 0.99]
+            picp_scores = []
+            for level in confidence_levels:
+                z_score = stats.norm.ppf(1 - (1 - level) / 2)
+                lower = y_pred_orig - z_score * y_std
+                upper = y_pred_orig + z_score * y_std
+                coverage = np.mean((y_val_orig >= lower) & (y_val_orig <= upper))
+                picp_scores.append(coverage)
+            crps = np.mean(np.abs(y_pred_orig - y_val_orig)) - 0.5 * np.mean(np.abs(y_std))
+            metrics = {
+                'fold': fold,
+                'rmse': np.sqrt(mean_squared_error(y_val_orig, y_pred_orig)),
+                'mae': mean_absolute_error(y_val_orig, y_pred_orig),
+                'r2': r2_score(y_val_orig, y_pred_orig),
+                'mean_std': np.mean(y_std),
+                'crps': crps,
+                'picp_50': picp_scores[0],
+                'picp_80': picp_scores[1],
+                'picp_90': picp_scores[2],
+                'picp_95': picp_scores[3],
+                'picp_99': picp_scores[4]
+            }
+            cv_metrics.append(metrics)
+            # Only plot trace for first fold
+            if fold == 1 and feature_names is not None and output_dir is not None and 'chains' in locals():
+                # Also plot alpha trace if possible (here, alpha is updated per EM, not per HMC step, so we skip unless you want EM trace)
+                pass  # If you want, you can store alpha per EM iteration and plot here
         self.cv_results = pd.DataFrame(cv_metrics)
         logger.info(f"Cross-validation results:\n{self.cv_results.mean()}")
         # Diagnostic: Save prediction and target ranges, feature stats, and baseline to file
