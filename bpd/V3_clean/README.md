@@ -3,6 +3,12 @@
 ## Project Overview
 This folder contains code, results, and diagnostics for experiments with custom Bayesian regression models using Adaptive Elastic Horseshoe (AEH) and hierarchical priors. The focus is on understanding the effect of these priors on model fit, uncertainty, and prediction range, compared to baseline models (LinearRegression, BayesianRidge).
 
+## Main Findings & Model Comparisons
+- **Baseline models (LinearRegression, BayesianRidge)** fit the full range of the target variable and provide interpretable weights and well-calibrated uncertainty.
+- **AdaptivePriorARD with AEH prior** (on all or energy group) leads to over-regularization: weights are shrunk, predictions do not match the true range, and uncertainty is underestimated.
+- **Hierarchical priors (non-AEH)** perform similarly to baselines and do not suffer from over-regularization.
+- **Trace diagnostics** show that AEH priors can overly constrain the posterior, while baselines and hierarchical priors allow for better exploration.
+
 ## Folder Structure
 - `debug_model_range.py` — Script for direct model range diagnostics and comparison of priors.
 - `calibration_experiments.py` — Script for calibration and uncertainty experiments.
@@ -45,11 +51,34 @@ This folder contains code, results, and diagnostics for experiments with custom 
 - **Model Artifacts:** Saved models (e.g., `adaptive_prior_model.joblib`).
 - **Logs:** Hyperparameter logs, progress logs, and detailed experiment outputs.
 
+## How to Use the Results for Writing
+- **Figures:** Use plots from `results/` for model fit, uncertainty, calibration, feature importance, and diagnostics. Each plot is named for its purpose (see table below).
+- **Tables:** Use the quantitative comparison table in `findings.md` for reporting min/max, weights, and metrics. You can copy this directly into your report.
+- **Interpretation:** See the 'Interpretation & Implications' section in `findings.md` for ready-to-use discussion points.
+- **Trace and diagnostics:** Use trace plots and `trace_summary.md` to discuss model convergence and posterior exploration.
+- **Feature importance:** Use `feature_importance.png`, `shap_summary.png`, and their corresponding JSON files for quantitative and visual feature analysis.
+
+| Plot Filename                        | Purpose/Use Case                                 |
+|-------------------------------------- |-------------------------------------------------|
+| prediction_vs_actual.png              | Model fit (predicted vs actual)                  |
+| prediction_vs_actual_errorbars.png    | Model fit with uncertainty intervals             |
+| calibration_plot.png                  | Calibration of uncertainty                       |
+| uncertainty_analysis.png              | Uncertainty structure/distribution               |
+| feature_importance.png                | Feature importance (standard)                    |
+| shap_summary.png                      | SHAP global feature importance                   |
+| residual_analysis.png                 | Residual diagnostics                             |
+| correlation_heatmap.png               | Feature correlation                              |
+| partial_dependence.png                | Marginal effects                                 |
+| group_importance.png                  | Group-level importance                           |
+| feature_interaction_network.png       | Feature interactions                             |
+| trace_minimal_bayes_*.png             | Bayesian trace diagnostics                       |
+| learning_curves.png                   | Learning curve                                   |
+
 ## Data
 - Input data is not included in this folder. Please refer to the main project README or data preparation scripts for instructions on obtaining and preprocessing the required datasets.
 
 ## Interpretation & Reporting
-- See the summary file (`findings.md`) for high-level results and conclusions.
+- See the summary file (`findings.md`) for high-level results, quantitative comparisons, and conclusions.
 - Each results folder contains detailed outputs for the corresponding experiment.
 - For questions about the AEH prior, see `AEH_prior_tradeoff.md`.
 

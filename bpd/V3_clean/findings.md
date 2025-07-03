@@ -16,10 +16,6 @@ This document summarizes the main results and insights from experiments with cus
 | AdaptivePriorARD (AEH, all groups)    | 4.78     | 154.21   | 118.58        | 1918.20       | —       | —       | —       |
 | AdaptivePriorARD (AEH, extremes only) | 4.78     | 154.21   | 77.81         | 274.19        | —       | —       | —       |
 
-- **Note:** RMSE, MAE, and R² are not available for all models in this summary table, but for the main experiment (see below):
-    - RMSE: 47.78
-    - MAE: 44.65
-    - R²: -2.18
 
 ---
 
@@ -80,14 +76,31 @@ This document summarizes the main results and insights from experiments with cus
 
 ---
 
-## 6. Recommendations
-- Use AEH priors with caution and perform extensive hyperparameter tuning.
-- For this dataset, hierarchical or standard Bayesian priors are preferable.
-- Document and report negative results, as they provide valuable scientific insight.
+## 6. How to Use These Results in Your Report
+- **Figures:**
+  - Use `prediction_vs_actual.png` and `prediction_vs_actual_errorbars.png` to illustrate model fit and uncertainty.
+  - Use `calibration_plot.png` and `uncertainty_analysis.png` for uncertainty and calibration discussion.
+  - Use `feature_importance.png`, `shap_summary.png`, and SHAP force/dependence plots for interpretability.
+  - Use trace plots and `trace_summary.md` to discuss Bayesian convergence and prior effects.
+- **Tables:**
+  - Copy the quantitative comparison table above directly into your report for a summary of model performance.
+  - Use weights and feature importance tables for interpretability sections.
+- **Discussion:**
+  - Use the 'Interpretation & Implications' section below for your discussion/conclusion.
+  - Reference the diagnostics and trace summaries to support your claims about model behavior.
 
 ---
 
-## 7. References to Results Files
+## 7. Discussion Points for Writing
+- **AEH priors can lead to over-regularization** in some settings, especially when applied to all groups or with strong hyperparameters. This is visible in the shrunk weights, poor fit to the target range, and flat trace plots.
+- **Baselines and hierarchical priors** provide more flexible, interpretable, and well-calibrated models for this dataset.
+- **Feature importance and SHAP analysis** reveal which variables drive predictions and can be used to support substantive claims about the data.
+- **Uncertainty and calibration plots** are essential for demonstrating the reliability of Bayesian predictions.
+- **Negative results** (e.g., AEH failing to fit the range) are scientifically valuable and should be discussed as part of the research contribution.
+
+---
+
+## 8. References to Results Files
 - **Plots:** `results/prediction_vs_actual.png`, `results/prediction_vs_actual_errorbars.png`, `results/calibration_plot.png`, `results/uncertainty_analysis.png`
 - **Diagnostics:** `results/trace_summary.md`, `results/diagnostics_detailed.txt`, `results/feature_importance.json`, `results/shap_importance.json`
 - **Weights & Ranges:** `results_debug_model_range/stats_*.json`, `results/bayesianridge_pred_range.txt`, `results/aeh_pred_range.txt`
