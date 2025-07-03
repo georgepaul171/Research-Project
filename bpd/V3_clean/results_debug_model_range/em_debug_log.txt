@@ -1,0 +1,21 @@
+Iter 0: alpha=1.0000e-06, beta_mean=9.1667e+00, beta_min=1.0000e-10, beta_max=1.0000e+01, m_mean=5.1138e-03, m_min=-9.1426e-07, m_max=6.1364e-02
+Iter 1: alpha=2.0000e-05, beta_mean=9.1666e+00, beta_min=1.0000e-10, beta_max=9.9999e+00, m_mean=5.1162e-03, m_min=-1.8284e-05, m_max=6.1363e-02
+Iter 2: alpha=3.9980e-04, beta_mean=9.1666e+00, beta_min=1.0000e-10, beta_max=1.0000e+01, m_mean=5.1640e-03, m_min=-3.6499e-04, m_max=6.1340e-02
+Iter 3: alpha=7.9206e-03, beta_mean=9.1688e+00, beta_min=1.0000e-10, beta_max=1.0004e+01, m_mean=6.0966e-03, m_min=-7.0356e-03, m_max=6.0917e-02
+Iter 4: alpha=1.3404e-01, beta_mean=9.2109e+00, beta_min=1.0000e-10, beta_max=1.0077e+01, m_mean=1.8992e-02, m_min=-8.1742e-02, m_max=8.3088e-02
+Iter 5: alpha=9.0617e-01, beta_mean=9.4678e+00, beta_min=1.0000e-10, beta_max=1.0862e+01, m_mean=6.2555e-02, m_min=-1.8629e-01, m_max=2.7530e-01
+Iter 6: alpha=2.9920e+00, beta_mean=9.7182e+00, beta_min=1.0000e-10, beta_max=1.4267e+01, m_mean=1.1854e-01, m_min=-2.0454e-01, m_max=6.3209e-01
+Iter 7: alpha=7.5299e+00, beta_mean=1.1990e+01, beta_min=1.0000e-10, beta_max=2.1745e+01, m_mean=1.5567e-01, m_min=-1.1090e-01, m_max=1.3928e+00
+Iter 8: alpha=2.0374e+01, beta_mean=1.8867e+01, beta_min=1.0000e-10, beta_max=3.5252e+01, m_mean=1.6644e-01, m_min=-5.3939e-02, m_max=1.9699e+00
+Iter 9: alpha=5.6082e+01, beta_mean=3.6279e+01, beta_min=1.0000e-10, beta_max=6.0625e+01, m_mean=1.6768e-01, m_min=-6.1784e-02, m_max=2.0517e+00
+Iter 10: alpha=1.4044e+02, beta_mean=7.4828e+01, beta_min=1.0000e-10, beta_max=1.5946e+02, m_mean=1.6795e-01, m_min=-6.8210e-02, m_max=2.0665e+00
+Iter 11: alpha=3.0387e+02, beta_mean=1.5349e+02, beta_min=1.0000e-10, beta_max=4.0650e+02, m_mean=1.6816e-01, m_min=-7.4613e-02, m_max=2.0712e+00
+Iter 12: alpha=5.3218e+02, beta_mean=2.9784e+02, beta_min=1.0000e-10, beta_max=9.3561e+02, m_mean=1.6839e-01, m_min=-8.1534e-02, m_max=2.0714e+00
+Iter 13: alpha=7.4284e+02, beta_mean=5.3313e+02, beta_min=1.0000e-10, beta_max=1.8608e+03, m_mean=1.6860e-01, m_min=-8.7629e-02, m_max=2.0692e+00
+Iter 14: alpha=8.7756e+02, beta_mean=8.7495e+02, beta_min=1.0000e-10, beta_max=3.1452e+03, m_mean=1.6873e-01, m_min=-9.1968e-02, m_max=2.0660e+00
+Iter 15: alpha=9.4739e+02, beta_mean=1.3267e+03, beta_min=1.0000e-10, beta_max=4.6384e+03, m_mean=1.6880e-01, m_min=-9.4719e-02, m_max=2.0628e+00
+Iter 16: alpha=9.8193e+02, beta_mean=1.8850e+03, beta_min=1.0000e-10, beta_max=6.2119e+03, m_mean=1.6881e-01, m_min=-9.6403e-02, m_max=2.0601e+00
+Iter 17: alpha=1.0002e+03, beta_mean=2.5409e+03, beta_min=1.0000e-10, beta_max=7.7957e+03, m_mean=1.6880e-01, m_min=-9.7427e-02, m_max=2.0581e+00
+Iter 18: alpha=1.0109e+03, beta_mean=3.2784e+03, beta_min=1.0000e-10, beta_max=9.3570e+03, m_mean=1.6876e-01, m_min=-9.8033e-02, m_max=2.0566e+00
+Iter 19: alpha=1.0177e+03, beta_mean=4.0767e+03, beta_min=1.0000e-10, beta_max=1.0880e+04, m_mean=1.6872e-01, m_min=-9.8360e-02, m_max=2.0556e+00
+FINAL: alpha=1.0222e+03, beta_mean=4.9146e+03, beta_min=1.0000e-10, beta_max=1.3814e+04, m_mean=1.6872e-01, m_min=-9.8360e-02, m_max=2.0556e+00

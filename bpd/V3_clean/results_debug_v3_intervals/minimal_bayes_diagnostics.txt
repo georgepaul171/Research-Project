@@ -1,0 +1,13 @@
+MinimalBayes Predicted range: -26.563003540039062 153.79067993164062
+ghg_emissions_int_log: 44.67847442626953
+floor_area_log: 6.235368251800537
+electric_eui: 0.369552344083786
+fuel_eui: 0.574920117855072
+energy_star_rating_normalized: -5.212737083435059
+energy_mix: -18.225723266601562
+building_age_log: 20.935565948486328
+floor_area_squared: -3.196894884109497
+energy_intensity_ratio: 5.9455037117004395
+building_age_squared: -11.080865859985352
+energy_star_rating_squared: -3.021641492843628
+ghg_per_area: 1.0738565921783447

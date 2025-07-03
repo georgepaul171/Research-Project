@@ -1,0 +1,70 @@
+[AdaptivePriorARD SCALING DIAGNOSTICS]
+y_mean: 77.88706970214844
+y_std: 26.784879684448242
+y_train_scaled_mean: -7.848162120183133e-09
+y_train_scaled_std: 1.0
+y_pred_scaled_mean: 33.21494976773704
+y_pred_scaled_std: 10.720233033318266
+y_pred_unscaled_mean: 967.5455238434581
+y_pred_unscaled_std: 287.14015763745743
+
+[AdaptivePriorARD SCALING DIAGNOSTICS]
+y_mean: 77.88706970214844
+y_std: 26.784879684448242
+y_train_scaled_mean: -7.848162120183133e-09
+y_train_scaled_std: 1.0
+y_pred_scaled_mean: 33.214950817557224
+y_pred_scaled_std: 10.72023342191457
+y_pred_unscaled_mean: 967.545551962766
+y_pred_unscaled_std: 287.14016804596287
+
+[AdaptivePriorARD SCALING DIAGNOSTICS]
+y_mean: 77.88706970214844
+y_std: 26.784879684448242
+y_train_scaled_mean: -7.848162120183133e-09
+y_train_scaled_std: 1.0
+y_pred_scaled_mean: 33.214950817557224
+y_pred_scaled_std: 10.72023342191457
+y_pred_unscaled_mean: 967.545551962766
+y_pred_unscaled_std: 287.14016804596287
+
+[AdaptivePriorARD SCALING DIAGNOSTICS]
+y_mean: 77.88706970214844
+y_std: 26.784879684448242
+y_train_scaled_mean: -7.848162120183133e-09
+y_train_scaled_std: 1.0
+y_pred_scaled_mean: 33.214950817557224
+y_pred_scaled_std: 10.72023342191457
+y_pred_unscaled_mean: 967.545551962766
+y_pred_unscaled_std: 287.14016804596287
+
+[AdaptivePriorARD SCALING DIAGNOSTICS]
+y_mean: 77.88706970214844
+y_std: 26.784879684448242
+y_train_scaled_mean: -7.848162120183133e-09
+y_train_scaled_std: 1.0
+y_pred_scaled_mean: 33.228109196179204
+y_pred_scaled_std: 10.724284431904612
+y_pred_unscaled_mean: 967.8979975579339
+y_pred_unscaled_std: 287.248673863282
+
+[AdaptivePriorARD SCALING DIAGNOSTICS]
+y_mean: 77.88706970214844
+y_std: 26.784879684448242
+y_train_scaled_mean: -7.848162120183133e-09
+y_train_scaled_std: 1.0
+y_pred_scaled_mean: 33.228109196179204
+y_pred_scaled_std: 10.724284431904612
+y_pred_unscaled_mean: 967.8979975579339
+y_pred_unscaled_std: 287.248673863282
+
+[AdaptivePriorARD SCALING DIAGNOSTICS]
+y_mean: 77.88706970214844
+y_std: 26.784879684448242
+y_train_scaled_mean: -7.848162120183133e-09
+y_train_scaled_std: 1.0
+y_pred_scaled_mean: 33.228109196179204
+y_pred_scaled_std: 10.724284431904612
+y_pred_unscaled_mean: 967.8979975579339
+y_pred_unscaled_std: 287.248673863282
+
