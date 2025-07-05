@@ -8,18 +8,7 @@ This diagram illustrates the hierarchical structure of the Bayesian linear regre
 ```mermaid
 graph TD
     %% Input Features
-    X1[floor_area_log]
-    X2[electric_eui]
-    X3[fuel_eui]
-    X4[energy_star_rating_normalized]
-    X5[building_age_log]
-    X6[ghg_emissions_int_log]
-    X7[energy_mix]
-    X8[energy_intensity_ratio]
-    X9[floor_area_squared]
-    X10[building_age_squared]
-    X11[energy_star_rating_squared]
-    X12[ghg_per_area]
+    X[Input Features]
     
     %% Feature Groups
     G1[Energy Features]
@@ -44,30 +33,17 @@ graph TD
     O3[Feature Importance]
     O4[Diagnostics]
     
-    %% Connections from Input to Groups
-    X2 --> G1
-    X3 --> G1
-    X7 --> G1
-    X8 --> G1
+    %% Connections
+    X --> G1
+    X --> G2
+    X --> G3
+    X --> G4
     
-    X1 --> G2
-    X5 --> G2
-    X4 --> G2
-    
-    X6 --> G3
-    X12 --> G3
-    
-    X9 --> G4
-    X10 --> G4
-    X11 --> G4
-    
-    %% Connections from Groups to Priors
     G1 --> P1
     G2 --> P2
     G3 --> P2
     G4 --> P3
     
-    %% Connections from Priors to Model
     P1 --> M1
     P2 --> M1
     P3 --> M1
@@ -77,7 +53,6 @@ graph TD
     M3 --> M4
     M4 --> M3
     
-    %% Connections from Model to Output
     M3 --> O1
     M3 --> O2
     M3 --> O3
@@ -90,7 +65,7 @@ graph TD
     classDef model fill:#fff3e0,stroke:#f57c00,stroke-width:2px
     classDef output fill:#fce4ec,stroke:#c2185b,stroke-width:2px
     
-    class X1,X2,X3,X4,X5,X6,X7,X8,X9,X10,X11,X12 input
+    class X input
     class G1,G2,G3,G4 group
     class P1,P2,P3 prior
     class M1,M2,M3,M4 model
