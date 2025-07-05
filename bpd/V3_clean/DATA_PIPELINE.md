@@ -8,35 +8,15 @@ This document provides a visual representation of the complete data pipeline for
 ```mermaid
 graph TD
     %% Data Sources
-    A[Raw Data Sources] --> B[Data Loading]
-    A1[BPD Dataset] --> A
+    A[BPD Dataset] --> B[Data Loading]
     
-    %% Data Loading and Initial Processing
+    %% Data Processing
     B --> C[Data Cleaning]
-    C --> D[Missing Value Treatment]
-    D --> E[Outlier Handling]
-    
-    %% Feature Engineering
-    E --> F[Feature Engineering]
-    F --> F1[Log Transformations]
-    F --> F2[Ratio Features]
-    F --> F3[Interaction Features]
-    F --> F4[Squared Terms]
-    
-    F1 --> G[Feature Selection]
-    F2 --> G
-    F3 --> G
-    F4 --> G
-    
-    %% Data Splitting
-    G --> H[Data Splitting]
-    H --> H1[Training Set 60%]
-    H --> H2[Validation Set 20%]
-    H --> H3[Test Set 20%]
+    C --> D[Feature Engineering]
+    D --> E[Feature Selection]
     
     %% Model Training Pipeline
-    H1 --> I[Model Training]
-    H2 --> I
+    E --> I[Model Training]
     
     I --> I1[Baseline Models]
     I --> I2[Adaptive Prior Models]
@@ -59,7 +39,7 @@ graph TD
     I3a --> J
     I3b --> J
     
-    H3 --> J
+
     
     %% Evaluation and Results
     J --> K[Performance Metrics]
@@ -81,8 +61,8 @@ graph TD
     classDef evaluation fill:#fff3e0,stroke:#e65100,stroke-width:2px
     classDef output fill:#fce4ec,stroke:#880e4f,stroke-width:2px
     
-    class A,A1 dataSource
-    class B,C,D,E,F,F1,F2,F3,F4,G,H,H1,H2,H3 processing
+    class A dataSource
+    class B,C,D,E processing
     class I,I1,I2,I3,I1a,I1b,I2a,I2b,I3a,I3b model
     class J,K,L,M,N evaluation
     class O,P output
