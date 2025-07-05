@@ -77,10 +77,26 @@ This folder contains code, results, and diagnostics for experiments with custom 
 ## Data
 - Input data is not included in this folder. Please refer to the main project README or data preparation scripts for instructions on obtaining and preprocessing the required datasets.
 
+## Documentation Structure
+
+### Core Documentation
+- **`METHODOLOGY.md`**: Complete research methodology, experimental design, and statistical framework
+- **`DATA_DOCUMENTATION.md`**: Data sources, preprocessing, feature engineering, and quality assessment
+- **`MODEL_ARCHITECTURE.md`**: Mathematical formulation, prior specifications, and implementation details
+- **`RESULTS_INTERPRETATION.md`**: How to interpret plots, metrics, and model outputs
+- **`REPRODUCIBILITY_GUIDE.md`**: Step-by-step instructions for reproducing all experiments
+
+### Specialized Documentation
+- **`AEH_prior_tradeoff.md`**: Detailed analysis of AEH prior strength trade-offs
+- **`findings.md`**: High-level results and quantitative comparisons (to be populated)
+
 ## Interpretation & Reporting
-- See the summary file (`findings.md`) for high-level results, quantitative comparisons, and conclusions.
-- Each results folder contains detailed outputs for the corresponding experiment.
-- For questions about the AEH prior, see `AEH_prior_tradeoff.md`.
+- **For methodology**: See `METHODOLOGY.md` for research design and statistical framework
+- **For data understanding**: See `DATA_DOCUMENTATION.md` for data sources and preprocessing
+- **For model details**: See `MODEL_ARCHITECTURE.md` for mathematical formulation
+- **For results interpretation**: See `RESULTS_INTERPRETATION.md` for understanding outputs
+- **For reproducibility**: See `REPRODUCIBILITY_GUIDE.md` for complete setup instructions
+- **For AEH prior analysis**: See `AEH_prior_tradeoff.md` for prior strength trade-offs
 
 ## Reproducibility
 - All dependencies are listed in `requirements.txt`.
