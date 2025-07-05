@@ -11,26 +11,26 @@ graph TD
     F[Feature j]
     
     %% Feature Analysis
-    A1[Feature Importance<br/>|β_j|]
-    A2[Uncertainty<br/>σ_j]
-    A3[Data Support<br/>Evidence]
+    A1[Feature Importance]
+    A2[Uncertainty]
+    A3[Data Support]
     
     %% Adaptive Parameters
-    P1[Local Shrinkage<br/>λ_j]
-    P2[Global Shrinkage<br/>τ]
-    P3[Elastic Mix<br/>α]
-    P4[Strength<br/>β_0]
+    P1[Local Shrinkage]
+    P2[Global Shrinkage]
+    P3[Elastic Mix]
+    P4[Strength]
     
     %% Shrinkage Components
-    S1[L1 Regularization<br/>Sparsity]
-    S2[L2 Regularization<br/>Magnitude]
-    S3[Horseshoe<br/>Heavy Tails]
+    S1[L1 Regularization]
+    S2[L2 Regularization]
+    S3[Horseshoe]
     
     %% Combined Effect
-    C[Combined Shrinkage<br/>τ²λ_j²]
+    C[Combined Shrinkage]
     
     %% Output
-    O[Final Coefficient<br/>β_j]
+    O[Final Coefficient]
     
     %% Connections
     F --> A1
@@ -55,7 +55,7 @@ graph TD
     C --> O
     
     %% Feedback Loop
-    O -.-> A1
+    O --> A1
     
     %% Styling
     classDef input fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
