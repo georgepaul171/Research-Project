@@ -6,53 +6,43 @@ This diagram illustrates the hierarchical structure of the Bayesian linear regre
 ## Model Architecture Diagram
 
 ```mermaid
-graph TB
-    %% Input Layer
-    subgraph Input[Input Features]
-        X1[floor_area_log]
-        X2[electric_eui]
-        X3[fuel_eui]
-        X4[energy_star_rating_normalized]
-        X5[building_age_log]
-        X6[ghg_emissions_int_log]
-        X7[energy_mix]
-        X8[energy_intensity_ratio]
-        X9[floor_area_squared]
-        X10[building_age_squared]
-        X11[energy_star_rating_squared]
-        X12[ghg_per_area]
-    end
+graph TD
+    %% Input Features
+    X1[floor_area_log]
+    X2[electric_eui]
+    X3[fuel_eui]
+    X4[energy_star_rating_normalized]
+    X5[building_age_log]
+    X6[ghg_emissions_int_log]
+    X7[energy_mix]
+    X8[energy_intensity_ratio]
+    X9[floor_area_squared]
+    X10[building_age_squared]
+    X11[energy_star_rating_squared]
+    X12[ghg_per_area]
     
-    %% Feature Grouping
-    subgraph Groups[Feature Groups]
-        G1[Energy Features]
-        G2[Building Features]
-        G3[Environmental Features]
-        G4[Interaction Features]
-    end
+    %% Feature Groups
+    G1[Energy Features]
+    G2[Building Features]
+    G3[Environmental Features]
+    G4[Interaction Features]
     
-    %% Prior Assignments
-    subgraph Priors[Prior Specifications]
-        P1[Adaptive Elastic Horseshoe<br/>AEH Prior]
-        P2[Hierarchical ARD<br/>Normal-InverseGamma]
-        P3[Spike-Slab<br/>Mixture Prior]
-    end
+    %% Prior Specifications
+    P1[AEH Prior]
+    P2[Hierarchical ARD]
+    P3[Spike-Slab Prior]
     
     %% Model Components
-    subgraph Model[Bayesian Model Components]
-        M1[Likelihood<br/>y_i ~ Normal(μ_i, σ²)]
-        M2[Linear Predictor<br/>μ_i = X_i^T β]
-        M3[Posterior Sampling<br/>HMC]
-        M4[EM Algorithm<br/>Parameter Updates]
-    end
+    M1[Likelihood]
+    M2[Linear Predictor]
+    M3[HMC Sampling]
+    M4[EM Algorithm]
     
-    %% Output
-    subgraph Output[Model Outputs]
-        O1[Predictions<br/>ŷ_i]
-        O2[Uncertainty<br/>Prediction Intervals]
-        O3[Feature Importance<br/>|β_j|]
-        O4[Model Diagnostics<br/>Trace Plots]
-    end
+    %% Outputs
+    O1[Predictions]
+    O2[Uncertainty]
+    O3[Feature Importance]
+    O4[Diagnostics]
     
     %% Connections from Input to Groups
     X2 --> G1
