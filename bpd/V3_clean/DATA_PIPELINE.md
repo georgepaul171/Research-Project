@@ -61,44 +61,18 @@ graph TD
     
     H3 --> J
     
-    %% Evaluation Metrics
+    %% Evaluation and Results
     J --> K[Performance Metrics]
-    K --> K1[RMSE]
-    K --> K2[MAE]
-    K --> K3[R²]
-    
     J --> L[Uncertainty Assessment]
-    L --> L1[Calibration Error]
-    L --> L2[Interval Coverage]
-    L --> L3[Prediction Intervals]
-    
     J --> M[Model Diagnostics]
-    M --> M1[Trace Plots]
-    M --> M2[Convergence Diagnostics]
-    M --> M3[Posterior Analysis]
-    
-    %% Feature Analysis
     J --> N[Feature Analysis]
-    N --> N1[Feature Importance]
-    N --> N2[SHAP Values]
-    N --> N3[Partial Dependence]
     
-    %% Results and Outputs
     K --> O[Results Generation]
     L --> O
     M --> O
     N --> O
     
-    O --> P[Visualizations]
-    P --> P1[Prediction vs Actual Plots]
-    P --> P2[Calibration Plots]
-    P --> P3[Feature Importance Plots]
-    P --> P4[Uncertainty Analysis Plots]
-    
-    O --> Q[Model Artifacts]
-    Q --> Q1[Saved Models]
-    Q --> Q2[Hyperparameters]
-    Q --> Q3[Diagnostic Logs]
+    O --> P[Visualizations & Model Artifacts]
     
     %% Styling
     classDef dataSource fill:#e1f5fe,stroke:#01579b,stroke-width:2px
@@ -110,8 +84,8 @@ graph TD
     class A,A1 dataSource
     class B,C,D,E,F,F1,F2,F3,F4,G,H,H1,H2,H3 processing
     class I,I1,I2,I3,I1a,I1b,I2a,I2b,I3a,I3b model
-    class J,K,L,M,N,K1,K2,K3,L1,L2,L3,M1,M2,M3,N1,N2,N3 evaluation
-    class O,P,Q,P1,P2,P3,P4,Q1,Q2,Q3 output
+    class J,K,L,M,N evaluation
+    class O,P output
 ```
 
 ## Pipeline Stages
