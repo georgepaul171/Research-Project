@@ -1,308 +1,187 @@
-# Model Architecture: Adaptive Bayesian Regression Models
+# Model Architecture: Adaptive Bayesian Regression with AEH Prior
 
-## Mathematical Framework
+## Overview
+This document provides a detailed visual representation of the model architecture for the Adaptive Bayesian Regression project, including the hierarchical structure, prior specifications, and inference mechanisms.
 
-### General Bayesian Linear Model
-The research employs a hierarchical Bayesian linear regression framework:
+## Model Architecture Diagram
 
-```
-y_i ~ Normal(μ_i, σ²)                    # Likelihood
-μ_i = X_i^T β                            # Linear predictor
-β_j ~ Prior(θ_j)                         # Prior on coefficients
-θ_j ~ Hyperprior(φ)                      # Hyperprior on prior parameters
-σ² ~ InverseGamma(α_σ, β_σ)             # Prior on noise variance
-```
-
-Where:
-- `y_i` is the site energy use intensity for building i
-- `X_i` is the feature vector for building i
-- `β` is the coefficient vector
-- `σ²` is the noise variance
-- `θ_j` are prior parameters for each coefficient
-- `φ` are hyperprior parameters
-
-## Prior Specifications
-
-### 1. Adaptive Elastic Horseshoe (AEH) Prior
-
-The AEH prior combines the benefits of the horseshoe prior with adaptive shrinkage:
-
-```
-β_j ~ Normal(0, τ²λ_j²)                  # Coefficient prior
-λ_j ~ Half-Cauchy(0, 1)                  # Local shrinkage
-τ ~ Half-Cauchy(0, τ_0)                  # Global shrinkage
-τ_0 ~ Gamma(a, b)                        # Hyperprior on global shrinkage
-```
-
-#### Mathematical Properties
-- **Sparsity**: Induces exact zeros through strong shrinkage
-- **Adaptivity**: Local shrinkage parameters adapt to data
-- **Heavy Tails**: Allows large coefficients when supported by data
-- **Scale Invariance**: Automatically adapts to feature scales
-
-#### Implementation Details
-```python
-def aeh_prior_log_prob(beta, lambda_j, tau, tau_0):
-    """Log probability of AEH prior"""
-    # Global shrinkage
-    log_prob = stats.halfcauchy.logpdf(tau, 0, tau_0)
+```mermaid
+graph TD
+    %% Data Layer
+    A[Input Features] --> B[Feature Scaling]
+    B --> C[Feature Groups]
     
-    # Local shrinkage for each coefficient
-    for j in range(len(beta)):
-        log_prob += stats.halfcauchy.logpdf(lambda_j[j], 0, 1)
-        log_prob += stats.norm.logpdf(beta[j], 0, tau * lambda_j[j])
+    %% Feature Groups
+    C --> D[Energy Features<br/>4 features]
+    C --> E[Building Features<br/>4 features]
+    C --> F[Interaction Features<br/>4 features]
     
-    return log_prob
+    %% Prior Specifications
+    D --> G[AEH Prior<br/>Adaptive Elastic Horseshoe]
+    E --> H[Hierarchical Prior<br/>Normal Distribution]
+    F --> I[Hierarchical Prior<br/>Normal Distribution]
+    
+    %% AEH Prior Components
+    G --> G1[Global Shrinkage τ]
+    G --> G2[Local Shrinkage λj]
+    G --> G3[Elastic Net α]
+    G --> G4[Adaptive Parameters<br/>β, γ, δ]
+    
+    %% Hierarchical Prior Components
+    H --> H1[Group Mean μb]
+    H --> H2[Group Variance σb²]
+    I --> I1[Group Mean μi]
+    I --> I2[Group Variance σi²]
+    
+    %% Model Parameters
+    G1 --> J[Regression Coefficients β]
+    G2 --> J
+    G3 --> J
+    G4 --> J
+    H1 --> J
+    H2 --> J
+    I1 --> J
+    I2 --> J
+    
+    %% Likelihood
+    J --> K[Linear Predictor]
+    K --> L[Gaussian Likelihood<br/>y ~ N(Xβ, σ²)]
+    
+    %% Inference
+    L --> M[EM Algorithm]
+    M --> N[Parameter Updates]
+    N --> O[Convergence Check]
+    O --> P{Converged?}
+    P -->|No| M
+    P -->|Yes| Q[Final Model]
+    
+    %% Output
+    Q --> R[Predictions]
+    Q --> S[Uncertainty Estimates]
+    Q --> T[Feature Importance]
+    
+    %% Styling
+    classDef dataLayer fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
+    classDef featureGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    classDef aePrior fill:#e8f5e8,stroke:#2e7d32,stroke-width:2px
+    classDef hierPrior fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    classDef model fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+    classDef inference fill:#f1f8e9,stroke:#558b2f,stroke-width:2px
+    classDef output fill:#e0f2f1,stroke:#00695c,stroke-width:2px
+    
+    class A,B,C dataLayer
+    class D,E,F featureGroup
+    class G,G1,G2,G3,G4 aePrior
+    class H,H1,H2,I,I1,I2 hierPrior
+    class J,K,L model
+    class M,N,O,P inference
+    class Q,R,S,T output
 ```
 
-### 2. Hierarchical Prior
+## Model Components
 
-The hierarchical prior allows different groups of features to have different prior specifications:
+### 1. Feature Groups and Prior Assignment
 
-```
-β_j ~ Normal(0, σ_j²)                    # Coefficient prior
-σ_j² ~ InverseGamma(α_j, β_j)           # Group-specific variance
-```
+#### Energy Features (4 features) - AEH Prior
+- **Features**: `ghg_emissions_int_log`, `floor_area_log`, `electric_eui`, `fuel_eui`
+- **Prior**: Adaptive Elastic Horseshoe (AEH)
+- **Rationale**: Energy-related features benefit from adaptive regularization that can handle varying sparsity patterns
 
-#### Group Definitions
-- **Energy Features**: electric_eui, fuel_eui, energy_mix, energy_intensity_ratio
-- **Building Features**: floor_area_log, building_age_log, energy_star_rating_normalized
-- **Environmental Features**: ghg_emissions_int_log, ghg_per_area
-- **Interaction Features**: All squared terms and interactions
+#### Building Features (4 features) - Hierarchical Prior
+- **Features**: `energy_star_rating_normalized`, `energy_mix`, `building_age_log`, `floor_area_squared`
+- **Prior**: Hierarchical Normal
+- **Rationale**: Building characteristics typically have moderate, stable effects
 
-#### Implementation
-```python
-group_prior_types = {
-    'energy': 'adaptive_elastic_horseshoe',
-    'building': 'hierarchical',
-    'interaction': 'spike_slab'
-}
-```
+#### Interaction Features (4 features) - Hierarchical Prior
+- **Features**: `energy_intensity_ratio`, `building_age_squared`, `energy_star_rating_squared`, `ghg_per_area`
+- **Prior**: Hierarchical Normal
+- **Rationale**: Interaction terms benefit from group-level regularization
 
-### 3. Spike-Slab Prior
+### 2. AEH Prior Specification
 
-The spike-slab prior is a mixture of a point mass at zero and a normal distribution:
+The Adaptive Elastic Horseshoe prior for energy features combines multiple regularization techniques:
 
-```
-β_j ~ (1 - π_j) δ_0 + π_j Normal(0, σ_j²)
-π_j ~ Beta(a_j, b_j)                     # Inclusion probability
-σ_j² ~ InverseGamma(α_j, β_j)           # Variance when included
-```
+#### Global Shrinkage Parameter (τ)
+- **Prior**: τ ~ Half-Cauchy(0, 1)
+- **Role**: Controls overall sparsity level across all energy features
+- **Update**: τ² = (p-1)/(βᵀβ + 2b₀)
 
-Where `δ_0` is a point mass at zero.
+#### Local Shrinkage Parameters (λⱼ)
+- **Prior**: λⱼ ~ Half-Cauchy(0, 1) for each feature j
+- **Role**: Allows individual features to escape shrinkage
+- **Update**: λⱼ² = 1/(βⱼ²/τ² + 1)
 
-## Model Implementation
+#### Elastic Net Parameter (α)
+- **Prior**: α ~ Beta(2, 2)
+- **Role**: Balances L1 (Lasso) and L2 (Ridge) regularization
+- **Update**: α = (Σ|βⱼ|)/(Σ|βⱼ| + Σβⱼ²)
 
-### 1. AdaptivePriorARD Class
+#### Adaptive Parameters (β, γ, δ)
+- **Role**: Fine-tune the balance between different regularization components
+- **Update**: Via EM algorithm with gradient-based optimization
 
-The main model class implements the adaptive prior framework:
+### 3. Hierarchical Prior Specification
 
-```python
-@dataclass
-class AdaptivePriorConfig:
-    alpha_0: float = 1e-6                # Initial noise precision
-    beta_0: float = 1e-6                 # Initial weight precision
-    max_iter: int = 100                  # Maximum EM iterations
-    tol: float = 1e-4                    # Convergence tolerance
-    prior_type: str = 'hierarchical'     # Prior specification
-    adaptation_rate: float = 0.1         # Prior adaptation rate
-    use_hmc: bool = True                 # Use Hamiltonian Monte Carlo
-    uncertainty_calibration: bool = True # Apply uncertainty calibration
-```
+For building and interaction features, standard hierarchical priors are used:
 
-### 2. Expectation-Maximization Algorithm
+#### Group-Level Parameters
+- **Group Mean (μ)**: μ ~ N(0, 10²)
+- **Group Variance (σ²)**: σ² ~ Inverse-Gamma(1, 1)
 
-The model uses an EM algorithm for parameter estimation:
+#### Feature-Level Parameters
+- **Coefficients (β)**: β ~ N(μ, σ²) within each group
 
-#### E-Step: Posterior Sampling
-```python
-def e_step(self, X, y, current_params):
-    """Expectation step: sample from posterior"""
-    # Use Hamiltonian Monte Carlo for posterior sampling
-    if self.config.use_hmc:
-        samples = self.hmc_sampling(X, y, current_params)
-    else:
-        samples = self.variational_inference(X, y, current_params)
-    
-    return samples
-```
+### 4. Likelihood Model
 
-#### M-Step: Parameter Updates
-```python
-def m_step(self, X, y, posterior_samples):
-    """Maximization step: update parameters"""
-    # Update prior parameters based on posterior samples
-    updated_params = self.update_priors(posterior_samples)
-    
-    # Update noise variance
-    noise_var = self.update_noise_variance(X, y, posterior_samples)
-    
-    return updated_params, noise_var
-```
+The response variable follows a Gaussian distribution:
+- **Model**: y ~ N(Xβ, σ²)
+- **Noise Variance**: σ² ~ Inverse-Gamma(1, 1)
 
-### 3. Hamiltonian Monte Carlo Implementation
+### 5. Inference Algorithm
 
-For posterior sampling, the model implements HMC:
+#### Expectation-Maximization (EM) Algorithm
+1. **E-Step**: Compute expected values of latent variables
+2. **M-Step**: Update model parameters using closed-form solutions
+3. **Convergence**: Check relative change in log-likelihood
 
-```python
-def hmc_sampling(self, X, y, params, n_steps=200, epsilon=0.001):
-    """Hamiltonian Monte Carlo sampling"""
-    def potential_energy(beta):
-        """Negative log posterior (potential energy)"""
-        log_likelihood = self.log_likelihood(X, y, beta)
-        log_prior = self.log_prior(beta, params)
-        return -(log_likelihood + log_prior)
-    
-    def gradient_energy(beta):
-        """Gradient of potential energy"""
-        return -self.gradient_log_posterior(X, y, beta, params)
-    
-    # HMC sampling implementation
-    samples = []
-    current_beta = np.random.normal(0, 1, X.shape[1])
-    
-    for step in range(n_steps):
-        # Momentum update
-        momentum = np.random.normal(0, 1, len(current_beta))
-        
-        # Leapfrog integration
-        for leapfrog_step in range(self.config.hmc_leapfrog_steps):
-            momentum -= 0.5 * epsilon * gradient_energy(current_beta)
-            current_beta += epsilon * momentum
-            momentum -= 0.5 * epsilon * gradient_energy(current_beta)
-        
-        # Metropolis acceptance
-        current_energy = potential_energy(current_beta)
-        proposed_energy = potential_energy(current_beta)
-        
-        if np.random.random() < np.exp(current_energy - proposed_energy):
-            samples.append(current_beta.copy())
-    
-    return np.array(samples)
-```
+#### Parameter Updates
+- **Regression Coefficients**: β = (XᵀX + Σ⁻¹)⁻¹Xᵀy
+- **AEH Parameters**: Updated via gradient-based optimization
+- **Hierarchical Parameters**: Closed-form updates for means and variances
 
-## Uncertainty Quantification
+### 6. Model Outputs
 
-### 1. Predictive Uncertainty
+#### Predictions
+- **Point Predictions**: ŷ = Xβ
+- **Prediction Intervals**: Based on posterior uncertainty
 
-The model provides predictive uncertainty through posterior predictive sampling:
+#### Uncertainty Quantification
+- **Parameter Uncertainty**: Posterior variances of coefficients
+- **Prediction Uncertainty**: Combined parameter and noise uncertainty
+- **Calibration**: Empirical coverage of prediction intervals
 
-```python
-def predict_with_uncertainty(self, X_new):
-    """Predict with uncertainty quantification"""
-    predictions = []
-    
-    # Sample from posterior
-    posterior_samples = self.get_posterior_samples()
-    
-    for sample in posterior_samples:
-        # Make prediction with current sample
-        pred = X_new @ sample
-        predictions.append(pred)
-    
-    predictions = np.array(predictions)
-    
-    # Compute statistics
-    mean_pred = np.mean(predictions, axis=0)
-    std_pred = np.std(predictions, axis=0)
-    
-    return mean_pred, std_pred
-```
+#### Feature Analysis
+- **Importance**: Magnitude of regression coefficients
+- **Stability**: Consistency across EM iterations
+- **Sparsity**: Number of effectively non-zero coefficients
 
-### 2. Uncertainty Calibration
+## Key Features
 
-Post-hoc uncertainty calibration is applied to improve reliability:
+### Adaptive Regularization
+- **AEH Prior**: Automatically adapts regularization strength based on data
+- **Feature-Specific**: Different shrinkage for different feature groups
+- **Data-Driven**: Hyperparameters learned from the data
 
-```python
-def calibrate_uncertainty(self, y_true, y_pred, y_std):
-    """Calibrate uncertainty estimates"""
-    # Compute empirical coverage
-    coverages = [0.5, 0.8, 0.9, 0.95, 0.99]
-    empirical_coverages = []
-    
-    for coverage in coverages:
-        z_score = stats.norm.ppf(1 - (1 - coverage) / 2)
-        lower = y_pred - z_score * y_std
-        upper = y_pred + z_score * y_std
-        empirical = np.mean((y_true >= lower) & (y_true <= upper))
-        empirical_coverages.append(empirical)
-    
-    # Find calibration factor
-    calibration_factor = np.mean(np.array(coverages) / np.array(empirical_coverages))
-    
-    return calibration_factor
-```
+### Uncertainty Quantification
+- **Parameter Uncertainty**: Full posterior distributions for all parameters
+- **Prediction Uncertainty**: Probabilistic predictions with intervals
+- **Model Uncertainty**: Accounted for in final predictions
 
-## Model Comparison Framework
-
-### 1. Baseline Models
-
-#### Linear Regression
-```
-y_i ~ Normal(X_i^T β, σ²)
-β_j ~ Uniform(-∞, ∞)  # Uninformative prior
-σ² ~ InverseGamma(ε, ε)  # Jeffreys prior
-```
-
-#### Bayesian Ridge
-```
-y_i ~ Normal(X_i^T β, σ²)
-β_j ~ Normal(0, τ²)   # Ridge prior
-τ² ~ InverseGamma(α, β)  # Hyperprior
-σ² ~ InverseGamma(α, β)  # Noise prior
-```
-
-### 2. Performance Metrics
-
-#### Predictive Accuracy
-- **RMSE**: Root Mean Square Error
-- **MAE**: Mean Absolute Error  
-- **R²**: Coefficient of Determination
-
-#### Uncertainty Quality
-- **Calibration Error**: Difference between nominal and empirical coverage
-- **Interval Width**: Average width of prediction intervals
-- **Coverage Probability**: Proportion of true values within intervals
-
-#### Model Interpretability
-- **Feature Importance**: Standardized coefficient magnitudes
-- **Sparsity**: Number of effectively zero coefficients
-- **SHAP Values**: Local and global feature contributions
-
-## Computational Considerations
-
-### 1. Scalability
-- **Sample Size**: Models scale to thousands of buildings
-- **Feature Count**: Efficient with dozens of features
-- **Computational Cost**: HMC sampling is the main bottleneck
-
-### 2. Convergence Diagnostics
-- **Trace Plots**: Monitor parameter convergence
-- **Gelman-Rubin Statistic**: Assess mixing and convergence
-- **Effective Sample Size**: Measure sampling efficiency
-
-### 3. Numerical Stability
-- **Feature Scaling**: StandardScaler applied to all features
-- **Prior Specification**: Careful choice of hyperparameters
-- **Regularization**: Prevents overfitting and numerical issues
-
-## Model Validation
-
-### 1. Cross-Validation
-- **K-Fold CV**: K=3 for computational efficiency
-- **Stratified Sampling**: Maintains target distribution
-- **Repeated CV**: Multiple runs for stability
-
-### 2. Posterior Predictive Checks
-- **Residual Analysis**: Check model adequacy
-- **Coverage Assessment**: Validate uncertainty estimates
-- **Out-of-Sample Performance**: Test generalization
-
-### 3. Sensitivity Analysis
-- **Prior Sensitivity**: Test different prior specifications
-- **Hyperparameter Sensitivity**: Vary key parameters
-- **Data Sensitivity**: Robustness to data changes
+### Computational Efficiency
+- **EM Algorithm**: Fast convergence with closed-form updates
+- **Scalable**: Handles moderate-sized datasets efficiently
+- **Stable**: Robust to initialization and numerical issues
 
 ---
 
-*This model architecture document provides the mathematical and computational foundation for the Bayesian models used in the research. It should be referenced when implementing, interpreting, or extending the models.* 
+*This model architecture diagram provides a comprehensive overview of the Adaptive Bayesian Regression model structure. It should be referenced when understanding the model components, prior specifications, and inference mechanisms.* 

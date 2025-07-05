@@ -25,21 +25,17 @@ graph TD
     I1 --> I1a[Linear Regression]
     I1 --> I1b[Bayesian Ridge]
     
-    I2 --> I2a[AEH Prior]
-    I2 --> I2b[Spike-Slab Prior]
+    I2 --> I2a[AEH Prior - Energy Features]
     
-    I3 --> I3a[Group Priors]
-    I3 --> I3b[Hierarchical Mixture]
+    I3 --> I3a[Hierarchical Prior - Building Features]
+    I3 --> I3b[Hierarchical Prior - Interaction Features]
     
     %% Model Evaluation
     I1a --> J[Model Evaluation]
     I1b --> J
     I2a --> J
-    I2b --> J
     I3a --> J
     I3b --> J
-    
-
     
     %% Evaluation and Results
     J --> K[Performance Metrics]
@@ -63,7 +59,7 @@ graph TD
     
     class A dataSource
     class B,C,D,E processing
-    class I,I1,I2,I3,I1a,I1b,I2a,I2b,I3a,I3b model
+    class I,I1,I2,I3,I1a,I1b,I2a,I3a,I3b model
     class J,K,L,M,N evaluation
     class O,P output
 ```
@@ -82,23 +78,39 @@ graph TD
 ### 3. Feature Engineering
 - **Log Transformations**: Apply to right-skewed variables (floor_area, building_age, ghg_emissions_int)
 - **Ratio Features**: Create energy mix ratios and efficiency metrics
-- **Interaction Features**: Generate age-energy_star and area-energy_star interactions
 - **Squared Terms**: Add quadratic terms for non-linear relationships
+- **Normalization**: Energy Star rating normalized to [0,1] range
 
-### 4. Data Splitting
-- **Training Set (60%)**: Model development and parameter estimation
-- **Validation Set (20%)**: Hyperparameter tuning and model selection
-- **Test Set (20%)**: Final evaluation and performance assessment
+### 4. Feature Grouping
+The 12 engineered features are organized into 3 groups for specialized prior assignment:
+
+#### Energy Features (4 features) - AEH Prior
+- `ghg_emissions_int_log` - GHG emissions intensity (log-transformed)
+- `floor_area_log` - Floor area (log-transformed)
+- `electric_eui` - Electric energy use intensity
+- `fuel_eui` - Fuel energy use intensity
+
+#### Building Features (4 features) - Hierarchical Prior
+- `energy_star_rating_normalized` - Normalized Energy Star rating
+- `energy_mix` - Energy source complexity metric
+- `building_age_log` - Building age (log-transformed)
+- `floor_area_squared` - Quadratic floor area effects
+
+#### Interaction Features (4 features) - Hierarchical Prior
+- `energy_intensity_ratio` - Energy efficiency metric
+- `building_age_squared` - Quadratic age effects
+- `energy_star_rating_squared` - Quadratic rating effects
+- `ghg_per_area` - Area-normalized emissions
 
 ### 5. Model Training
-- **Baseline Models**: Linear Regression, Bayesian Ridge
-- **Adaptive Prior Models**: AEH Prior, Spike-Slab Prior
-- **Hierarchical Models**: Group-specific priors for different feature categories
+- **Baseline Models**: Linear Regression, Bayesian Ridge for comparison
+- **AEH Prior Model**: Adaptive Elastic Horseshoe prior for energy features
+- **Hierarchical Models**: Standard hierarchical priors for building and interaction features
 
 ### 6. Model Evaluation
 - **Performance Metrics**: RMSE, MAE, R² for predictive accuracy
 - **Uncertainty Assessment**: Calibration error, interval coverage, prediction intervals
-- **Model Diagnostics**: Trace plots, convergence diagnostics, posterior analysis
+- **Model Diagnostics**: EM convergence, hyperparameter adaptation, posterior analysis
 - **Feature Analysis**: Feature importance, SHAP values, partial dependence plots
 
 ### 7. Results Generation
@@ -110,7 +122,7 @@ graph TD
 ### Target Variable
 - **`site_eui`**: Site Energy Use Intensity (kWh/m²/year)
 
-### Core Features (12 features)
+### Core Features (12 features total)
 1. `ghg_emissions_int_log` - Environmental impact proxy
 2. `floor_area_log` - Building size (primary driver)
 3. `electric_eui` - Electricity consumption
@@ -124,11 +136,10 @@ graph TD
 11. `energy_star_rating_squared` - Non-linear rating effects
 12. `ghg_per_area` - Area-normalized emissions
 
-### Feature Groups for Hierarchical Priors
-- **Energy Features**: electric_eui, fuel_eui, energy_mix, energy_intensity_ratio
-- **Building Features**: floor_area_log, building_age_log, energy_star_rating_normalized
-- **Environmental Features**: ghg_emissions_int_log, ghg_per_area
-- **Interaction Features**: All squared terms and interactions
+### Feature Groups for Specialized Priors
+- **Energy Features (4)**: AEH prior for adaptive regularization
+- **Building Features (4)**: Hierarchical prior for stable regularization
+- **Interaction Features (4)**: Hierarchical prior for standard regularization
 
 ## Data Quality Metrics
 
