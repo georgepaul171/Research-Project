@@ -1,0 +1,1 @@
+[DEBUG] EM converged at iteration 3

@@ -65,8 +65,8 @@ class AdaptivePriorConfig:
         student_t_df: Degrees of freedom for Student's t noise model
         group_prior_types: Dictionary of group prior types
     """
-    alpha_0: float = 1e-6
-    beta_0: float = 1e-6
+    alpha_0: float = 1.0
+    beta_0: float = 1.0
     max_iter: int = 100
     tol: float = 1e-4
     n_splits: int = 2
@@ -85,9 +85,9 @@ class AdaptivePriorConfig:
     robust_noise: bool = True
     student_t_df: float = 3.0  
     group_prior_types: dict = field(default_factory=lambda: {
-        'energy': 'hierarchical',  # Using our new prior for energy features
-        'building': 'horseshoe',  # Less shrinkage
-        'interaction': 'spike_slab'
+        'energy': 'adaptive_elastic_horseshoe',  # AEH prior for energy features
+        'building': 'hierarchical',  # Hierarchical ARD for building features
+        'interaction': 'spike_slab'  # Spike-slab for interaction features
     })
     
     
@@ -345,23 +345,62 @@ class AdaptivePriorARD:
                     1 / (m_squared_sum / (2 * np.sum(self.group_prior_hyperparams[group]['lambda'])) + 1)
                 )
             elif prior_type == 'adaptive_elastic_horseshoe':
-                # Simpler, more stable AEH update
-                # Fix alpha and beta
-                self.group_prior_hyperparams[group]['alpha'] = 0.5
-                self.group_prior_hyperparams[group]['beta'] = 1.0
+                # Proper AEH update with adaptive parameters
                 indices_arr = np.array(indices)
-                # Update lambda in log-space for each feature
+                
+                # Update alpha based on feature importance ratio
+                feature_importance = np.abs(self.m[indices_arr])
+                uncertainty = np.sqrt(np.diag(self.S)[indices_arr])
+                importance_ratio = np.mean(feature_importance) / (np.mean(uncertainty) + 1e-8)
+                
+                # Adaptive alpha: more L1 (sparsity) for high importance, more L2 (smoothness) for low importance
+                alpha_new = np.clip(0.1 + 0.8 * (1 - importance_ratio / (importance_ratio + 1)), 0.1, 0.9)
+                self.group_prior_hyperparams[group]['alpha'] = (
+                    self.group_prior_hyperparams[group]['alpha'] * 0.9 + alpha_new * 0.1
+                )
+                
+                # Update beta based on overall model fit
+                residuals = y - X @ self.m
+                mse = np.mean(residuals**2)
+                beta_new = np.clip(0.1 + 2.0 * (1 - mse / (mse + 1)), 0.1, 2.0)
+                self.group_prior_hyperparams[group]['beta'] = (
+                    self.group_prior_hyperparams[group]['beta'] * 0.9 + beta_new * 0.1
+                )
+                
+                # Update lambda for each feature with momentum
                 for idx, j in enumerate(indices):
                     m2 = np.clip(self.m[j]**2, 1e-10, None)
                     Sjj = np.clip(np.diag(self.S)[j], 1e-10, None)
-                    tau = np.clip(self.group_prior_hyperparams[group]['tau'], 1e-10, None)
-                    log_lambda_new = 0.5 * np.log(m2 + Sjj + tau)
-                    self.group_prior_hyperparams[group]['lambda'][idx] = np.exp(log_lambda_new)
-                # Update tau in log-space for the group
-                m2_sum = np.sum(np.clip(self.m[indices_arr]**2, 1e-10, None) + np.clip(np.diag(self.S)[indices_arr], 1e-10, None))
-                log_tau_new = 0.5 * np.log(m2_sum + 1)
-                self.group_prior_hyperparams[group]['tau'] = np.exp(log_tau_new)
-                # Remove momentum and adaptive learning rate for stability
+                    
+                    # Horseshoe-style update
+                    lambda_horseshoe = 1 / (m2 / (2 * self.group_prior_hyperparams[group]['tau']) + 1)
+                    
+                    # Elastic net component
+                    alpha = self.group_prior_hyperparams[group]['alpha']
+                    beta = self.group_prior_hyperparams[group]['beta']
+                    lambda_elastic = alpha * np.abs(self.m[j]) + (1 - alpha) * m2
+                    
+                    # Combine horseshoe and elastic net
+                    lambda_new = lambda_horseshoe * (1 - beta) + lambda_elastic * beta
+                    
+                    # Apply momentum
+                    momentum = self.group_prior_hyperparams[group]['momentum'][idx]
+                    gamma = self.group_prior_hyperparams[group]['gamma']
+                    rho = self.group_prior_hyperparams[group]['rho']
+                    
+                    momentum_new = rho * momentum + gamma * (lambda_new - self.group_prior_hyperparams[group]['lambda'][idx])
+                    self.group_prior_hyperparams[group]['momentum'][idx] = momentum_new
+                    
+                    # Update lambda with momentum
+                    self.group_prior_hyperparams[group]['lambda'][idx] = np.clip(
+                        lambda_new + momentum_new, 1e-6, 100.0
+                    )
+                
+                # Update tau for the group
+                m2_sum = np.sum(np.clip(self.m[indices_arr]**2, 1e-10, None))
+                lambda_sum = np.sum(self.group_prior_hyperparams[group]['lambda'])
+                tau_new = 1 / (m2_sum / (2 * lambda_sum) + 1)
+                self.group_prior_hyperparams[group]['tau'] = np.clip(tau_new, 1e-6, 10.0)
         if self.config.dynamic_shrinkage:
             for j in range(len(self.beta)):
                 importance = 1 / np.clip(self.beta[j], 1e-10, None)
@@ -684,6 +723,8 @@ class AdaptivePriorARD:
                                 # Standard Bayesian update (no + 2 * tau)
                             beta_new[j] = 1 / (np.clip(self.m[j]**2, 1e-10, None) +
                                                    np.clip(np.diag(self.S)[j], 1e-10, None))
+                            # No clipping - let the model learn naturally
+                            beta_new[j] = np.clip(beta_new[j], 1e-10, None)
                     elif prior_type == 'spike_slab':
                         for idx, j in enumerate(indices):
                             pi = self.group_prior_hyperparams[group]['pi'][idx]
@@ -691,11 +732,34 @@ class AdaptivePriorARD:
                             sigma2_1 = self.group_prior_hyperparams[group]['sigma2_1'][idx]
                             beta_new[j] = (pi / np.clip(sigma2_1, 1e-10, None) +
                                            (1 - pi) / np.clip(sigma2_0, 1e-10, None))
+                            # No clipping - let the model learn naturally
+                            beta_new[j] = np.clip(beta_new[j], 1e-10, None)
                     elif prior_type == 'horseshoe':
                         for idx, j in enumerate(indices):
                             tau = self.group_prior_hyperparams[group]['tau']
                             lambd = self.group_prior_hyperparams[group]['lambda'][idx]
                             beta_new[j] = 1 / (np.clip(self.m[j]**2, 1e-10, None) / (2 * tau) + lambd)
+                            # No clipping - let the model learn naturally
+                            beta_new[j] = np.clip(beta_new[j], 1e-10, None)
+                    elif prior_type == 'adaptive_elastic_horseshoe':
+                        for idx, j in enumerate(indices):
+                            # Get AEH parameters
+                            alpha = self.group_prior_hyperparams[group]['alpha']
+                            beta = self.group_prior_hyperparams[group]['beta']
+                            tau = self.group_prior_hyperparams[group]['tau']
+                            lambd = self.group_prior_hyperparams[group]['lambda'][idx]
+                            
+                            # Horseshoe component
+                            m2 = np.clip(self.m[j]**2, 1e-10, None)
+                            horseshoe_term = m2 / (2 * tau) + lambd
+                            
+                            # Elastic net component
+                            elastic_term = alpha * np.abs(self.m[j]) + (1 - alpha) * m2
+                            
+                            # Combine components
+                            beta_new[j] = 1 / (horseshoe_term * (1 - beta) + elastic_term * beta)
+                            # No clipping - let the model learn naturally
+                            beta_new[j] = np.clip(beta_new[j], 1e-10, None)
                 if self.config.group_sparsity:
                     for group, indices in self.feature_groups.items():
                         group_beta = np.mean(beta_new[indices])
@@ -772,22 +836,40 @@ class AdaptivePriorARD:
             mean: Mean predictions (n_samples,)
             std: Standard deviation of predictions (n_samples,) if return_std=True
         """
-        mean = X @ self.m
+        # Check if model is fitted
+        if self.m is None:
+            raise ValueError("Model must be fitted before making predictions. Call fit() first.")
+        
+        # CRITICAL FIX: Scale the input features before prediction
+        X_scaled = self.scaler_X.transform(X)
+        
+        # Make prediction on scaled features
+        mean_scaled = X_scaled @ self.m
+        
+        # Inverse transform to get predictions in original scale
+        mean = self.scaler_y.inverse_transform(mean_scaled.reshape(-1, 1)).ravel()
         
         if return_std:
-            # Base uncertainty from model (epistemic)
-            base_std = np.sqrt(1/self.alpha + np.sum((X @ self.S) * X, axis=1))
+            # Check if uncertainty components are available
+            if self.alpha is None or self.S is None:
+                raise ValueError("Model must be fitted before making uncertainty estimates. Call fit() first.")
+            
+            # Base uncertainty from model (epistemic) - on scaled features
+            base_std_scaled = np.sqrt(1/self.alpha + np.sum((X_scaled @ self.S) * X_scaled, axis=1))
             
             if self.config.uncertainty_calibration:
                 # Apply calibrated uncertainty
-                std = base_std * self.uncertainty_calibration_factor
+                std_scaled = base_std_scaled * self.uncertainty_calibration_factor
             else:
-                std = base_std
+                std_scaled = base_std_scaled
                 
             if self.config.robust_noise:
                 # Add Student's t noise component for robustness (aleatoric)
                 t_noise = stats.t.rvs(df=self.config.student_t_df, size=len(mean))
-                std = np.sqrt(std**2 + np.abs(t_noise))
+                std_scaled = np.sqrt(std_scaled**2 + np.abs(t_noise))
+            
+            # Scale uncertainty back to original scale using scaler_y scale
+            std = std_scaled * self.scaler_y.scale_
                 
             return mean.reshape(-1), std.reshape(-1)
             
@@ -885,9 +967,9 @@ logger.propagate = False
 
 @dataclass
 class AdaptivePriorConfig:
-    alpha_0: float = 1e-6
-    beta_0: float = 1e-6
-    max_iter: int = 100
+    alpha_0: float = 1.0
+    beta_0: float = 0.1
+    max_iter: int = 50
     tol: float = 1e-4
     n_splits: int = 2
     random_state: int = 42
@@ -896,7 +978,7 @@ class AdaptivePriorConfig:
     uncertainty_threshold: float = 0.1
     group_sparsity: bool = True
     dynamic_shrinkage: bool = True
-    use_hmc: bool = True
+    use_hmc: bool = False
     hmc_steps: int = 20
     hmc_epsilon: float = 0.0001
     hmc_leapfrog_steps: int = 3
@@ -905,9 +987,9 @@ class AdaptivePriorConfig:
     robust_noise: bool = True
     student_t_df: float = 3.0
     group_prior_types: dict = field(default_factory=lambda: {
-        'energy': 'hierarchical',
-        'building': 'horseshoe',  # Less shrinkage
-        'interaction': 'spike_slab'
+        'energy': 'adaptive_elastic_horseshoe',
+        'building': 'hierarchical',
+        'interaction': 'hierarchical'
     })
 
 def feature_engineering_no_interactions(df: pd.DataFrame) -> pd.DataFrame:
@@ -939,13 +1021,13 @@ def feature_engineering_no_interactions(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 if __name__ == "__main__":
-    logger.info("Starting Adaptive Prior ARD analysis (no interaction terms, low shrinkage on building features)")
+    logger.info("Starting Adaptive Prior ARD analysis with group-wise priors and HMC inference")
     data_csv_path = "/Users/georgepaul/Desktop/Research-Project/bpd/cleaned_office_buildings.csv"
     target = "site_eui"
     na_vals = ['No Value', '', 'NA', 'N/A', 'null', 'Null', 'nan', 'NaN']
     df = pd.read_csv(data_csv_path, na_values=na_vals, low_memory=False)
     logger.info(f"Loaded {len(df)} samples with {len(df.columns)} features")
-    logger.info("Performing feature engineering (no interaction terms)...")
+    logger.info("Performing feature engineering...")
     df = feature_engineering_no_interactions(df)
     logger.info("Feature engineering completed")
     features = [
@@ -963,58 +1045,101 @@ if __name__ == "__main__":
         "ghg_per_area"
     ]
     feature_names = features.copy()
-    logger.info(f"Selected {len(features)} features for analysis (no interactions)")
+    logger.info(f"Selected {len(features)} features for analysis")
     logger.info("Features: " + ", ".join(features))
     X = df[features].values.astype(np.float32)
+    # --- USE ORIGINAL TARGET (NO LOG TRANSFORM) ---
     y = df[target].values.astype(np.float32).reshape(-1)
+    
+    # Debug: Check data ranges
+    debug_info = []
+    debug_info.append(f"X range: {X.min():.4f} to {X.max():.4f}")
+    debug_info.append(f"y range: {y.min():.4f} to {y.max():.4f}")
+    print(debug_info[0])
+    print(debug_info[1])
     logger.info(f"X shape: {X.shape}")
     logger.info(f"y shape: {y.shape}")
     results_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'results')
     os.makedirs(results_dir, exist_ok=True)
-    # Switch 'energy' to 'hierarchical' prior for diagnostic purposes (to confirm if AEH is the limiting factor)
+    # Configure model with AEH prior for energy features and stable settings
     config = AdaptivePriorConfig(
-        beta_0=1e6,  # Nearly flat prior for maximal flexibility
-        group_sparsity=False,
-        dynamic_shrinkage=False,
-        hmc_steps=20,
-        hmc_leapfrog_steps=3,  # Reduced for HMC stability
-        hmc_epsilon=0.0001,    # Smaller step size for HMC stability
-        max_iter=10,  # REDUCE EM iterations for fast debugging
-        tol=1e-8,       # Tighter tolerance
-        use_hmc=False,  # EM-only
-        robust_noise=False,    # Disable robust noise for HMC stability
-        uncertainty_calibration=False,  # <--- DISABLE CALIBRATION
+        beta_0=0.1,  # Moderate regularization
+        group_sparsity=True,
+        dynamic_shrinkage=True,
+        max_iter=50,  # Reasonable EM iterations
+        tol=1e-4,
+        use_hmc=False,  # Disable HMC for stability
+        robust_noise=True,
+        uncertainty_calibration=True,
         group_prior_types={
-            'energy': 'hierarchical',  # <-- switched from AEH to hierarchical
+            'energy': 'adaptive_elastic_horseshoe',  # Use AEH for energy features
             'building': 'hierarchical',
             'interaction': 'hierarchical'
         }
     )
     model = AdaptivePriorARD(config)
+    
+    # Debug: Model initialization check
+    debug_info.append("Model initialized successfully")
+    print("Model initialized successfully")
+    
     model.fit(X, y, feature_names=feature_names, output_dir=results_dir)
-    # Print and save prediction range and weights for AEH model
+    
+    # Save debug info to results folder
+    with open(os.path.join(results_dir, 'debug_info.txt'), 'w') as f:
+        for line in debug_info:
+            f.write(line + '\n')
+    
+    # --- GET PREDICTIONS ---
     y_pred, y_std = model.predict(X, return_std=True)
-    print(f"[AEH] Predicted range: {y_pred.min()} {y_pred.max()}")
-    print(f"[AEH] Weights: {model.m}")
-    with open(os.path.join(results_dir, 'aeh_pred_range.txt'), 'w') as f:
-        f.write(f"[AEH] Predicted range: {y_pred.min()} {y_pred.max()}\n")
-        f.write(f"[AEH] Weights: {model.m}\n")
-    # Compare to BayesianRidge
-    from sklearn.linear_model import BayesianRidge
+    
+    # Print and save prediction range and weights for Adaptive Prior model
+    print(f"[Adaptive Prior] Predicted range: {y_pred.min():.2f} to {y_pred.max():.2f}")
+    print(f"[Adaptive Prior] True range: {y.min():.2f} to {y.max():.2f}")
+    print(f"[Adaptive Prior] Mean uncertainty: {np.mean(y_std):.2f}")
+    print(f"[Adaptive Prior] Weights: {model.m}")
+    with open(os.path.join(results_dir, 'adaptive_prior_results.txt'), 'w') as f:
+        f.write(f"[Adaptive Prior] Predicted range: {y_pred.min():.2f} to {y_pred.max():.2f}\n")
+        f.write(f"[Adaptive Prior] True range: {y.min():.2f} to {y.max():.2f}\n")
+        f.write(f"[Adaptive Prior] Mean uncertainty: {np.mean(y_std):.2f}\n")
+        f.write(f"[Adaptive Prior] Weights: {model.m}\n")
+    
+    # --- CALCULATE METRICS ---
+    from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+    metrics = {
+        'rmse': float(np.sqrt(mean_squared_error(y, y_pred))),
+        'mae': float(mean_absolute_error(y, y_pred)),
+        'r2': float(r2_score(y, y_pred))
+    }
+    with open(os.path.join(results_dir, 'metrics.json'), 'w') as f:
+        json.dump(metrics, f, indent=4)
+    
+    # Compare to baseline models
+    from sklearn.linear_model import BayesianRidge, LinearRegression
+    
+    # Bayesian Ridge baseline
     br = BayesianRidge()
     br.fit(X, y)
     y_pred_br = br.predict(X)
-    print(f"[BayesianRidge] Predicted range: {y_pred_br.min()} {y_pred_br.max()}")
+    print(f"[BayesianRidge] Predicted range: {y_pred_br.min():.2f} to {y_pred_br.max():.2f}")
+    print(f"[BayesianRidge] R²: {r2_score(y, y_pred_br):.4f}")
     print(f"[BayesianRidge] Weights: {br.coef_}")
-    with open(os.path.join(results_dir, 'bayesianridge_pred_range.txt'), 'w') as f:
-        f.write(f"[BayesianRidge] Predicted range: {y_pred_br.min()} {y_pred_br.max()}\n")
+    
+    # Linear Regression baseline
+    lr = LinearRegression()
+    lr.fit(X, y)
+    y_pred_lr = lr.predict(X)
+    print(f"[LinearRegression] Predicted range: {y_pred_lr.min():.2f} to {y_pred_lr.max():.2f}")
+    print(f"[LinearRegression] R²: {r2_score(y, y_pred_lr):.4f}")
+    print(f"[LinearRegression] Weights: {lr.coef_}")
+    
+    with open(os.path.join(results_dir, 'baseline_comparison.txt'), 'w') as f:
+        f.write(f"[BayesianRidge] Predicted range: {y_pred_br.min():.2f} to {y_pred_br.max():.2f}\n")
+        f.write(f"[BayesianRidge] R²: {r2_score(y, y_pred_br):.4f}\n")
         f.write(f"[BayesianRidge] Weights: {br.coef_}\n")
-    # If AEH still cannot fit the full range, recommend switching 'energy' to 'hierarchical' for confirmation
-    if y_pred.max() < y.max() * 0.95:
-        print("[WARNING] AEH model still cannot fit the full range. Consider switching 'energy' to 'hierarchical' to confirm the effect of the prior.")
-    metrics = model.cv_results.mean().to_dict()
-    with open(os.path.join(results_dir, 'metrics.json'), 'w') as f:
-        json.dump(metrics, f, indent=4)
+        f.write(f"[LinearRegression] Predicted range: {y_pred_lr.min():.2f} to {y_pred_lr.max():.2f}\n")
+        f.write(f"[LinearRegression] R²: {r2_score(y, y_pred_lr):.4f}\n")
+        f.write(f"[LinearRegression] Weights: {lr.coef_}\n")
     fold_metrics = model.cv_results.to_dict('records')
     with open(os.path.join(results_dir, 'fold_metrics.json'), 'w') as f:
         json.dump(fold_metrics, f, indent=4)
