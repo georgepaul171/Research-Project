@@ -9,9 +9,7 @@ This document provides a visual representation of the complete data pipeline for
 graph TD
     %% Data Sources
     A[Raw Data Sources] --> B[Data Loading]
-    A1[CBECS Database] --> A
-    A2[LL87 Database] --> A
-    A3[Seattle Database] --> A
+    A1[BPD Dataset] --> A
     
     %% Data Loading and Initial Processing
     B --> C[Data Cleaning]
@@ -109,7 +107,7 @@ graph TD
     classDef evaluation fill:#fff3e0,stroke:#e65100,stroke-width:2px
     classDef output fill:#fce4ec,stroke:#880e4f,stroke-width:2px
     
-    class A,A1,A2,A3 dataSource
+    class A,A1 dataSource
     class B,C,D,E,F,F1,F2,F3,F4,G,H,H1,H2,H3 processing
     class I,I1,I2,I3,I1a,I1b,I2a,I2b,I3a,I3b model
     class J,K,L,M,N,K1,K2,K3,L1,L2,L3,M1,M2,M3,N1,N2,N3 evaluation
@@ -119,9 +117,7 @@ graph TD
 ## Pipeline Stages
 
 ### 1. Data Sources
-- **CBECS Database**: Commercial Buildings Energy Consumption Survey
-- **LL87 Database**: Local Law 87 energy benchmarking data
-- **Seattle Database**: Seattle building energy performance data
+- **BPD Dataset**: Building Performance Dataset containing cleaned and preprocessed building energy data
 
 ### 2. Data Preprocessing
 - **Data Loading**: Load CSV files with proper missing value handling
