@@ -1,26 +1,25 @@
-import numpy as np
-import pandas as pd
-from sklearn.preprocessing import StandardScaler, RobustScaler
-from sklearn.model_selection import KFold, train_test_split
-from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
-from sklearn.linear_model import BayesianRidge, LinearRegression
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.svm import SVR
-import xgboost as xgb
-from sklearn.neural_network import MLPRegressor
-import matplotlib.pyplot as plt
-import seaborn as sns
 import os
 import json
-import joblib
-from typing import Tuple, List, Optional, Dict, Union
-from dataclasses import dataclass, field
 import logging
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from dataclasses import dataclass, field
+from typing import Optional, List, Dict, Tuple, Any
+from sklearn.model_selection import cross_val_score, KFold, train_test_split
+from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+from sklearn.linear_model import LinearRegression, BayesianRidge
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.svm import SVR
+from sklearn.neural_network import MLPRegressor
+from sklearn.preprocessing import RobustScaler, StandardScaler
+import xgboost as xgb
+from scipy import stats
+from scipy.stats import wilcoxon, ttest_rel, norm, t
 import warnings
-import scipy.stats as stats
-from scipy.stats import ttest_rel, wilcoxon
-from sklearn.model_selection import cross_val_score
-# Removed problematic import - will define analyze_feature_interactions function below
+from datetime import datetime
+import joblib
 
 warnings.filterwarnings('ignore')
 
@@ -79,7 +78,7 @@ class AdaptivePriorConfig:
     hmc_epsilon: float = 0.0001
     hmc_leapfrog_steps: int = 3
     uncertainty_calibration: bool = True
-    calibration_factor: float = 20.0  
+    calibration_factor: float = 0.03  # Further reduced from 0.05 to improve PICP calibration
     robust_noise: bool = True
     student_t_df: float = 3.0  
     group_prior_types: dict = field(default_factory=lambda: {
@@ -678,8 +677,6 @@ class AdaptivePriorARD:
         return final_w, all_acceptance_rates, r_hat_stats, ess_stats, None
 
     def _plot_trace_chains(self, chains, param_names, output_dir, top_indices, fold=1):
-        import matplotlib.pyplot as plt
-        import os
         os.makedirs(output_dir, exist_ok=True)  # Ensure output directory exists
         n_chains = len(chains)
         n_steps = chains[0].shape[0]
@@ -865,7 +862,6 @@ class AdaptivePriorARD:
         r2 = r2_score(y, y_pred)
         mean_std = float(np.mean(y_std))
         crps = float(np.mean(np.abs(y - y_pred)) - 0.5 * np.mean(np.abs(y_std)))
-        from scipy.stats import norm
         confidence_levels = [0.5, 0.8, 0.9, 0.95, 0.99]
         picp_scores = []
         for level in confidence_levels:
@@ -1055,7 +1051,7 @@ class AdaptivePriorConfig:
     hmc_epsilon: float = 0.0001
     hmc_leapfrog_steps: int = 3
     uncertainty_calibration: bool = True
-    calibration_factor: float = 20.0
+    calibration_factor: float = 0.03  # Further reduced from 0.05 to improve PICP calibration
     robust_noise: bool = True
     student_t_df: float = 3.0
     group_prior_types: dict = field(default_factory=lambda: {
@@ -1116,7 +1112,7 @@ def run_comprehensive_baseline_comparison(X, y, feature_names, results_dir):
     predictions = {}
     feature_importance = {}
     
-    # Run cross-validation for each model
+    # Run cross-validation for each baseline model
     for name, model in baseline_models.items():
         logger.info(f"Training {name}...")
         
@@ -1149,7 +1145,70 @@ def run_comprehensive_baseline_comparison(X, y, feature_names, results_dir):
         else:
             feature_importance[name] = None
     
-    # Statistical significance testing
+    # Add AEH model to comparison
+    logger.info("Training AEH model for comparison...")
+    
+    # Configure AEH model
+    aeh_config = AdaptivePriorConfig(
+        beta_0=1.0,
+        max_iter=50,
+        use_hmc=False,  # Use EM for stability
+        group_prior_types={
+            'energy': 'adaptive_elastic_horseshoe',
+            'building': 'hierarchical',
+            'interaction': 'hierarchical'
+        }
+    )
+    
+    # Cross-validation for AEH model
+    aeh_r2_scores = []
+    aeh_rmse_scores = []
+    aeh_mae_scores = []
+    aeh_predictions = []
+    
+    for fold, (train_idx, test_idx) in enumerate(cv.split(X)):
+        logger.info(f"AEH CV Fold {fold + 1}/5")
+        
+        X_train, X_test = X[train_idx], X[test_idx]
+        y_train, y_test = y[train_idx], y[test_idx]
+        
+        # Train AEH model
+        aeh_model = AdaptivePriorARD(config=aeh_config)
+        aeh_model.fit(X_train, y_train, feature_names=feature_names)
+        
+        # Predictions
+        y_pred = aeh_model.predict(X_test)
+        aeh_predictions.extend(y_pred)
+        
+        # Calculate metrics
+        r2 = r2_score(y_test, y_pred)
+        rmse = np.sqrt(mean_squared_error(y_test, y_pred))
+        mae = mean_absolute_error(y_test, y_pred)
+        
+        aeh_r2_scores.append(r2)
+        aeh_rmse_scores.append(rmse)
+        aeh_mae_scores.append(mae)
+    
+    # Store AEH results
+    cv_results['AdaptivePriorARD (AEH)'] = {
+        'r2_mean': np.mean(aeh_r2_scores),
+        'r2_std': np.std(aeh_r2_scores),
+        'rmse_mean': np.mean(aeh_rmse_scores),
+        'rmse_std': np.std(aeh_rmse_scores),
+        'mae_mean': np.mean(aeh_mae_scores),
+        'mae_std': np.std(aeh_mae_scores),
+        'r2_scores': aeh_r2_scores,
+        'rmse_scores': aeh_rmse_scores,
+        'mae_scores': aeh_mae_scores
+    }
+    
+    # Fit AEH model on full dataset for predictions
+    aeh_model_full = AdaptivePriorARD(config=aeh_config)
+    aeh_model_full.fit(X, y, feature_names=feature_names)
+    predictions['AdaptivePriorARD (AEH)'] = aeh_model_full.predict(X)
+    feature_importance['AdaptivePriorARD (AEH)'] = aeh_model_full.get_feature_importance().tolist()
+    
+    # Statistical significance testing (now includes AEH model)
     significance_results = perform_statistical_significance_tests(cv_results)
     
     # Save results
@@ -1558,73 +1617,91 @@ def create_research_summary(model, baseline_results, significance_results, sensi
     logger.info("Creating comprehensive research summary...")
     
     # Extract key results
-    ae_model_name = "Adaptive Elastic Horseshoe (AEH)"
+    ae_model_name = "AdaptivePriorARD (AEH)"
     baseline_models = list(baseline_results.keys())
     
-    # Find best baseline model
-    best_baseline = max(baseline_models, key=lambda x: baseline_results[x]['r2_mean'])
+    # Find best baseline model (excluding AEH model)
+    baseline_models_only = [m for m in baseline_models if m != ae_model_name]
+    best_baseline = max(baseline_models_only, key=lambda x: baseline_results[x]['r2_mean'])
     best_baseline_r2 = baseline_results[best_baseline]['r2_mean']
     
-    # Get AEH model performance (assuming it's in the model object)
-    ae_r2 = model.cv_results['r2'].mean() if hasattr(model, 'cv_results') else 0.94  # Default from previous results
+    # Get AEH model performance
+    ae_r2 = baseline_results[ae_model_name]['r2_mean']
+    ae_rmse = baseline_results[ae_model_name]['rmse_mean']
+    ae_mae = baseline_results[ae_model_name]['mae_mean']
     
-    # Statistical significance against best baseline
-    ae_vs_best = f"{ae_model_name}_vs_{best_baseline}"
-    if ae_vs_best in significance_results:
-        sig_test = significance_results[ae_vs_best]
-        is_significant = sig_test['t_test']['significant']
+    # Get statistical significance results for AEH vs best baseline
+    ae_vs_best_key = f"{ae_model_name}_vs_{best_baseline}"
+    if ae_vs_best_key in significance_results:
+        sig_test = significance_results[ae_vs_best_key]
         p_value = sig_test['t_test']['p_value']
-        effect_size = sig_test['effect_size']['cohens_d']
+        cohens_d = sig_test['effect_size']['cohens_d']
+        is_significant = sig_test['t_test']['significant']
     else:
-        is_significant = False
         p_value = 1.0
-        effect_size = 0.0
+        cohens_d = 0.0
+        is_significant = False
     
-    # Sensitivity analysis summary
-    optimal_prior = max(sensitivity_results['prior_strength'].keys(), 
-                       key=lambda x: sensitivity_results['prior_strength'][x]['r2_score'])
-    most_important_feature = max(sensitivity_results['feature_importance'].keys(),
-                                key=lambda x: sensitivity_results['feature_importance'][x]['r2_change'])
+    # Get feature importance
+    feature_importance = model.get_feature_importance()
+    feature_names = list(model.feature_names) if hasattr(model, 'feature_names') else [f"feature_{i}" for i in range(len(feature_importance))]
     
-    # Validation summary
-    bootstrap_r2 = validation_results['bootstrap']['r2']['mean']
-    bootstrap_ci = validation_results['bootstrap']['r2']['ci_95']
+    # Sort features by importance
+    feature_importance_dict = dict(zip(feature_names, feature_importance))
+    sorted_features = sorted(feature_importance_dict.items(), key=lambda x: x[1], reverse=True)
+    most_important_feature = sorted_features[0][0]
+    most_important_value = sorted_features[0][1]
     
-    # Create comprehensive summary
+    # Get model hyperparameters
+    beta_0 = model.config.beta_0 if hasattr(model, 'config') else 0.1
+    
+    # Create performance ranking
+    performance_ranking = sorted(baseline_models, key=lambda x: baseline_results[x]['r2_mean'], reverse=True)
+    
+    # Count significant comparisons
+    significant_tests = sum(1 for test in significance_results.values() if test['t_test']['significant'])
+    total_tests = len(significance_results)
+    
+    # Count effect sizes
+    large_effects = sum(1 for test in significance_results.values() if test['effect_size']['cohens_d'] > 0.8)
+    medium_effects = sum(1 for test in significance_results.values() if 0.5 <= test['effect_size']['cohens_d'] <= 0.8)
+    small_effects = sum(1 for test in significance_results.values() if test['effect_size']['cohens_d'] < 0.5)
+    
+    # Create research summary
     summary = {
         "research_summary": {
             "title": "Comprehensive Research Analysis: Adaptive Elastic Horseshoe Prior for Building Energy Prediction",
             "executive_summary": {
-                "main_finding": f"The {ae_model_name} model achieves superior performance compared to traditional methods",
+                "main_finding": f"The AdaptivePriorARD (AEH) model achieves competitive performance with uncertainty quantification",
                 "performance": f"R² = {ae_r2:.3f} vs {best_baseline} R² = {best_baseline_r2:.3f}",
-                "statistical_significance": f"Significant improvement: p = {p_value:.4f} (α = 0.05)",
-                "effect_size": f"Large effect size: Cohen's d = {effect_size:.3f}",
-                "robustness": f"Bootstrap validation: R² = {bootstrap_r2:.3f} [95% CI: {bootstrap_ci[0]:.3f}, {bootstrap_ci[1]:.3f}]"
+                "statistical_significance": f"Significant difference: p = {p_value:.6f} (α = 0.05)" if is_significant else f"No significant difference: p = {p_value:.6f} (α = 0.05)",
+                "effect_size": f"Effect size: Cohen's d = {cohens_d:.3f} ({'large' if cohens_d > 0.8 else 'medium' if cohens_d > 0.5 else 'small'} effect)",
+                "robustness": f"Bootstrap validation: R² = {validation_results['bootstrap']['r2']['mean']:.3f} [95% CI: {validation_results['bootstrap']['r2']['ci_95'][0]:.3f}, {validation_results['bootstrap']['r2']['ci_95'][1]:.3f}]"
             },
             "methodology": {
                 "model": "Adaptive Elastic Horseshoe (AEH) prior with EM algorithm",
-                "baseline_comparison": f"Compared against {len(baseline_models)} baseline models",
+                "baseline_comparison": f"Compared against {len(baseline_models)} models including AEH",
                 "validation": "Cross-validation, bootstrap, and out-of-sample validation",
                 "significance_testing": "Paired t-tests and Wilcoxon signed-rank tests"
             },
             "key_results": {
-                "performance_ranking": sorted(baseline_models, key=lambda x: baseline_results[x]['r2_mean'], reverse=True),
-                "optimal_hyperparameters": f"Prior strength β₀ = {optimal_prior}",
-                "feature_importance": f"Most critical feature: {most_important_feature}",
+                "performance_ranking": performance_ranking,
+                "optimal_hyperparameters": f"Prior strength β₀ = {beta_0}",
+                "feature_importance": f"Most critical feature: {most_important_feature} (importance = {most_important_value:.3f})",
                 "model_stability": "High stability across different data sizes and configurations"
             },
             "statistical_evidence": {
-                "significance_tests": len([k for k in significance_results.keys() if significance_results[k]['t_test']['significant']]),
-                "total_comparisons": len(significance_results),
+                "significance_tests": significant_tests,
+                "total_comparisons": total_tests,
                 "effect_sizes": {
-                    "large": len([k for k in significance_results.keys() if abs(significance_results[k]['effect_size']['cohens_d']) >= 0.8]),
-                    "medium": len([k for k in significance_results.keys() if 0.5 <= abs(significance_results[k]['effect_size']['cohens_d']) < 0.8]),
-                    "small": len([k for k in significance_results.keys() if 0.2 <= abs(significance_results[k]['effect_size']['cohens_d']) < 0.5])
+                    "large": large_effects,
+                    "medium": medium_effects,
+                    "small": small_effects
                 }
             },
             "research_contributions": [
                 "Novel AEH prior implementation for building energy prediction",
-                "Comprehensive statistical validation of model superiority",
+                "Comprehensive statistical validation of model performance",
                 "Robust uncertainty quantification with calibration",
                 "Sensitivity analysis demonstrating model stability",
                 "Feature importance analysis for interpretability"
@@ -1663,6 +1740,37 @@ def create_executive_summary_markdown(summary, results_dir):
     """
     exec_summary = summary['research_summary']
     
+    # Create performance ranking list
+    performance_ranking = exec_summary['key_results']['performance_ranking']
+    ranking_text = ""
+    for i, model in enumerate(performance_ranking, 1):
+        if model == "AdaptivePriorARD (AEH)":
+            ranking_text += f"{i}. **{model}** (R² = {summary['detailed_results']['baseline_comparison'][model]['r2_mean']:.3f}) - **Our Model**\n"
+        else:
+            ranking_text += f"{i}. {model} (R² = {summary['detailed_results']['baseline_comparison'][model]['r2_mean']:.3f})\n"
+    
+    # Get statistical significance details
+    ae_model_name = "AdaptivePriorARD (AEH)"
+    baseline_models_only = [m for m in performance_ranking if m != ae_model_name]
+    best_baseline = baseline_models_only[0]  # First in ranking is best
+    
+    ae_vs_best_key = f"{ae_model_name}_vs_{best_baseline}"
+    if ae_vs_best_key in summary['detailed_results']['significance_tests']:
+        sig_test = summary['detailed_results']['significance_tests'][ae_vs_best_key]
+        p_value = sig_test['t_test']['p_value']
+        cohens_d = sig_test['effect_size']['cohens_d']
+        is_significant = sig_test['t_test']['significant']
+        significance_text = f"**{'Significant' if is_significant else 'Not significant'}** (p = {p_value:.6f}, Cohen's d = {cohens_d:.3f})"
+    else:
+        significance_text = "Statistical test not available"
+    
+    # Get feature importance details
+    feature_importance = exec_summary['key_results']['feature_importance']
+    
+    # Get validation results
+    bootstrap_results = summary['detailed_results']['validation_results']['bootstrap']
+    bootstrap_text = f"R² = {bootstrap_results['r2']['mean']:.3f} [95% CI: {bootstrap_results['r2']['ci_95'][0]:.3f}, {bootstrap_results['r2']['ci_95'][1]:.3f}]"
+    
     markdown_content = f"""# {exec_summary['title']}
 
 ## Executive Summary
@@ -1670,59 +1778,42 @@ def create_executive_summary_markdown(summary, results_dir):
 ### Main Finding
 {exec_summary['executive_summary']['main_finding']}
 
-### Performance
+### Performance Comparison
 - **AEH Model**: {exec_summary['executive_summary']['performance']}
-- **Statistical Significance**: {exec_summary['executive_summary']['statistical_significance']}
+- **Statistical Significance**: {significance_text}
 - **Effect Size**: {exec_summary['executive_summary']['effect_size']}
-- **Robustness**: {exec_summary['executive_summary']['robustness']}
-
-## Methodology
-
-### Model Architecture
-- **Primary Model**: {exec_summary['methodology']['model']}
-- **Baseline Comparison**: {exec_summary['methodology']['baseline_comparison']}
-- **Validation Strategy**: {exec_summary['methodology']['validation']}
-- **Statistical Testing**: {exec_summary['methodology']['significance_testing']}
-
-## Key Results
+- **Bootstrap Validation**: {bootstrap_text}
 
 ### Performance Ranking
-1. **AEH Model** (R² = {exec_summary['key_results']['performance_ranking'][0] if 'AEH' in exec_summary['key_results']['performance_ranking'][0] else 'AEH Model'})
-2. **{exec_summary['key_results']['performance_ranking'][0]}** (Best baseline)
+{ranking_text}
 
-### Optimal Configuration
-- **Prior Strength**: {exec_summary['key_results']['optimal_hyperparameters']}
-- **Most Important Feature**: {exec_summary['key_results']['feature_importance']}
+### Key Results
+- **Optimal Hyperparameters**: {exec_summary['key_results']['optimal_hyperparameters']}
+- **Most Important Feature**: {feature_importance}
 - **Model Stability**: {exec_summary['key_results']['model_stability']}
 
-## Statistical Evidence
+### Statistical Evidence
+- **Significant Comparisons**: {exec_summary['statistical_evidence']['significance_tests']} out of {exec_summary['statistical_evidence']['total_comparisons']}
+- **Effect Sizes**: {exec_summary['statistical_evidence']['effect_sizes']['large']} large, {exec_summary['statistical_evidence']['effect_sizes']['medium']} medium, {exec_summary['statistical_evidence']['effect_sizes']['small']} small
 
-### Significance Testing
-- **Significant Comparisons**: {exec_summary['statistical_evidence']['significance_tests']}/{exec_summary['statistical_evidence']['total_comparisons']}
-- **Effect Sizes**:
-  - Large: {exec_summary['statistical_evidence']['effect_sizes']['large']}
-  - Medium: {exec_summary['statistical_evidence']['effect_sizes']['medium']}
-  - Small: {exec_summary['statistical_evidence']['effect_sizes']['small']}
-
-## Research Contributions
-
+### Research Contributions
 {chr(10).join([f"- {contribution}" for contribution in exec_summary['research_contributions']])}
 
-## Limitations
-
+### Limitations
 {chr(10).join([f"- {limitation}" for limitation in exec_summary['limitations']])}
 
-## Future Work
-
-{chr(10).join([f"- {future}" for future in exec_summary['future_work']])}
+### Future Work
+{chr(10).join([f"- {work}" for work in exec_summary['future_work']])}
 
 ---
-
-*This summary was automatically generated from comprehensive statistical analysis of the Adaptive Elastic Horseshoe prior model for building energy prediction.*
+*Generated on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}*
 """
     
+    # Save executive summary
     with open(os.path.join(results_dir, 'EXECUTIVE_SUMMARY.md'), 'w') as f:
         f.write(markdown_content)
+    
+    logger.info("Executive summary saved to results/EXECUTIVE_SUMMARY.md")
 
 def analyze_feature_interactions(X, y, feature_names, model, results_dir):
     """
@@ -1855,7 +1946,6 @@ if __name__ == "__main__":
         f.write(f"[Adaptive Prior] Weights: {model.m}\n")
     
     # --- CALCULATE METRICS ---
-    from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
     metrics = {
         'rmse': float(np.sqrt(mean_squared_error(y, y_pred))),
         'mae': float(mean_absolute_error(y, y_pred)),
@@ -1865,7 +1955,6 @@ if __name__ == "__main__":
         json.dump(metrics, f, indent=4)
     
     # Compare to baseline models
-    from sklearn.linear_model import BayesianRidge, LinearRegression
     
     # Bayesian Ridge baseline
     br = BayesianRidge()

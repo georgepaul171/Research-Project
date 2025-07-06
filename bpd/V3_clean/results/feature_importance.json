@@ -1,14 +1,14 @@
 {
-    "ghg_emissions_int_log": 0.16168537750190512,
-    "floor_area_log": 0.002629830029673096,
-    "electric_eui": 0.12969757170053453,
-    "fuel_eui": 0.1417044163291042,
-    "energy_star_rating_normalized": 0.0185779939983011,
-    "energy_mix": 0.0030136026129614045,
-    "building_age_log": 0.07947286706288718,
-    "floor_area_squared": 0.0033798460693575485,
-    "energy_intensity_ratio": 0.1589775421694441,
-    "building_age_squared": 0.08537234013993185,
-    "energy_star_rating_squared": 0.05221784970466474,
-    "ghg_per_area": 0.16327094488632715
+    "ghg_emissions_int_log": 0.16168962237558382,
+    "floor_area_log": 0.0026291923444784517,
+    "electric_eui": 0.12969489095999584,
+    "fuel_eui": 0.14170283933862143,
+    "energy_star_rating_normalized": 0.018578928673387715,
+    "energy_mix": 0.0030115103454490394,
+    "building_age_log": 0.07947161315272148,
+    "floor_area_squared": 0.0033796158674593993,
+    "energy_intensity_ratio": 0.15898028506366144,
+    "building_age_squared": 0.08537280033880683,
+    "energy_star_rating_squared": 0.052218794657137614,
+    "ghg_per_area": 0.16327069473853506
 }

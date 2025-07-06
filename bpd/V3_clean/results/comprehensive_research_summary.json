@@ -2,15 +2,15 @@
     "research_summary": {
         "title": "Comprehensive Research Analysis: Adaptive Elastic Horseshoe Prior for Building Energy Prediction",
         "executive_summary": {
-            "main_finding": "The Adaptive Elastic Horseshoe (AEH) model achieves superior performance compared to traditional methods",
+            "main_finding": "The AdaptivePriorARD (AEH) model achieves competitive performance with uncertainty quantification",
             "performance": "R\u00b2 = 0.942 vs XGBoost R\u00b2 = 0.978",
-            "statistical_significance": "Significant improvement: p = 1.0000 (\u03b1 = 0.05)",
-            "effect_size": "Large effect size: Cohen's d = 0.000",
-            "robustness": "Bootstrap validation: R\u00b2 = 0.942 [95% CI: 0.931, 0.950]"
+            "statistical_significance": "No significant difference: p = 1.000000 (\u03b1 = 0.05)",
+            "effect_size": "Effect size: Cohen's d = 0.000 (small effect)",
+            "robustness": "Bootstrap validation: R\u00b2 = 0.942 [95% CI: 0.929, 0.953]"
         },
         "methodology": {
             "model": "Adaptive Elastic Horseshoe (AEH) prior with EM algorithm",
-            "baseline_comparison": "Compared against 6 baseline models",
+            "baseline_comparison": "Compared against 7 models including AEH",
             "validation": "Cross-validation, bootstrap, and out-of-sample validation",
             "significance_testing": "Paired t-tests and Wilcoxon signed-rank tests"
         },
@@ -19,26 +19,27 @@
                 "XGBoost",
                 "Random Forest",
                 "Neural Network",
+                "AdaptivePriorARD (AEH)",
                 "Bayesian Ridge",
                 "Linear Regression",
                 "SVR"
             ],
-            "optimal_hyperparameters": "Prior strength \u03b2\u2080 = 1.0",
-            "feature_importance": "Most critical feature: fuel_eui",
+            "optimal_hyperparameters": "Prior strength \u03b2\u2080 = 0.1",
+            "feature_importance": "Most critical feature: feature_11 (importance = 0.163)",
             "model_stability": "High stability across different data sizes and configurations"
         },
         "statistical_evidence": {
-            "significance_tests": 13,
-            "total_comparisons": 15,
+            "significance_tests": 19,
+            "total_comparisons": 21,
             "effect_sizes": {
-                "large": 13,
+                "large": 9,
                 "medium": 0,
-                "small": 1
+                "small": 12
             }
         },
         "research_contributions": [
             "Novel AEH prior implementation for building energy prediction",
-            "Comprehensive statistical validation of model superiority",
+            "Comprehensive statistical validation of model performance",
             "Robust uncertainty quantification with calibration",
             "Sensitivity analysis demonstrating model stability",
             "Feature importance analysis for interpretability"
@@ -229,6 +230,35 @@
                     3.2347030639648438,
                     3.2752718925476074
                 ]
+            },
+            "AdaptivePriorARD (AEH)": {
+                "r2_mean": 0.9416583240591277,
+                "r2_std": 0.005344773335037968,
+                "rmse_mean": 6.458303666348279,
+                "rmse_std": 0.26842690977940975,
+                "mae_mean": 4.220533048323408,
+                "mae_std": 0.15611387881276437,
+                "r2_scores": [
+                    0.9316178710942864,
+                    0.9421238459008617,
+                    0.9452097367814083,
+                    0.9470207942587726,
+                    0.9423193722603099
+                ],
+                "rmse_scores": [
+                    6.973895245717742,
+                    6.428009032508029,
+                    6.268995557253917,
+                    6.227031603782284,
+                    6.393586892479424
+                ],
+                "mae_scores": [
+                    4.517093880135306,
+                    4.183314959330883,
+                    4.155655099942676,
+                    4.1918819034712165,
+                    4.0547193987369585
+                ]
             }
         },
         "significance_tests": {
@@ -317,6 +347,23 @@
                 },
                 "mean_difference": -0.017388415336608842
             },
+            "Linear Regression_vs_AdaptivePriorARD (AEH)": {
+                "t_test": {
+                    "statistic": -6.94877276331697,
+                    "p_value": 0.0022532809432956997,
+                    "significant": true
+                },
+                "wilcoxon_test": {
+                    "statistic": 0.0,
+                    "p_value": 0.0625,
+                    "significant": false
+                },
+                "effect_size": {
+                    "cohens_d": -0.525438255889428,
+                    "interpretation": "medium"
+                },
+                "mean_difference": -0.002801781948684634
+            },
             "Bayesian Ridge_vs_Random Forest": {
                 "t_test": {
                     "statistic": -14.089013365649464,
@@ -385,6 +432,23 @@
                 },
                 "mean_difference": -0.01737334728240958
             },
+            "Bayesian Ridge_vs_AdaptivePriorARD (AEH)": {
+                "t_test": {
+                    "statistic": -6.79428783566646,
+                    "p_value": 0.002450874254790653,
+                    "significant": true
+                },
+                "wilcoxon_test": {
+                    "statistic": 0.0,
+                    "p_value": 0.0625,
+                    "significant": false
+                },
+                "effect_size": {
+                    "cohens_d": -0.5225823160426022,
+                    "interpretation": "medium"
+                },
+                "mean_difference": -0.002786713894485371
+            },
             "Random Forest_vs_XGBoost": {
                 "t_test": {
                     "statistic": -1.2119065486745952,
@@ -436,6 +500,23 @@
                 },
                 "mean_difference": 0.020467403419849428
             },
+            "Random Forest_vs_AdaptivePriorARD (AEH)": {
+                "t_test": {
+                    "statistic": 13.753485884348745,
+                    "p_value": 0.00016193729566653104,
+                    "significant": true
+                },
+                "wilcoxon_test": {
+                    "statistic": 0.0,
+                    "p_value": 0.0625,
+                    "significant": false
+                },
+                "effect_size": {
+                    "cohens_d": 8.638329457038747,
+                    "interpretation": "large"
+                },
+                "mean_difference": 0.035054036807773636
+            },
             "XGBoost_vs_SVR": {
                 "t_test": {
                     "statistic": 21.70920827196587,
@@ -470,6 +551,23 @@
                 },
                 "mean_difference": 0.021260738372802734
             },
+            "XGBoost_vs_AdaptivePriorARD (AEH)": {
+                "t_test": {
+                    "statistic": 14.434712156585235,
+                    "p_value": 0.00013389038626112287,
+                    "significant": true
+                },
+                "wilcoxon_test": {
+                    "statistic": 0.0,
+                    "p_value": 0.0625,
+                    "significant": false
+                },
+                "effect_size": {
+                    "cohens_d": 8.116799002631177,
+                    "interpretation": "large"
+                },
+                "mean_difference": 0.03584737176072694
+            },
             "SVR_vs_Neural Network": {
                 "t_test": {
                     "statistic": -13.936025673208464,
@@ -486,6 +584,40 @@
                     "interpretation": "large"
                 },
                 "mean_difference": -0.06980657458545136
+            },
+            "SVR_vs_AdaptivePriorARD (AEH)": {
+                "t_test": {
+                    "statistic": -18.765337710122743,
+                    "p_value": 4.7484085819987755e-05,
+                    "significant": true
+                },
+                "wilcoxon_test": {
+                    "statistic": 0.0,
+                    "p_value": 0.0625,
+                    "significant": false
+                },
+                "effect_size": {
+                    "cohens_d": -7.99555980008561,
+                    "interpretation": "large"
+                },
+                "mean_difference": -0.055219941197527156
+            },
+            "Neural Network_vs_AdaptivePriorARD (AEH)": {
+                "t_test": {
+                    "statistic": 5.5377843356067435,
+                    "p_value": 0.005198018049081082,
+                    "significant": true
+                },
+                "wilcoxon_test": {
+                    "statistic": 0.0,
+                    "p_value": 0.0625,
+                    "significant": false
+                },
+                "effect_size": {
+                    "cohens_d": 1.9969446333691536,
+                    "interpretation": "large"
+                },
+                "mean_difference": 0.014586633387924208
             }
         },
         "sensitivity_analysis": {
@@ -559,23 +691,23 @@
             "data_size": {
                 "0.3": {
                     "n_samples": 2333,
-                    "r2_score": 0.9397371398151229
+                    "r2_score": 0.9271373252560436
                 },
                 "0.5": {
                     "n_samples": 3888,
-                    "r2_score": 0.9273026726811173
+                    "r2_score": 0.9480566702571835
                 },
                 "0.7": {
                     "n_samples": 5443,
-                    "r2_score": 0.9554539922107023
+                    "r2_score": 0.9263647958537194
                 },
                 "0.9": {
                     "n_samples": 6999,
-                    "r2_score": 0.9471940837223701
+                    "r2_score": 0.9512348929448047
                 },
                 "1.0": {
                     "n_samples": 7777,
-                    "r2_score": 0.946089585929739
+                    "r2_score": 0.9358180411525189
                 }
             }
         },
@@ -588,27 +720,27 @@
             },
             "bootstrap": {
                 "r2": {
-                    "mean": 0.9420218364794971,
-                    "std": 0.004727587292079216,
+                    "mean": 0.9418160288006655,
+                    "std": 0.005919025630323258,
                     "ci_95": [
-                        0.9313418712871252,
-                        0.950439908917537
+                        0.9289926561683434,
+                        0.9528381952721058
                     ]
                 },
                 "rmse": {
-                    "mean": 6.442943997102989,
-                    "std": 0.26898108798804177,
+                    "mean": 6.440511209900993,
+                    "std": 0.34145641758403206,
                     "ci_95": [
-                        5.961187985163536,
-                        6.997311113639994
+                        5.753907270530221,
+                        7.189688073738495
                     ]
                 },
                 "mae": {
-                    "mean": 4.239954016364354,
-                    "std": 0.12848957068735378,
+                    "mean": 4.2221237255226525,
+                    "std": 0.14297830910851478,
                     "ci_95": [
-                        4.004605653248641,
-                        4.508791428661959
+                        3.949971796550501,
+                        4.489068284198859
                     ]
                 }
             }
