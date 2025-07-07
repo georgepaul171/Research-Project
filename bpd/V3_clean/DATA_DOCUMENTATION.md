@@ -4,16 +4,8 @@
 
 ### Primary Dataset
 - **Source**: Cleaned office buildings dataset (`cleaned_office_buildings.csv`)
-- **Original Source**: Building energy performance databases (CBECS, LL87, Seattle)
-- **Collection Period**: Various years (2018-2023)
-- **Geographic Coverage**: Multiple regions (US, UK, Canada)
-- **Building Type**: Office buildings and commercial facilities
+- **Original Source**: Building energy performance databases
 
-### Data Collection Methods
-- **Energy Audits**: Professional energy assessments
-- **Utility Bills**: Historical energy consumption data
-- **Building Surveys**: Physical characteristics and operational data
-- **Energy Star Ratings**: Official energy performance certifications
 
 ## Data Structure and Variables
 

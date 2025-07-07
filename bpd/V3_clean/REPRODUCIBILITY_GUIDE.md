@@ -433,7 +433,3 @@ When reporting issues, include:
 - Error messages
 - Steps to reproduce
 - Expected vs. actual behavior
-
----
-
-*This reproducibility guide ensures that all research findings can be independently verified and reproduced. Follow these instructions carefully to achieve consistent results.* 

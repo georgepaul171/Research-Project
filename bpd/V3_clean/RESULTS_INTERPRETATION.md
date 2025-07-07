@@ -276,7 +276,3 @@ Magnitude: Moderate negative relationship
 2. **Practical Significance**: What differences matter in practice?
 3. **Model Trade-offs**: Performance vs. interpretability vs. complexity
 4. **Limitations**: What assumptions and constraints apply?
-
----
-
-*This interpretation guide provides a framework for understanding and communicating the results of Bayesian building energy modeling. Use it to ensure accurate and meaningful interpretation of model outputs.* 

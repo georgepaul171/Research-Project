@@ -66,9 +66,9 @@ The hyperparameters adapt based on:
 ## Results and Performance
 
 ### Model Performance
-- **R² = 0.942** (excellent performance)
-- **RMSE = 6.45** (very good)
-- **MAE = 4.21** (very good)
+- **R² = 0.942**
+- **RMSE = 6.45**
+- **MAE = 4.21** 
 - **Convergence**: 3 iterations (fast and stable)
 
 ### Feature Importance with AEH
@@ -81,9 +81,9 @@ The hyperparameters adapt based on:
 | `fuel_eui` | 16.9% | AEH | Strong adaptation |
 
 ### Prediction Quality
-- **Prediction Range**: -21.25 to 152.70 (much improved from previous versions)
+- **Prediction Range**: -21.25 to 152.70 
 - **True Range**: 4.78 to 154.21
-- **Coverage**: Good fit with slight negative predictions (acceptable for energy modeling)
+- **Coverage**: Good fit with slight negative predictions 
 
 ## Technical Implementation
 
@@ -193,14 +193,14 @@ mean = self.scaler_y.inverse_transform(mean_scaled.reshape(-1, 1)).ravel()
 | **R²** | 0.942 | 0.939 | 0.939 |
 | **RMSE** | 6.45 | 6.43 | 6.43 |
 | **MAE** | 4.21 | 4.20 | 4.20 |
-| **Adaptive Regularization** | ✅ | ❌ | ❌ |
-| **Feature Selection** | ✅ | ❌ | ❌ |
-| **Uncertainty Quantification** | ✅ | ✅ | ❌ |
+| **Adaptive Regularization** | yes | no | no |
+| **Feature Selection** | yes | no | no |
+| **Uncertainty Quantification** | yes | yes | no |
 | **Convergence** | Fast (3 iter) | Fast | Fast |
 
 ## Conclusion
 
-The AEH prior implementation is **successful and working excellently**:
+The AEH prior implementation is successful:
 
 1. **Achieves best performance** among all models tested
 2. **Provides adaptive regularization** for energy features
@@ -209,7 +209,3 @@ The AEH prior implementation is **successful and working excellently**:
 5. **Offers interpretable results** with clear feature importance
 
 The hybrid approach (AEH for energy, hierarchical for others) provides the optimal balance between adaptive regularization and model stability, making it suitable for building energy performance modeling applications.
-
----
-
-*This implementation demonstrates the successful application of advanced Bayesian priors in practical energy modeling, with clear performance benefits and robust convergence behavior.* 

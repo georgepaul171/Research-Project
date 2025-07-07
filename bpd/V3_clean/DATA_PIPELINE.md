@@ -157,7 +157,3 @@ The 12 engineered features are organized into 3 groups for specialized prior ass
 - Units: Standardized to SI units (kWh, m², kg CO₂e)
 - Ranges: Physically plausible values only
 - Relationships: Logical consistency between related variables
-
----
-
-*This data pipeline diagram provides a comprehensive overview of the data processing workflow for the Adaptive Bayesian Regression project. It should be referenced when understanding the complete data flow from raw sources to final model outputs.* 

@@ -172,7 +172,3 @@ y_i ~ Normal(μ_i, σ²)
 1. **Energy Policy**: More reliable building energy predictions
 2. **Building Design**: Better understanding of energy performance factors
 3. **Investment Decisions**: Improved uncertainty quantification for energy projects
-
----
-
-*This methodology document provides the theoretical and practical foundation for the research project. It should be referenced when interpreting results and drawing conclusions.* 

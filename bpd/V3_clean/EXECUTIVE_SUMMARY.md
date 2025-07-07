@@ -7,7 +7,6 @@ The AdaptivePriorARD (AEH) model achieves competitive performance with uncertain
 
 ### Performance Comparison
 - **AEH Model**: R² = 0.942 vs XGBoost R² = 0.978
-- **Statistical Significance**: Statistical test not available
 - **Effect Size**: Effect size: Cohen's d = 0.000 (small effect)
 - **Bootstrap Validation**: R² = 0.942 [95% CI: 0.929, 0.953]
 
@@ -46,6 +45,3 @@ The AdaptivePriorARD (AEH) model achieves competitive performance with uncertain
 - Multi-dataset validation across different building types
 - Integration with deep learning architectures
 - Real-time adaptation for dynamic building systems
-
----
-*Generated on 2025-07-06 15:36:16*

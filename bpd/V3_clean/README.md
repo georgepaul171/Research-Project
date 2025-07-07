@@ -143,6 +143,3 @@ The model now includes:
 - All dependencies are listed in `requirements.txt`
 - Scripts are self-contained and save outputs to the appropriate results folders
 - Complete research analysis generates all necessary files for publication
-
-## Contact
-For questions or further information, contact the project maintainer or refer to the main project README. 

@@ -181,7 +181,3 @@ The response variable follows a Gaussian distribution:
 - **EM Algorithm**: Fast convergence with closed-form updates
 - **Scalable**: Handles moderate-sized datasets efficiently
 - **Stable**: Robust to initialization and numerical issues
-
----
-
-*This model architecture diagram provides a comprehensive overview of the Adaptive Bayesian Regression model structure. It should be referenced when understanding the model components, prior specifications, and inference mechanisms.* 

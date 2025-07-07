@@ -204,10 +204,3 @@ The AEH model implementation successfully achieves:
 - ✅ **Robust validation** across multiple metrics
 
 The calibration factor of 0.05 provides the optimal balance between calibration accuracy and practical utility, making the model suitable for real-world building energy prediction applications.
-
----
-
-**Technical Summary Version**: 1.0  
-**Last Updated**: 2025-07-06  
-**Model Version**: AEH v1.0  
-**Calibration Factor**: 0.05 (optimal) 

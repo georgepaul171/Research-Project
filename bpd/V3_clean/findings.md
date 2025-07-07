@@ -232,7 +232,3 @@ This document summarizes the main results and insights from comprehensive experi
 - **Diagnostics:** `results/aeh_hyperparams_log.txt`, `results/em_progress_log.txt`, `results/feature_importance.json`
 - **Model Artifacts:** `results/adaptive_prior_model.joblib`, `results/metrics.json`
 - **Weights & Ranges:** `results/adaptive_prior_results.txt`, `results/baseline_comparison.txt`
-
----
-
-For further details, see the referenced files and plots in the results folders. For questions about the AEH prior implementation, see `AEH_PRIOR_MECHANICS.md`. 
