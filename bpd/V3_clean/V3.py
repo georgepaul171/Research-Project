@@ -20,6 +20,7 @@ from scipy.stats import wilcoxon, ttest_rel, norm, t
 import warnings
 from datetime import datetime
 import joblib
+import shap
 
 warnings.filterwarnings('ignore')
 
@@ -1861,6 +1862,43 @@ def analyze_feature_interactions(X, y, feature_names, model, results_dir):
         logger.warning(f"Feature interaction analysis failed: {e}")
         logger.info("Continuing with other analyses...")
 
+def generate_shap_plots(model, X, feature_names, results_dir):
+    """
+    Generate SHAP summary and force plots for the AdaptivePriorARD model.
+    Uses KernelExplainer for compatibility with custom models.
+    Saves summary and force plots for the first 3 samples.
+    """
+    import matplotlib.pyplot as plt
+    import numpy as np
+    import os
+    # Define a prediction function for SHAP
+    def predict_fn(X_):
+        return model.predict(X_)
+    # Use a subset of data for background (for speed)
+    background = X[np.random.choice(X.shape[0], min(100, X.shape[0]), replace=False)]
+    explainer = shap.KernelExplainer(predict_fn, background)
+    # Compute SHAP values for a sample of the data
+    sample_X = X[:100]
+    shap_values = explainer.shap_values(sample_X, nsamples=100)
+    # SHAP summary plot
+    shap.summary_plot(shap_values, sample_X, feature_names=feature_names, show=False)
+    plt.tight_layout()
+    plt.savefig(os.path.join(results_dir, 'shap_summary.png'), dpi=300, bbox_inches='tight')
+    plt.close()
+    # SHAP force plots for first 3 samples
+    for i in range(3):
+        shap.force_plot(
+            explainer.expected_value,
+            shap_values[i],
+            sample_X[i],
+            feature_names=feature_names,
+            matplotlib=True,
+            show=False
+        )
+        plt.tight_layout()
+        plt.savefig(os.path.join(results_dir, f'shap_force_sample_{i+1}.png'), dpi=300, bbox_inches='tight')
+        plt.close()
+
 if __name__ == "__main__":
     logger.info("Starting Adaptive Prior ARD analysis with group-wise priors and HMC inference")
     data_csv_path = "/Users/georgepaul/Desktop/Research-Project/bpd/cleaned_office_buildings.csv"
@@ -2017,3 +2055,5 @@ if __name__ == "__main__":
     logger.info("✅ Sensitivity analysis (prior strength, features, data size)")
     logger.info("✅ Out-of-sample validation (temporal, random, bootstrap)")
     logger.info("✅ Comprehensive visualizations and statistical reports") 
+    # --- SHAP ANALYSIS ---
+    generate_shap_plots(model, X, feature_names, results_dir)
