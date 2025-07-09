@@ -1,7 +1,5 @@
 # Interpretation of Prior Comparison Results
 
-This document summarizes and interprets the results from the prior comparison experiment, as found in `compare_priors_results.json`.
-
 ## Overview
 
 Three different prior configurations were compared for the energy group in the Adaptive Prior ARD model:

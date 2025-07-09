@@ -6,7 +6,7 @@
             "performance": "R\u00b2 = 0.942 vs XGBoost R\u00b2 = 0.978",
             "statistical_significance": "No significant difference: p = 1.000000 (\u03b1 = 0.05)",
             "effect_size": "Effect size: Cohen's d = 0.000 (small effect)",
-            "robustness": "Bootstrap validation: R\u00b2 = 0.941 [95% CI: 0.930, 0.952]"
+            "robustness": "Bootstrap validation: R\u00b2 = 0.941 [95% CI: 0.929, 0.953]"
         },
         "methodology": {
             "model": "Adaptive Elastic Horseshoe (AEH) prior with EM algorithm",
@@ -25,7 +25,7 @@
                 "SVR"
             ],
             "optimal_hyperparameters": "Prior strength \u03b2\u2080 = 0.1",
-            "feature_importance": "Most critical feature: feature_0 (importance = 0.209)",
+            "feature_importance": "Most critical feature: feature_0 (importance = 0.242)",
             "model_stability": "High stability across different data sizes and configurations"
         },
         "statistical_evidence": {
@@ -691,23 +691,23 @@
             "data_size": {
                 "0.3": {
                     "n_samples": 2333,
-                    "r2_score": 0.9409684764632543
+                    "r2_score": 0.9451146249338502
                 },
                 "0.5": {
                     "n_samples": 3888,
-                    "r2_score": 0.9515771364126041
+                    "r2_score": 0.949146757138389
                 },
                 "0.7": {
                     "n_samples": 5443,
-                    "r2_score": 0.9388817653960119
+                    "r2_score": 0.9424691194104179
                 },
                 "0.9": {
                     "n_samples": 6999,
-                    "r2_score": 0.9428707203031967
+                    "r2_score": 0.9392062976379287
                 },
                 "1.0": {
                     "n_samples": 7777,
-                    "r2_score": 0.9469819699188268
+                    "r2_score": 0.9400479494088151
                 }
             }
         },
@@ -720,27 +720,27 @@
             },
             "bootstrap": {
                 "r2": {
-                    "mean": 0.9412248130493459,
-                    "std": 0.005424977338074331,
+                    "mean": 0.9411450355303547,
+                    "std": 0.006417088007814985,
                     "ci_95": [
-                        0.9299141934959867,
-                        0.9517102820947838
+                        0.9294974188362907,
+                        0.9533715284188577
                     ]
                 },
                 "rmse": {
-                    "mean": 6.486244904996033,
-                    "std": 0.3158779371805838,
+                    "mean": 6.498617303022209,
+                    "std": 0.36794316174764535,
                     "ci_95": [
-                        5.975222245323356,
-                        7.135169986117101
+                        5.796550865475489,
+                        7.174194181138547
                     ]
                 },
                 "mae": {
-                    "mean": 4.241730468348232,
-                    "std": 0.1421485713148445,
+                    "mean": 4.232932885844082,
+                    "std": 0.15046735938732855,
                     "ci_95": [
-                        3.9859933808940897,
-                        4.5273926999022605
+                        3.9355137327059966,
+                        4.499135577318882
                     ]
                 }
             }

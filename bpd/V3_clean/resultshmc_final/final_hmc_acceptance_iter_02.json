@@ -1,0 +1,21 @@
+{
+  "iteration": 2,
+  "acceptance_rates": [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+  ],
+  "mean_acceptance": 1.0,
+  "std_acceptance": 0.0,
+  "min_acceptance": 1.0,
+  "max_acceptance": 1.0
+}

@@ -1,0 +1,15 @@
+{
+  "iteration": 2,
+  "acceptance_rates": [
+    1.0,
+    0.99,
+    0.96,
+    0.97,
+    0.97,
+    0.99,
+    0.99,
+    0.96
+  ],
+  "mean_acceptance": 0.97875,
+  "std_acceptance": 0.014523687548277826
+}

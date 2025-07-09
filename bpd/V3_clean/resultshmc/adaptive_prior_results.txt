@@ -1,5 +1,5 @@
-[Adaptive Prior] Predicted range: -23.14 to 158.68
+[Adaptive Prior] Predicted range: -28.43 to 160.12
 [Adaptive Prior] True range: 4.78 to 154.21
-[Adaptive Prior] Mean uncertainty: 24.73
-[Adaptive Prior] Weights: [ 0.51079359 -0.00658733  0.37832552  0.44334395  0.00802904 -0.01231661
-  0.02099994 -0.02002378 -0.40565898 -0.00585273 -0.15007032  0.48482483]
+[Adaptive Prior] Mean uncertainty: 24.86
+[Adaptive Prior] Weights: [ 0.64295631  0.0380926   0.36089388  0.40805975 -0.04369997 -0.09459575
+  0.06007314 -0.017064   -0.42302193 -0.06602467 -0.07709646  0.42180309]
