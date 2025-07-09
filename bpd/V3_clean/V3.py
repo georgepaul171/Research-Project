@@ -1938,8 +1938,6 @@ if __name__ == "__main__":
     print(debug_info[1])
     logger.info(f"X shape: {X.shape}")
     logger.info(f"y shape: {y.shape}")
-    results_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'results')
-    os.makedirs(results_dir, exist_ok=True)
     # Configure model with AEH prior for energy features and stable settings
     config = AdaptivePriorConfig(
         beta_0=0.1,  # Moderate regularization
@@ -1947,7 +1945,7 @@ if __name__ == "__main__":
         dynamic_shrinkage=True,
         max_iter=50,  # Reasonable EM iterations
         tol=1e-4,
-        use_hmc=False,  # Disable HMC for stability
+        use_hmc=True,  # Enable HMC for this run
         robust_noise=True,
         uncertainty_calibration=True,
         group_prior_types={
@@ -1956,6 +1954,8 @@ if __name__ == "__main__":
             'interaction': 'hierarchical'
         }
     )
+    results_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'resultshmc') if config.use_hmc else os.path.join(os.path.dirname(os.path.abspath(__file__)), 'results')
+    os.makedirs(results_dir, exist_ok=True)
     model = AdaptivePriorARD(config)
     
     # Debug: Model initialization check

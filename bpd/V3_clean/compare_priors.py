@@ -7,7 +7,7 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 from scipy.stats import norm
 
 # Set up paths and parameters
-results_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'results')
+results_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'results_compare_priors')
 os.makedirs(results_dir, exist_ok=True)
 data_csv_path = "/Users/georgepaul/Desktop/Research-Project/bpd/cleaned_office_buildings.csv"
 target = "site_eui"
