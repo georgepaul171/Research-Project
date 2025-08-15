@@ -41,7 +41,7 @@ The research produces several types of outputs that need to be interpreted toget
 | Linear Regression | 45.2 | 35.1 | 0.72 | Baseline performance |
 | Bayesian Ridge | 44.8 | 34.9 | 0.73 | Slight improvement |
 | AEH Prior (β₀=1) | 52.3 | 41.2 | 0.65 | Over-regularization |
-| AEH Prior (β₀=10) | 47.1 | 36.8 | 0.70 | Moderate regularization |
+| AEH Prior (β₀=10) | 47.1 | 36.8 | 0.70 | Moderate regularisation |
 | Hierarchical Prior | 44.5 | 34.6 | 0.74 | Best performance |
 
 ### Interpreting Performance Differences
@@ -70,7 +70,7 @@ The research produces several types of outputs that need to be interpreted toget
 Nominal Coverage: 0.90
 Empirical Coverage: 0.85
 Interpretation: Model is slightly overconfident
-Action: Increase uncertainty estimates by ~6%
+Action: Increase uncertainty estimates by  approximately 6%
 ```
 
 ### Coverage Analysis
@@ -104,7 +104,7 @@ Action: Increase uncertainty estimates by ~6%
 #### Standardized Coefficients
 - **Magnitude**: Larger absolute values = more important features
 - **Sign**: Positive = increases energy use, Negative = decreases energy use
-- **Scale**: Standardized for fair comparison across features
+- **Scale**: Standardised for fair comparison across features
 
 #### Example Interpretation
 ```
@@ -141,71 +141,6 @@ Magnitude: Moderate negative relationship
 - **Lower Sparsity**: Better performance but more complex
 - **Optimal Balance**: Maximum interpretability with minimal performance loss
 
-## Diagnostic Plots Interpretation
-
-### Prediction vs. Actual Plots
-
-#### Perfect Predictions
-- **Diagonal Line**: All points on y=x line
-- **Scatter Pattern**: Points should cluster around diagonal
-- **Outliers**: Points far from diagonal indicate prediction errors
-
-#### Model Performance Assessment
-- **Systematic Bias**: Points consistently above/below diagonal
-- **Heteroscedasticity**: Error variance changes with prediction value
-- **Non-linearity**: Curved patterns suggest model misspecification
-
-### Residual Analysis
-
-#### Residual Plots
-- **Random Scatter**: Good model fit
-- **Patterns**: Indicate model problems
-- **Funnel Shape**: Heteroscedasticity
-- **Curved Patterns**: Non-linearity
-
-#### Residual Distribution
-- **Normal Distribution**: Good model assumptions
-- **Skewed**: May need transformations
-- **Heavy Tails**: Robust methods may be needed
-
-### Trace Plots (MCMC Diagnostics)
-
-#### Convergence Assessment
-- **Mixing**: Parameters should explore full range
-- **Stability**: No systematic trends or patterns
-- **Autocorrelation**: Low autocorrelation indicates good mixing
-
-#### Burn-in Period
-- **Initial Instability**: Discard initial samples
-- **Stable Phase**: Use for inference
-- **Convergence**: All parameters should converge
-
-## Model Comparison Framework
-
-### Statistical Comparison
-
-#### Paired t-tests
-- **Null Hypothesis**: No difference between models
-- **Alternative**: One model performs better
-- **P-value**: Probability of observed difference by chance
-- **Significance Level**: α = 0.05 (5% chance of false positive)
-
-#### Confidence Intervals
-- **95% CI**: Range containing true difference with 95% confidence
-- **Zero in CI**: No significant difference
-- **Zero outside CI**: Significant difference
-
-### Practical Comparison
-
-#### Effect Sizes
-- **Small Effect**: Cohen's d < 0.2
-- **Medium Effect**: 0.2 ≤ Cohen's d < 0.5
-- **Large Effect**: Cohen's d ≥ 0.5
-
-#### Practical Significance
-- **Energy Context**: What difference matters for energy policy?
-- **Economic Impact**: Cost implications of performance differences
-- **Operational Impact**: Practical feasibility of model deployment
 
 ## Key Findings Interpretation
 
@@ -238,7 +173,7 @@ Magnitude: Moderate negative relationship
 - **Feature Groups**: Natural grouping of related features
 - **Prior Specification**: Different priors for different feature types
 
-## Limitations and Caveats
+## Limitations
 
 ### Model Assumptions
 - **Linearity**: Assumes linear relationships in transformed space
@@ -248,7 +183,7 @@ Magnitude: Moderate negative relationship
 
 ### Data Limitations
 - **Sample Size**: Limited to available building data
-- **Geographic Coverage**: May not generalize to all regions
+- **Geographic Coverage**: May not generalise to all regions
 - **Building Types**: Focus on office buildings only
 - **Temporal Stability**: Cross-sectional analysis only
 
@@ -257,15 +192,15 @@ Magnitude: Moderate negative relationship
 - **Convergence**: May not achieve full convergence in all cases
 - **Numerical Stability**: Sensitive to hyperparameter choices
 
-## Recommendations for Reporting
+## Reporting
 
 ### Essential Elements
 1. **Performance Metrics**: RMSE, MAE, R² with confidence intervals
 2. **Uncertainty Assessment**: Calibration plots and coverage analysis
-3. **Feature Importance**: Standardized coefficients and SHAP values
+3. **Feature Importance**: Standardised coefficients and SHAP values
 4. **Model Comparison**: Statistical and practical significance tests
 
-### Visualization Guidelines
+### Visualisation Guidelines
 1. **Prediction Plots**: Show model fit with uncertainty bands
 2. **Calibration Plots**: Demonstrate uncertainty reliability
 3. **Feature Importance**: Bar plots with confidence intervals

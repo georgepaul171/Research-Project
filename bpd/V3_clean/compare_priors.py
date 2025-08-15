@@ -55,7 +55,7 @@ prior_configs = {
         'interaction': 'hierarchical'
     },
     'ElasticNet': {
-        'energy': 'elastic_net',  # We'll treat this as a special case in the code
+        'energy': 'elastic_net',  
         'building': 'hierarchical',
         'interaction': 'hierarchical'
     }
@@ -65,6 +65,7 @@ results = {}
 
 for prior_name, group_priors in prior_configs.items():
     print(f"\nRunning model with {prior_name} prior for energy group...")
+    
     # For Elastic Net, use AEH with alpha=1.0, beta=1.0, gamma=0.0, rho=0.0 (no horseshoe, pure elastic net)
     if prior_name == 'ElasticNet':
         config = AdaptivePriorConfig(
@@ -76,18 +77,17 @@ for prior_name, group_priors in prior_configs.items():
             max_iter=50,
             use_hmc=False
         )
-        # We'll patch the AEH parameters after model creation
         model = AdaptivePriorARD(config)
         # Patch AEH parameters for pure elastic net
         def patch_aeh_to_elastic_net(model):
-            # After _initialize_adaptive_priors is called in fit
+
             if hasattr(model, 'group_prior_hyperparams') and 'energy' in model.group_prior_hyperparams:
                 params = model.group_prior_hyperparams['energy']
                 params['alpha'] = 1.0  # L1 only
-                params['beta'] = 1.0   # Elastic net only
+                params['beta'] = 1.0  # Elastic net only
                 params['gamma'] = 0.0  # No adaptation
-                params['rho'] = 0.0    # No momentum
-        # Fit model and patch after initialization
+                params['rho'] = 0.0  # No momentum
+        # Fit model and patch after initialisation
         model.fit(X, y, feature_names=feature_names, output_dir=results_dir)
         patch_aeh_to_elastic_net(model)
     else:

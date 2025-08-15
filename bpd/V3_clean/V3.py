@@ -24,7 +24,7 @@ import shap
 
 warnings.filterwarnings('ignore')
 
-# --- Post-hoc uncertainty calibration factor (from calibration experiments) ---
+# Post-hoc uncertainty calibration factor (from calibration experiments)
 POSTHOC_UNCERTAINTY_SCALE = 10.0  # Adjust as needed based on calibration_experiments
 
 class AdaptivePriorConfig:

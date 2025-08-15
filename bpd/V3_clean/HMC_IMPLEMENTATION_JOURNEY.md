@@ -1,11 +1,11 @@
 # HMC Implementation Journey Documentation
 
 ## Overview
-This document chronicles our journey implementing and improving Hamiltonian Monte Carlo (HMC) for the Adaptive Prior ARD model, from initial problems to significant improvements.
+This document chronicles our journey for the Adaptive Prior ARD model, from initial problems to significant improvements.
 
 ## Phase 1: Initial HMC Implementation
 
-### Original Implementation (`V3.py`)
+### Original Implementation
 - **Configuration**: Basic HMC with default parameters
 - **Parameters**: 
   - `hmc_epsilon = 0.0001` (step size)
@@ -25,7 +25,7 @@ This document chronicles our journey implementing and improving Hamiltonian Mont
 3. **Poor integration**: 3 leapfrog steps insufficient for complex posterior
 4. **Missing diagnostics**: No way to monitor convergence quality
 
-## Phase 2: Enhanced Diagnostics (`v3hmc.py`)
+## Phase 2: Enhanced Diagnostics
 
 ### Improvements Made
 - **Return chains**: Always return HMC chains for analysis
@@ -44,12 +44,12 @@ This document chronicles our journey implementing and improving Hamiltonian Mont
 ```python
 # Original (problematic)
 hmc_epsilon = 0.0001      # Too small
-hmc_steps = 20           # Too few
+hmc_steps = 20      # Too few
 hmc_leapfrog_steps = 3   # Too few
 
 # Fixed (improved)
 hmc_epsilon = 0.001      # 10x larger
-hmc_steps = 50          # 2.5x more steps
+hmc_steps = 50   # 2.5x more steps
 hmc_leapfrog_steps = 5  # Better integration
 ```
 
@@ -111,7 +111,7 @@ def _calculate_effective_sample_size(self, chains):
     return ess
 ```
 
-## Key Lessons Learned
+## Key Learnings
 
 ### 1. Parameter Tuning is Critical
 - **Step size**: Too small → over-acceptance, too large → low acceptance
@@ -129,60 +129,40 @@ def _calculate_effective_sample_size(self, chains):
 - **Chain mixing**: Poor mixing indicates convergence problems
 - **R-hat calculation**: Requires multiple chains
 
-### 4. Integration with EM
-- **HMC within EM**: Each EM iteration uses HMC for posterior exploration
-- **Parameter updates**: HMC results inform EM parameter updates
-- **Convergence**: Both EM and HMC must converge
-
 ## Current Status
 
-### ✅ Achievements
+### Achievements
 - **Working HMC**: Algorithm properly implemented and tuned
 - **Good acceptance rates**: 0.52 (in proper range)
 - **Improved convergence**: 6.6x reduction in R-hat
 - **Better performance**: Improved model metrics
 - **Complete diagnostics**: Full suite of monitoring tools
 
-### ⚠️ Remaining Challenges
+### Remaining Challenges
 - **R-hat**: Still 18.2 (target < 1.1)
 - **ESS**: Still 1.4 (target > 100)
 - **Chain mixing**: Could be improved further
 
 ## Next Steps for Further Improvement
 
-### Immediate Actions
+### Actions
 1. **Increase chains**: 4 → 8 chains for better convergence assessment
 2. **Add warmup**: 1000 warmup steps before sampling
 3. **Adaptive step size**: Automatic tuning during warmup
 
 ### Advanced Improvements
 1. **NUTS sampler**: Replace basic HMC with No-U-Turn Sampler
-2. **Better initialization**: More diverse starting points
+2. **Better initialisation**: More diverse starting points
 3. **Multiple trajectories**: Multiple HMC trajectories per iteration
-
-## Files Generated
-
-### Diagnostic Files
-- `hmc_acceptance_iter*.json`: Acceptance rates for each iteration
-- `hmc_rhat_ess_iter*.json`: R-hat and ESS for each iteration
-- `trace_*_fold*.png`: Trace plots for each feature and iteration
-- `convergence_history.json`: Complete convergence tracking
-
-### Results Files
-- `metrics.json`: Final model performance metrics
-- `feature_importance.json`: Feature importance rankings
-- `adaptive_prior_model.joblib`: Saved model for later use
 
 ## Conclusion
 
-**Success**: We have successfully implemented and significantly improved HMC for the Adaptive Prior ARD model.
+Have successfully implemented and improved HMC for the Adaptive Prior ARD model.
 
-**Key Achievement**: Demonstrated that HMC can work properly with appropriate tuning, achieving:
+**Achievement**: Demonstrated that HMC can work properly with appropriate tuning, achieving:
 - Proper acceptance rates
 - Significant convergence improvements
 - Better model performance
 - Complete diagnostic suite
 
-**Foundation**: This implementation provides a solid foundation for further improvements and can be used for reliable Bayesian inference with uncertainty quantification.
-
-**Next Phase**: Ready to implement advanced improvements (NUTS, warmup, adaptive tuning) to achieve full convergence. 
+**Foundation**: This implementation provides a foundation for further improvements and can be used for reliable Bayesian inference with uncertainty quantification.

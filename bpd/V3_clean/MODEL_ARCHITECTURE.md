@@ -85,7 +85,7 @@ graph TD
 #### Energy Features (4 features) - AEH Prior
 - **Features**: `ghg_emissions_int_log`, `floor_area_log`, `electric_eui`, `fuel_eui`
 - **Prior**: Adaptive Elastic Horseshoe (AEH)
-- **Rationale**: Energy-related features benefit from adaptive regularization that can handle varying sparsity patterns
+- **Rationale**: Energy-related features benefit from adaptive regularisation that can handle varying sparsity patterns
 
 #### Building Features (4 features) - Hierarchical Prior
 - **Features**: `energy_star_rating_normalized`, `energy_mix`, `building_age_log`, `floor_area_squared`
@@ -95,11 +95,11 @@ graph TD
 #### Interaction Features (4 features) - Hierarchical Prior
 - **Features**: `energy_intensity_ratio`, `building_age_squared`, `energy_star_rating_squared`, `ghg_per_area`
 - **Prior**: Hierarchical Normal
-- **Rationale**: Interaction terms benefit from group-level regularization
+- **Rationale**: Interaction terms benefit from group-level regularisation
 
 ### 2. AEH Prior Specification
 
-The Adaptive Elastic Horseshoe prior for energy features combines multiple regularization techniques:
+The Adaptive Elastic Horseshoe prior for energy features combines multiple regularisation techniques:
 
 #### Global Shrinkage Parameter (τ)
 - **Prior**: τ ~ Half-Cauchy(0, 1)
@@ -113,12 +113,12 @@ The Adaptive Elastic Horseshoe prior for energy features combines multiple regul
 
 #### Elastic Net Parameter (α)
 - **Prior**: α ~ Beta(2, 2)
-- **Role**: Balances L1 (Lasso) and L2 (Ridge) regularization
+- **Role**: Balances L1 (Lasso) and L2 (Ridge) regularisation
 - **Update**: α = (Σ|βⱼ|)/(Σ|βⱼ| + Σβⱼ²)
 
 #### Adaptive Parameters (β, γ, δ)
-- **Role**: Fine-tune the balance between different regularization components
-- **Update**: Via EM algorithm with gradient-based optimization
+- **Role**: Fine-tune the balance between different regularisation components
+- **Update**: Via EM algorithm with gradient-based optimisation
 
 ### 3. Hierarchical Prior Specification
 
@@ -146,7 +146,7 @@ The response variable follows a Gaussian distribution:
 
 #### Parameter Updates
 - **Regression Coefficients**: β = (XᵀX + Σ⁻¹)⁻¹Xᵀy
-- **AEH Parameters**: Updated via gradient-based optimization
+- **AEH Parameters**: Updated via gradient-based optimisation
 - **Hierarchical Parameters**: Closed-form updates for means and variances
 
 ### 6. Model Outputs
@@ -168,7 +168,7 @@ The response variable follows a Gaussian distribution:
 ## Key Features
 
 ### Adaptive Regularization
-- **AEH Prior**: Automatically adapts regularization strength based on data
+- **AEH Prior**: Automatically adapts regularisation strength based on data
 - **Feature-Specific**: Different shrinkage for different feature groups
 - **Data-Driven**: Hyperparameters learned from the data
 

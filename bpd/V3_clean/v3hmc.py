@@ -2041,10 +2041,10 @@ if __name__ == "__main__":
     # Generate all additional outputs (visualizations, SHAP, diagnostics, etc.)
     analyze_feature_interactions(X, y, feature_names, model, results_dir)
     
-    # --- COMPREHENSIVE RESEARCH ANALYSIS ---
+    # - RESEARCH ANALYSIS -
     logger.info("Starting comprehensive research analysis...")
     
-    # 1. Comprehensive baseline comparison with statistical significance testing
+    # 1. baseline comparison with statistical significance testing
     logger.info("1. Running comprehensive baseline comparison...")
     baseline_results, significance_results = run_comprehensive_baseline_comparison(X, y, feature_names, results_dir)
     
@@ -2056,15 +2056,15 @@ if __name__ == "__main__":
     logger.info("3. Running out-of-sample validation...")
     validation_results = run_out_of_sample_validation(X, y, feature_names, results_dir)
     
-    # 4. Create comprehensive research summary
+    # 4. Create research summary
     create_research_summary(model, baseline_results, significance_results, sensitivity_results, validation_results, results_dir)
     
     logger.info(f"\nAll comprehensive research results saved to {results_dir}")
     logger.info("Research analysis complete! Your V3.py script now includes:")
-    logger.info("✅ Statistical significance testing")
-    logger.info("✅ Multiple baseline models (RF, XGBoost, SVR, NN)")
-    logger.info("✅ Sensitivity analysis (prior strength, features, data size)")
-    logger.info("✅ Out-of-sample validation (temporal, random, bootstrap)")
-    logger.info("✅ Comprehensive visualizations and statistical reports") 
+    logger.info("Statistical significance testing")
+    logger.info("Multiple baseline models (RF, XGBoost, SVR, NN)")
+    logger.info("Sensitivity analysis (prior strength, features, data size)")
+    logger.info("Out-of-sample validation (temporal, random, bootstrap)")
+    logger.info("visualisations and statistical reports") 
     # --- SHAP ANALYSIS ---
     generate_shap_plots(model, X, feature_names, results_dir)

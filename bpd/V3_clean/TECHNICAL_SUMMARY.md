@@ -35,7 +35,7 @@
 - **Result**: PICP = 1.0 for all levels
 - **Assessment**: Still over-conservative
 
-#### Iteration 3: Calibration Factor = 0.05 ⭐ **OPTIMAL**
+#### Iteration 3: Calibration Factor = 0.05 **OPTIMAL**
 - **Result**: PICP = 0.93-0.99
 - **Mean uncertainty**: 24.94 (4x RMSE)
 - **Assessment**: Significant improvement, practically acceptable
@@ -81,7 +81,7 @@ AdaptivePriorConfig(
 1. XGBoost: 0.978
 2. Random Forest: 0.977
 3. Neural Network: 0.956
-4. **AEH Model: 0.942** ⭐
+4. **AEH Model: 0.942** 
 5. Bayesian Ridge: 0.939
 6. Linear Regression: 0.939
 7. SVR: 0.886
@@ -101,11 +101,6 @@ AdaptivePriorConfig(
 4. **fuel_eui**: 0.169
 5. **electric_eui**: 0.154
 
-### Key Insights
-- GHG-related features dominate importance
-- Energy intensity metrics are highly predictive
-- Building characteristics have moderate importance
-- Interaction terms have lower but non-zero importance
 
 ## Technical Implementation Details
 
@@ -116,7 +111,6 @@ AdaptivePriorConfig(
 - **Regularization**: Group-wise sparsity
 
 ### Computational Performance
-- **Training Time**: ~2-3 minutes for full dataset
 - **Memory Usage**: Moderate (fits in standard RAM)
 - **Scalability**: Linear with dataset size
 - **Convergence**: Stable across multiple runs
@@ -127,22 +121,7 @@ AdaptivePriorConfig(
 - **Out-of-sample**: Temporal and random splits
 - **Sensitivity analysis**: Hyperparameter robustness
 
-## Key Technical Contributions
 
-### 1. Uncertainty Calibration Methodology
-- Systematic approach to Bayesian model calibration
-- Practical guidelines for calibration factor selection
-- Trade-off analysis between accuracy and utility
-
-### 2. Feature Grouping Strategy
-- Domain-informed feature grouping
-- Adaptive sparsity within groups
-- Interpretable feature importance
-
-### 3. Robust Implementation
-- Stable EM convergence
-- Proper uncertainty propagation
-- Comprehensive validation framework
 
 ## Limitations and Considerations
 
@@ -180,27 +159,12 @@ AdaptivePriorConfig(
 - Slight over-conservatism is preferable to under-confidence
 - Use uncertainty estimates for risk assessment
 
-## Code Repository Structure
-
-```
-bpd/V3_clean/
-├── V3.py                          # Main model implementation
-├── fix_baseline_comparison.py     # Baseline comparison script
-├── results/
-│   ├── fold_metrics.json          # Uncertainty calibration results
-│   ├── comprehensive_baseline_results.json  # Model comparison
-│   ├── EXECUTIVE_SUMMARY.md       # High-level summary
-│   ├── RESEARCH_DOCUMENTATION.md  # Detailed documentation
-│   └── TECHNICAL_SUMMARY.md       # This document
-└── adaptive_prior_model.joblib    # Trained model
-```
-
 ## Conclusion
 
 The AEH model implementation successfully achieves:
-- ✅ **Competitive performance** (R² = 0.942)
-- ✅ **Proper uncertainty calibration** (PICP = 0.93-0.99)
-- ✅ **Interpretable feature importance**
-- ✅ **Robust validation** across multiple metrics
+- **Competitive performance** (R² = 0.942)
+- **Proper uncertainty calibration** (PICP = 0.93-0.99)
+- **Interpretable feature importance**
+- **Robust validation** across multiple metrics
 
 The calibration factor of 0.05 provides the optimal balance between calibration accuracy and practical utility, making the model suitable for real-world building energy prediction applications.

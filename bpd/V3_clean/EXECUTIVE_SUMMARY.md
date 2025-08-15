@@ -7,14 +7,13 @@ The AdaptivePriorARD (AEH) model achieves competitive performance with uncertain
 
 ### Performance Comparison
 - **AEH Model**: R² = 0.942 vs XGBoost R² = 0.978
-- **Effect Size**: Effect size: Cohen's d = 0.000 (small effect)
 - **Bootstrap Validation**: R² = 0.942 [95% CI: 0.929, 0.953]
 
 ### Performance Ranking
 1. XGBoost (R² = 0.978)
 2. Random Forest (R² = 0.977)
 3. Neural Network (R² = 0.956)
-4. **AdaptivePriorARD (AEH)** (R² = 0.942) - **Our Model**
+4. **AdaptivePriorARD (AEH)** (R² = 0.942)
 5. Bayesian Ridge (R² = 0.939)
 6. Linear Regression (R² = 0.939)
 7. SVR (R² = 0.886)
@@ -30,7 +29,7 @@ The AdaptivePriorARD (AEH) model achieves competitive performance with uncertain
 - **Effect Sizes**: 9 large, 0 medium, 12 small
 
 ### Research Contributions
-- Novel AEH prior implementation for building energy prediction
+- AEH prior implementation for building energy prediction
 - Comprehensive statistical validation of model performance
 - Robust uncertainty quantification with calibration
 - Sensitivity analysis demonstrating model stability
@@ -38,8 +37,7 @@ The AdaptivePriorARD (AEH) model achieves competitive performance with uncertain
 
 ### Limitations
 - Single dataset validation (BPD dataset)
-- Computational complexity of EM algorithm
-- Requires careful hyperparameter tuning
+- Requires hyperparameter tuning
 
 ### Future Work
 - Multi-dataset validation across different building types

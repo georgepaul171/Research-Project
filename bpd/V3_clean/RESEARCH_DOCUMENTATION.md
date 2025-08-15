@@ -1,8 +1,5 @@
 # Research Documentation: Adaptive Elastic Horseshoe (AEH) Prior for Building Energy Prediction
 
-## Executive Summary
-
-This document provides a comprehensive overview of the implementation, calibration, and evaluation of an Adaptive Elastic Horseshoe (AEH) prior model for building energy prediction. The research successfully addressed uncertainty quantification challenges and achieved competitive performance with properly calibrated uncertainty estimates.
 
 ## 1. Research Objectives
 
@@ -45,7 +42,7 @@ Selected features for the AEH model:
 ### 2.3 Model Architecture
 **Adaptive Elastic Horseshoe (AEH) Prior:**
 - **Prior Type**: Hierarchical adaptive elastic horseshoe
-- **Inference**: Expectation-Maximization (EM) algorithm
+- **Inference**: EM algorithm
 - **Uncertainty Quantification**: Calibrated prediction intervals
 - **Feature Groups**: Energy, Building, and Interaction features
 
@@ -96,7 +93,7 @@ Mean Uncertainty: 25.05
 - PICP 95%: 0.989 (target: 0.95)
 - PICP 99%: 0.995 (target: 0.99)
 
-**Assessment**: Slightly over-conservative but practically acceptable
+**Assessment**: Over-conservative but practically acceptable
 
 ### 3.3 Baseline Model Comparison
 
@@ -104,7 +101,7 @@ Mean Uncertainty: 25.05
 1. XGBoost (R² = 0.978)
 2. Random Forest (R² = 0.977)
 3. Neural Network (R² = 0.956)
-4. **AdaptivePriorARD (AEH)** (R² = 0.942) - **Our Model**
+4. **AdaptivePriorARD (AEH)** (R² = 0.942) 
 5. Bayesian Ridge (R² = 0.939)
 6. Linear Regression (R² = 0.939)
 7. SVR (R² = 0.886)
@@ -150,7 +147,7 @@ Mean Uncertainty: 25.05
 ### 5.2 Future Research Directions
 1. **Multi-dataset validation** across different building types and regions
 2. **Deep learning integration** for more complex feature interactions
-3. **Real-time adaptation** for dynamic building systems
+3. **Real-time adaptation** for building systems
 4. **Ensemble methods** combining AEH with other models
 5. **Online learning** for continuous model updates
 
@@ -194,7 +191,7 @@ AdaptivePriorConfig(
 5. **Final selection** based on practical utility
 
 ### 7.3 Evaluation Framework
-- **Cross-validation** with 5 folds
+- **Cross-validation** with 3/5 folds
 - **Statistical significance testing** (paired t-tests, Wilcoxon)
 - **Effect size analysis** (Cohen's d)
 - **Bootstrap validation** for robustness assessment
@@ -202,14 +199,14 @@ AdaptivePriorConfig(
 ## 8. Conclusions
 
 ### 8.1 Research Achievements
-✅ **Successfully implemented** AEH prior for building energy prediction
-✅ **Achieved competitive performance** (R² = 0.942) among 7 baseline models
-✅ **Developed robust uncertainty quantification** with proper calibration
-✅ **Provided comprehensive evaluation** with statistical validation
-✅ **Created interpretable feature importance** analysis
+**Successfully implemented** AEH prior for building energy prediction
+**Achieved competitive performance** (R² = 0.942) among 7 baseline models
+**Developed robust uncertainty quantification** with proper calibration
+**Provided comprehensive evaluation** with statistical validation
+**Created interpretable feature importance** analysis
 
 ### 8.2 Key Insights
-1. **Uncertainty calibration is crucial** for practical Bayesian model deployment
+1. **Uncertainty calibration is important** for practical Bayesian model deployment
 2. **Slight over-conservatism is acceptable** and often preferable to under-confidence
 3. **Feature grouping** enhances model interpretability and performance
 4. **Systematic evaluation** reveals model strengths and limitations
@@ -223,13 +220,4 @@ This research contributes to:
 
 ## 9. References and Data Sources
 
-### 9.1 Data Sources
-- Building Performance Database (BPD) - Office Buildings
-- Energy Star Rating System
-- Building Energy Codes and Standards
-
-### 9.2 Technical References
-- Adaptive Elastic Horseshoe Prior methodology
-- Bayesian model calibration techniques
-- Building energy prediction literature
-- Uncertainty quantification in machine learning
+- Building Performance Database (BPD)

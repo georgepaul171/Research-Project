@@ -20,9 +20,9 @@ This document summarizes the main results and insights from comprehensive experi
 **Key Results:**
 - **AEH model achieves competitive performance** with R² = 0.942 and uncertainty quantification
 - **Tree-based models** (XGBoost, RF) achieve highest R² but lack uncertainty estimates
-- **Prediction range is much improved** after fixing scaling issues
+- **Prediction range is improved** after fixing scaling issues
 - **Model converges quickly** in 3 iterations with stable training
-- **AEH hyperparameters adapt intelligently** during training
+- **AEH hyperparameters adapt** during training
 
 ---
 
@@ -40,7 +40,6 @@ This document summarizes the main results and insights from comprehensive experi
 
 ### Out-of-Sample Validation
 - **Random split**: R² = 0.932, RMSE = 6.97, MAE = 4.52
-- **Temporal split**: Not available (year_built feature not present)
 - **Cross-validation**: Consistent performance across folds
 
 ---
@@ -61,7 +60,7 @@ This document summarizes the main results and insights from comprehensive experi
 ### Feature Importance Sensitivity
 | Feature | R² Score | R² Change | Importance |
 |---------|----------|-----------|------------|
-| **fuel_eui** | 0.894 | **0.037** | **Most critical** |
+| **fuel_eui** | 0.894 | **0.037** | **Most important** |
 | **electric_eui** | 0.914 | **0.017** | Second most important |
 | **ghg_emissions_int_log** | 0.913 | **0.018** | Third most important |
 | energy_intensity_ratio | 0.928 | 0.004 | Moderate |
@@ -83,7 +82,7 @@ This document summarizes the main results and insights from comprehensive experi
 | 0.9             | 6,999     | 0.947    | Excellent |
 | 1.0             | 7,777     | 0.946    | Excellent |
 
-**Model shows excellent stability** across different data sizes
+**Model shows good stability** across different data sizes
 
 ---
 
@@ -96,7 +95,7 @@ This document summarizes the main results and insights from comprehensive experi
 - **LinearRegression:**
   `[44.72, -0.04, 0.37, 0.57, -5.25, -18.34, -0.37, -0.07, 0.00, -0.63, -3.00, 0.00]`
 
-**Note:** AEH weights are smaller due to adaptive regularization, but the model achieves competitive predictive performance with uncertainty quantification.
+**Note:** AEH weights are smaller due to adaptive regularisation, but the model achieves competitive predictive performance with uncertainty quantification.
 
 ---
 
@@ -127,10 +126,10 @@ This document summarizes the main results and insights from comprehensive experi
 - **Interaction Group (4 features)**: Uses hierarchical prior
 
 ### AEH Hyperparameter Adaptation
-- **τ (global shrinkage)**: 0.85 (increasing for stronger regularization)
-- **α (elastic net mixing)**: 0.41 (balanced L1/L2 regularization)
+- **τ (global shrinkage)**: 0.85 (increasing for stronger regularisation)
+- **α (elastic net mixing)**: 0.41 (balanced L1/L2 regularisation)
 - **β (horseshoe vs elastic net)**: 0.69 (reduced horseshoe influence)
-- **λ (local shrinkage)**: Adapting per feature for optimal regularization
+- **λ (local shrinkage)**: Adapting per feature for optimal regularisation
 
 ### Convergence Behavior
 - **EM convergence**: 3 iterations (very fast and stable)
@@ -144,7 +143,6 @@ This document summarizes the main results and insights from comprehensive experi
 - **Model Convergence:**
   - AEH model converges quickly and stably
   - No HMC convergence issues (HMC disabled for stability)
-  - EM algorithm shows proper parameter adaptation
 
 - **Prediction vs Actual Plots:**
   - See `results/prediction_vs_actual.png` for visual comparison
@@ -159,8 +157,8 @@ This document summarizes the main results and insights from comprehensive experi
 ## 8. Interpretation & Implications
 
 ### **AEH Prior Success:**
-- **Competitive performance** (R² = 0.942) with adaptive regularization
-- **Energy features properly regularized** using AEH prior
+- **Competitive performance** (R² = 0.942) with adaptive regularisation
+- **Energy features properly regularised** using AEH prior
 - **Building and interaction features** use stable hierarchical priors
 - **Prediction range much improved** after fixing scaling issues
 - **Fast convergence** (3 iterations) indicates stable training
@@ -169,7 +167,7 @@ This document summarizes the main results and insights from comprehensive experi
 ### **Technical Achievements:**
 1. **Successfully implemented AEH prior** with adaptive hyperparameter learning
 2. **Fixed critical scaling bug** in prediction method
-3. **Demonstrated adaptive regularization** for energy features
+3. **Demonstrated adaptive regularisation** for energy features
 4. **Maintained stability** while achieving competitive performance
 5. **Proper feature grouping** with appropriate prior types
 6. **Comprehensive statistical validation** with multiple baseline models
@@ -177,7 +175,7 @@ This document summarizes the main results and insights from comprehensive experi
 ### **Comparison with Baselines:**
 - **Tree-based models** (XGBoost, RF) achieve highest R² but lack uncertainty estimates
 - **AEH model provides competitive performance** with uncertainty quantification
-- **Adaptive regularization** provides better feature selection
+- **Adaptive regularisation** provides better feature selection
 - **Uncertainty quantification** is properly calibrated
 - **Model interpretability** maintained through feature importance analysis
 
@@ -190,45 +188,16 @@ This document summarizes the main results and insights from comprehensive experi
 - **Robust uncertainty quantification** with calibration
 - **Sensitivity analysis** demonstrating model stability
 - **Feature importance analysis** for interpretability
-- **Research-grade analysis** with multiple validation strategies
+
 
 ---
 
-## 10. How to Use These Results in Your Report
-- **Figures:**
-  - Use `prediction_vs_actual.png` to illustrate model fit
-  - Use `calibration_plot.png` and `uncertainty_analysis.png` for uncertainty discussion
-  - Use `feature_importance.png`, `shap_summary.png` for interpretability
-  - Use `sensitivity_analysis.png` for model stability discussion
-  - Use `baseline_comparison_comprehensive.png` for model comparison
-- **Tables:**
-  - Copy the quantitative comparison table above for model performance summary
-  - Use feature importance tables for interpretability sections
-  - Use sensitivity analysis tables for model stability discussion
-- **Discussion:**
-  - Emphasize the successful implementation of AEH prior
-  - Discuss the adaptive hyperparameter behavior
-  - Highlight the technical fixes that enabled success
-  - Compare with tree-based models and discuss uncertainty quantification benefits
-
----
-
-## 11. Discussion Points for Writing
-- **AEH prior successfully provides adaptive regularization** for energy features while maintaining model performance and stability
-- **Feature grouping strategy** (AEH for energy, hierarchical for others) balances flexibility and regularization
+## 10. Discussion Points for Writing
+- **AEH prior successfully provides adaptive regularisation** for energy features while maintaining model performance and stability
+- **Feature grouping strategy** (AEH for energy, hierarchical for others) balances flexibility and regularisation
 - **Scaling fixes were critical** for proper uncertainty estimation and prediction range
 - **Fast convergence** indicates well-designed prior structure and stable training
 - **Competitive performance** with uncertainty quantification demonstrates the value of Bayesian approaches
 - **Energy features dominate importance**, which aligns with domain knowledge about building energy use
 - **Model stability** across different prior strengths and data sizes shows robustness
 - **Statistical validation** confirms the reliability of results
-
----
-
-## 12. References to Results Files
-- **Research Summary**: `results/comprehensive_research_summary.json`
-- **Executive Summary**: `results/EXECUTIVE_SUMMARY.md`
-- **Plots:** `results/prediction_vs_actual.png`, `results/calibration_plot.png`, `results/uncertainty_analysis.png`, `results/sensitivity_analysis.png`, `results/baseline_comparison_comprehensive.png`
-- **Diagnostics:** `results/aeh_hyperparams_log.txt`, `results/em_progress_log.txt`, `results/feature_importance.json`
-- **Model Artifacts:** `results/adaptive_prior_model.joblib`, `results/metrics.json`
-- **Weights & Ranges:** `results/adaptive_prior_results.txt`, `results/baseline_comparison.txt`

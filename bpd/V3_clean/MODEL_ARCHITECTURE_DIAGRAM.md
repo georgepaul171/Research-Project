@@ -1,7 +1,7 @@
 # Group-wise Bayesian Model Architecture with Tailored Prior Assignments
 
 ## Overview
-This diagram illustrates the hierarchical structure of the Bayesian linear regression framework, showing how features are partitioned into groups and assigned specialized priors (Adaptive Elastic Horseshoe for energy features, Hierarchical Normal for building and interaction features).
+This diagram illustrates the hierarchical structure of the Bayesian linear regression framework, showing how features are partitioned into groups and assigned specialised priors (Adaptive Elastic Horseshoe for energy features, Hierarchical Normal for building and interaction features).
 
 ## Model Architecture Diagram
 
@@ -91,7 +91,7 @@ graph TD
   μ_g ~ Normal(0, 10²)
   σ_g² ~ InverseGamma(1, 1)
   ```
-- **Rationale**: Captures group structure and provides stable regularization for building and interaction features
+- **Rationale**: Captures group structure and provides stable regularisation for building and interaction features
 
 ## Model Components
 
@@ -128,7 +128,7 @@ Where X_i is the feature vector and β is the coefficient vector.
 - **Rationale**: Energy consumption patterns often show heavy tails and extreme values
 
 ### Building Features (G₂)
-- **energy_star_rating_normalized**: Normalized Energy Star rating
+- **energy_star_rating_normalized**: Normalised Energy Star rating
 - **energy_mix**: Energy source complexity metric
 - **building_age_log**: Log-transformed building age
 - **floor_area_squared**: Quadratic floor area effects
@@ -139,9 +139,9 @@ Where X_i is the feature vector and β is the coefficient vector.
 - **energy_intensity_ratio**: Efficiency metric
 - **building_age_squared**: Quadratic age effects
 - **energy_star_rating_squared**: Quadratic rating effects
-- **ghg_per_area**: Area-normalized emissions
+- **ghg_per_area**: Area-normalised emissions
 - **Prior**: Hierarchical Normal
-- **Rationale**: Interaction terms benefit from group-level regularization
+- **Rationale**: Interaction terms benefit from group-level regularisation
 
 ## Model Outputs
 

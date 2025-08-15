@@ -1,9 +1,3 @@
-#!/usr/bin/env python3
-"""
-Script to run corrected baseline comparison including AEH model.
-This addresses the critical issue of missing AEH model in statistical significance testing.
-Uses the cleaned_office_buildings.csv dataset as specified.
-"""
 
 import sys
 import os
@@ -34,7 +28,6 @@ def main():
     
     logger.info("Starting corrected baseline comparison with AEH model...")
     
-    # Load data from cleaned_office_buildings.csv
     data_path = "../cleaned_office_buildings.csv"
     if not os.path.exists(data_path):
         logger.error(f"Data file not found: {data_path}")
@@ -78,10 +71,10 @@ def main():
     
     # Configure AEH model
     config = AdaptivePriorConfig(
-        beta_0=0.1,  # Moderate regularization
+        beta_0=0.1,  # Moderate regularisation
         max_iter=50,
-        use_hmc=False,  # Use EM for stability
-        calibration_factor=0.03,  # Further reduced from 0.05 to improve PICP calibration
+        use_hmc=False,  
+        calibration_factor=0.03,  # reduced from 0.05 to improve PICP calibration
         group_prior_types={
             'energy': 'adaptive_elastic_horseshoe',
             'building': 'hierarchical',
@@ -94,7 +87,7 @@ def main():
     model = AdaptivePriorARD(config=config)
     model.fit(X, y, feature_names=feature_names, output_dir=results_dir)
     
-    # Run comprehensive baseline comparison (now includes AEH model)
+    # Run comprehensive baseline comparison (includes AEH model)
     logger.info("Running comprehensive baseline comparison...")
     baseline_results, significance_results = run_comprehensive_baseline_comparison(
         X, y, feature_names, results_dir
