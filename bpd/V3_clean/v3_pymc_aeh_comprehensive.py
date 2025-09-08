@@ -26,19 +26,18 @@ from V3 import feature_engineering_no_interactions
 
 warnings.filterwarnings('ignore')
 
-# Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Set up paths and parameters
+
 results_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'results_pymc_aeh_comprehensive')
 os.makedirs(results_dir, exist_ok=True)
 data_csv_path = "/Users/georgepaul/Desktop/Research-Project/bpd/cleaned_office_buildings.csv"
 target = "site_eui"
 na_vals = ['No Value', '', 'NA', 'N/A', 'null', 'Null', 'nan', 'NaN']
 
-# Load and preprocess data
-print("Loading data...")
+
+
 df = pd.read_csv(data_csv_path, na_values=na_vals, low_memory=False)
 df = feature_engineering_no_interactions(df)
 features = [
@@ -60,23 +59,23 @@ X = df[features].values.astype(np.float32)
 y = df[target].values.astype(np.float32).reshape(-1)
 
 # Define feature groups for AEH prior
-energy_features = [0, 2, 3, 4, 5, 8, 10, 11]  # energy-related features (8 features)
-building_features = [1, 6, 9]  # building-related features (3 features)
-interaction_features = [7]  # interaction features (1 feature)
+energy_features = [0, 2, 3, 4, 5, 8, 10, 11]  
+building_features = [1, 6, 9] 
+interaction_features = [7]  
 
 print(f"Data shape: {X.shape}")
 print(f"Energy features: {len(energy_features)}")
 print(f"Building features: {len(building_features)}")
 print(f"Interaction features: {len(interaction_features)}")
 
-# Helper to compute PICP 90%
+# Compute PICP 90%
 def picp_90(y_true, y_pred, y_std):
     z = norm.ppf(1 - 0.1/2)
     lower = y_pred - z * y_std
     upper = y_pred + z * y_std
     return float(np.mean((y_true >= lower) & (y_true <= upper)))
 
-# Helper to compute PICP for multiple levels
+# Compute PICP for multiple levels
 def compute_picp(y_true, y_pred, y_std, levels=[0.5, 0.8, 0.9, 0.95, 0.99]):
     """
     Compute PICP (Prediction Interval Coverage Probability) for multiple confidence levels.
@@ -98,7 +97,7 @@ def compute_crps(y_true, y_pred, y_std):
     crps_values = []
     for yt, yp, ys in zip(y_true, y_pred, y_std):
         if ys <= 0:
-            crps = np.abs(yt - yp)  # fallback to MAE if std is zero or negative
+            crps = np.abs(yt - yp) 
         else:
             z = (yt - yp) / ys
             crps = ys * (z * (2 * norm.cdf(z) - 1) + 2 * norm.pdf(z) - 1/np.sqrt(np.pi))
@@ -106,16 +105,13 @@ def compute_crps(y_true, y_pred, y_std):
     return float(np.mean(crps_values))
 
 def create_aeh_model(X, y, feature_names):
-    """
-    Create PyMC model with AEH prior - comprehensive version.
-    """
-    print("Creating PyMC model with AEH prior...")
+    
+    print("PyMC model with AEH prior created")
     
     with pm.Model() as model:
-        # Global scale
+
         sigma = pm.HalfNormal('sigma', sigma=1.0)
         
-        # AEH PRIOR FOR ENERGY FEATURES
         # Global shrinkage parameter
         tau_energy = pm.HalfCauchy('tau_energy', beta=1.0)
         
@@ -174,7 +170,7 @@ def create_aeh_model(X, y, feature_names):
 
 def run_bayesian_inference(model, X, y, feature_names, results_dir):
     """
-    Run Bayesian inference with comprehensive diagnostics.
+    Run Bayesian inference
     """
     print("Running Bayesian inference with AEH prior...")
     
@@ -264,7 +260,7 @@ def create_comprehensive_visualizations(trace, ppc, X, y, feature_names, results
     """
     Create  visualisations 
     """
-    print("Creating visualisations...")
+    print("Creating visualisations")
     
     # Trace plots for key parameters
     az.plot_trace(trace, var_names=['intercept', 'sigma', 'tau_energy', 'alpha_energy', 'beta_energy'])
@@ -312,7 +308,7 @@ def create_comprehensive_visualizations(trace, ppc, X, y, feature_names, results
     plt.savefig(os.path.join(results_dir, 'posterior_predictive_checks.png'), dpi=300, bbox_inches='tight')
     plt.close()
     
-    # 3. Feature importance
+    # Feature importance
     summary = pd.read_csv(os.path.join(results_dir, 'summary.csv'), index_col=0)
     coeff_params = [col for col in summary.index if 'reordered_coeffs' in col]
     coeff_summary = summary.loc[coeff_params]
@@ -333,7 +329,7 @@ def create_comprehensive_visualizations(trace, ppc, X, y, feature_names, results
     plt.savefig(os.path.join(results_dir, 'feature_importance.png'), dpi=300, bbox_inches='tight')
     plt.close()
     
-    # 4. Uncertainty visualization
+    # Uncertainty visualisation
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
     
     # Uncertainty vs predictions
@@ -351,6 +347,51 @@ def create_comprehensive_visualizations(trace, ppc, X, y, feature_names, results
     plt.tight_layout()
     plt.savefig(os.path.join(results_dir, 'uncertainty_analysis.png'), dpi=300, bbox_inches='tight')
     plt.close()
+    
+    # Predictions with Bayesian uncertainty bands
+    try:
+        y_ppc = ppc.posterior_predictive['likelihood'].values
+        n_obs = y_ppc.shape[-1]
+        y_samples = y_ppc.reshape(-1, n_obs)  # (n_samples, n_obs)
+
+        # Compute central tendency and credible bands
+        y_mean = np.mean(y_samples, axis=0)
+        bands = {
+            '50%': (0.25, 0.75),
+            '80%': (0.10, 0.90),
+            '90%': (0.05, 0.95),
+            '95%': (0.025, 0.975)
+        }
+        quantiles = {k: np.quantile(y_samples, q, axis=0) for k, q in bands.items()}
+
+        order = np.argsort(y_mean)
+        x_axis = np.arange(n_obs)
+
+        plt.figure(figsize=(14, 6))
+        # Shaded credible intervals (widest to narrowest for layering)
+        for label, (ql, qh) in [('95%', (0.025, 0.975)), ('90%', (0.05, 0.95)), ('80%', (0.10, 0.90)), ('50%', (0.25, 0.75))]:
+            q_low, q_high = np.quantile(y_samples, [ql, qh], axis=0)
+            plt.fill_between(
+                x_axis,
+                q_low[order],
+                q_high[order],
+                alpha={'95%': 0.12, '90%': 0.16, '80%': 0.2, '50%': 0.28}[label],
+                label=f'{label} credible band'
+            )
+
+        # Plot mean prediction and observed
+        plt.plot(x_axis, y_mean[order], color='black', linewidth=1.5, label='Mean prediction')
+        plt.scatter(x_axis, y[order], s=12, alpha=0.6, label='Observed')
+
+        plt.xlabel('Samples (sorted by mean prediction)')
+        plt.ylabel('Site EUI')
+        plt.title('AEH: Predictions with Bayesian Uncertainty Bands')
+        plt.legend(loc='best', frameon=True)
+        plt.tight_layout()
+        plt.savefig(os.path.join(results_dir, 'predictions_with_uncertainty_bands.png'), dpi=300, bbox_inches='tight')
+        plt.close()
+    except Exception as e:
+        print(f"Warning: Could not create predictions_with_uncertainty_bands plot: {e}")
     
     print(" visualisations saved!")
 
@@ -456,7 +497,6 @@ def run_sensitivity_analysis(X, y, feature_names, results_dir):
     
     sensitivity_results = {}
     
-    # 1. Feature subset analysis
     print("1. Feature subset analysis...")
     feature_subsets = {
         'energy_only': [0, 2, 3, 4, 5, 8, 10, 11],
@@ -479,7 +519,7 @@ def run_sensitivity_analysis(X, y, feature_names, results_dir):
             'n_features': len(indices)
         }
     
-    # 2. Data size sensitivity
+    # Data size sensitivity
     print("2. Data size sensitivity...")
     sizes = [0.1, 0.25, 0.5, 0.75, 1.0]
     size_results = {}
@@ -610,20 +650,20 @@ def create_comprehensive_report(trace, ppc, metrics, baseline_results, sensitivi
     # Create  comparison
     fig, axes = plt.subplots(2, 3, figsize=(18, 12))
     
-    # 1. AEH Predictions vs Actual
+    # AEH Predictions vs Actual
     axes[0, 0].scatter(y, y_pred, alpha=0.6)
     axes[0, 0].plot([y.min(), y.max()], [y.min(), y.max()], 'r--', lw=2)
     axes[0, 0].set_xlabel('Observed Site EUI')
     axes[0, 0].set_ylabel('Predicted Site EUI')
     axes[0, 0].set_title(f'AEH: R²={metrics["r2"]:.3f}, RMSE={metrics["rmse"]:.2f}')
     
-    # 2. AEH Uncertainty
+    # AEH Uncertainty
     axes[0, 1].scatter(y_pred, y_std, alpha=0.6)
     axes[0, 1].set_xlabel('Predicted Site EUI')
     axes[0, 1].set_ylabel('Prediction Uncertainty')
     axes[0, 1].set_title(f'AEH: PICP90={metrics["picp_90"]:.3f}')
     
-    # 3. Model comparison
+    # Model comparison
     model_names = list(baseline_results.keys())
     r2_scores = [baseline_results[name]['r2'] for name in model_names]
     r2_scores.append(metrics['r2'])  # Add AEH
@@ -634,7 +674,7 @@ def create_comprehensive_report(trace, ppc, metrics, baseline_results, sensitivi
     axes[0, 2].set_title('Model Performance Comparison')
     axes[0, 2].tick_params(axis='x', rotation=45)
     
-    # 4. Feature subset sensitivity
+    # Feature subset sensitivity
     subset_names = [k for k in sensitivity_results.keys() if k != 'data_size']
     subset_r2 = [sensitivity_results[name]['cv_r2_mean'] for name in subset_names]
     
@@ -643,7 +683,7 @@ def create_comprehensive_report(trace, ppc, metrics, baseline_results, sensitivi
     axes[1, 0].set_title('Feature Subset Sensitivity')
     axes[1, 0].tick_params(axis='x', rotation=45)
     
-    # 5. Data size sensitivity
+    # Data size sensitivity
     size_fracs = list(sensitivity_results['data_size'].keys())
     size_r2 = [sensitivity_results['data_size'][frac]['cv_r2_mean'] for frac in size_fracs]
     
@@ -652,7 +692,7 @@ def create_comprehensive_report(trace, ppc, metrics, baseline_results, sensitivi
     axes[1, 1].set_ylabel('CV R² Score')
     axes[1, 1].set_title('Data Size Sensitivity')
     
-    # 6. Residuals distribution
+    # Residuals distribution
     residuals = y - y_pred
     axes[1, 2].hist(residuals, bins=30, alpha=0.7, density=True)
     axes[1, 2].set_xlabel('Residuals')
@@ -679,35 +719,6 @@ This report presents an analysis of the Adaptive Elastic Horseshoe (AEH) prior i
 - **MAE**: {metrics['mae']:.2f}
 - **PICP90**: {metrics['picp_90']:.3f}
 
-### Baseline Comparison
-"""
-    
-    for name, result in baseline_results.items():
-        report += f"- **{name}**: R² = {result['r2']:.3f}, RMSE = {result['rmse']:.2f}\n"
-    
-    report += f"""
-## Key Findings
-
-1. **AEH Prior Performance**: The AEH prior achieves excellent predictive performance with R² = {metrics['r2']:.3f}
-2. **Uncertainty Quantification**: Well-calibrated uncertainty estimates with PICP90 = {metrics['picp_90']:.3f}
-3. **Feature Selection**: Automatic identification of important energy features
-4. **Robustness**: Consistent performance across different analysis scenarios
-
-## Technical Details
-
-- **Sampling**: 2 chains, 500 draws each
-- **Convergence**: Good mixing and convergence diagnostics
-- **Feature Groups**: Energy (8), Building (3), Interaction (1)
-- **Prior Structure**: AEH for energy features, hierarchical for others
-
-## Recommendations
-
-1. The AEH prior shows superior performance compared to baseline models
-2. Energy features are most important for prediction
-3. The model provides well-calibrated uncertainty estimates
-4. Consider using this approach for building energy assessment applications
-
----
 *Analysis completed on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}*
 """
     
@@ -788,6 +799,120 @@ def plot_enhanced_trace(trace, results_dir):
         plt.savefig(os.path.join(results_dir, f'trace_{var}.png'), dpi=300, bbox_inches='tight')
         plt.close()
 
+def predict_with_posterior(trace, X_new, y_true, results_dir, feature_names, levels=(0.5, 0.8, 0.9, 0.95)):
+    """
+    Make Bayesian predictions for new rows using posterior samples.
+    Saves a small CSV with mean and credible intervals, and a quick plot.
+    """
+    import xarray as xr
+
+    # Extract posterior samples (chain, draw, param)
+    post = trace.posterior
+    def stack_samples(x: xr.DataArray):
+        return x.stack(sample=("chain", "draw")).transpose("sample", ...).values
+
+    intercept_s = stack_samples(post["intercept"])  # (S,)
+    energy_s = stack_samples(post["energy_coeffs"])  # (S, n_energy)
+    building_s = stack_samples(post["building_coeffs"])  # (S, n_building)
+    interaction_s = stack_samples(post["interaction_coeffs"])  # (S, n_inter)
+    sigma_s = stack_samples(post["sigma"])  # (S,)
+
+    # Feature group indices (must match model definition above)
+    energy_idx = np.array([0, 2, 3, 4, 5, 8, 10, 11])
+    building_idx = np.array([1, 6, 9])
+    interaction_idx = np.array([7])
+
+    S = intercept_s.shape[0]
+    N = X_new.shape[0]
+
+    # Compute predictive mean per sample
+    Xe = X_new[:, energy_idx]   # (N, n_energy)
+    Xb = X_new[:, building_idx] # (N, n_building)
+    Xi = X_new[:, interaction_idx] # (N, n_inter)
+
+    # y_mean_samples: (S, N)
+    y_mean_samples = (
+        intercept_s[:, None]
+        + energy_s @ Xe.T
+        + building_s @ Xb.T
+        + interaction_s @ Xi.T
+    )
+    # Add observation noise to form posterior predictive samples
+    y_pred_samples = y_mean_samples + np.random.normal(0.0, sigma_s[:, None], size=y_mean_samples.shape)
+
+    pred_mean = y_pred_samples.mean(axis=0)
+    ci = {}
+    for lvl in levels:
+        ql = (1 - lvl) / 2
+        qh = 1 - ql
+        ci[str(int(lvl * 100))] = np.quantile(y_pred_samples, [ql, qh], axis=0)
+
+    # Save table
+    out = {
+        "y_true": y_true,
+        "pred_mean": pred_mean,
+    }
+    for lvl, arr in ci.items():
+        out[f"ci{lvl}_low"] = arr[0]
+        out[f"ci{lvl}_high"] = arr[1]
+    df_pred = pd.DataFrame(out)
+    df_pred.to_csv(os.path.join(results_dir, "example_predictions.csv"), index=False)
+
+    # Quick plot
+    plt.figure(figsize=(8, 5))
+    x = np.arange(N)
+    for lvl, arr in sorted(ci.items(), key=lambda k: int(k[0])):
+        alpha = {"50": 0.35, "80": 0.25, "90": 0.2, "95": 0.15}.get(lvl, 0.2)
+        plt.fill_between(x, arr[0], arr[1], alpha=alpha, label=f"{lvl}% CI")
+    plt.plot(x, pred_mean, color='k', lw=2, label='Pred mean')
+    plt.scatter(x, y_true, color='r', zorder=3, label='True')
+    plt.xlabel('Example index')
+    plt.ylabel('Site EUI')
+    plt.title('Bayesian predictions with credible intervals (examples)')
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(os.path.join(results_dir, "example_predictions_plot.png"), dpi=300, bbox_inches='tight')
+    plt.close()
+
+def predict_with_ppc(ppc, indices, y_true, results_dir, levels=(0.5, 0.8, 0.9, 0.95)):
+    """
+    Make predictions for specific rows using posterior predictive draws from pm.sample_posterior_predictive.
+    This matches the uncertainty style used in predictions_with_uncertainty_bands.
+    """
+    y_ppc = ppc.posterior_predictive['likelihood'].values  # (chains, draws, N)
+    S = y_ppc.shape[0] * y_ppc.shape[1]
+    y_samples = y_ppc.reshape(S, y_ppc.shape[-1])[:, indices]  # (S, k)
+
+    pred_mean = y_samples.mean(axis=0)
+    out = {"y_true": y_true, "pred_mean": pred_mean}
+    for lvl in levels:
+        ql = (1 - lvl) / 2
+        qh = 1 - ql
+        q = np.quantile(y_samples, [ql, qh], axis=0)
+        out[f"ci{int(lvl*100)}_low"] = q[0]
+        out[f"ci{int(lvl*100)}_high"] = q[1]
+
+    df_pred = pd.DataFrame(out)
+    df_pred.to_csv(os.path.join(results_dir, "example_predictions_ppc.csv"), index=False)
+
+    # Plot
+    plt.figure(figsize=(8, 5))
+    x = np.arange(len(indices))
+    for lvl in sorted([int(l*100) for l in levels]):
+        low = df_pred[f"ci{lvl}_low"].values
+        high = df_pred[f"ci{lvl}_high"].values
+        alpha = {50: 0.35, 80: 0.25, 90: 0.2, 95: 0.15}.get(lvl, 0.2)
+        plt.fill_between(x, low, high, alpha=alpha, label=f"{lvl}% CI")
+    plt.plot(x, pred_mean, color='k', lw=2, label='Pred mean')
+    plt.scatter(x, y_true, color='r', zorder=3, label='True')
+    plt.xlabel('Example index')
+    plt.ylabel('Site EUI')
+    plt.title('Bayesian predictions (from PPC) with credible intervals (examples)')
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(os.path.join(results_dir, "example_predictions_ppc_plot.png"), dpi=300, bbox_inches='tight')
+    plt.close()
+
 def main():
     print("PyMC AEH Prior Implementation")
     print("This implementation includes all visualisations and analyses from V3.py")
@@ -803,7 +928,7 @@ def main():
     plot_prior_vs_posterior(model, trace, results_dir)
     plot_enhanced_trace(trace, results_dir)
     
-    # Create comprehensive visualisations
+    # Create visualisations
     create_comprehensive_visualizations(trace, ppc, X, y, feature_names, results_dir)
     
     # Run baseline comparison
@@ -815,7 +940,7 @@ def main():
     # Generate SHAP analysis
     generate_shap_analysis(X, y, feature_names, results_dir)
     
-    # Create comprehensive report
+    # Create report
     create_comprehensive_report(trace, ppc, metrics, baseline_results, sensitivity_results, results_dir)
     
     # Save feature importance
@@ -831,8 +956,20 @@ def main():
         y_pred_samples = y_pred_samples.reshape(-1, y_pred_samples.shape[-1])
     plot_calibration(y, y_pred_samples, results_dir)
     print("Calibration plot saved as calibration_plot.png")
+
+    # Simple Bayesian predictions for two examples (first two rows)
+    try:
+        X_examples = X[:2]
+        y_examples = y[:2]
+        # Mean/latent style with explicit reconstruction
+        predict_with_posterior(trace, X_examples, y_examples, results_dir, feature_names)
+        # PPC style to match predictions_with_uncertainty_bands
+        predict_with_ppc(ppc, indices=[0, 1], y_true=y_examples, results_dir=results_dir)
+        print("Example Bayesian predictions saved: example_predictions(.csv/.png) and example_predictions_ppc(.csv/.png)")
+    except Exception as e:
+        print(f"Warning: could not generate example Bayesian predictions: {e}")
     
-    print(f"\nComprehensive AEH Prior Analysis Complete!")
+    print(f"\nAEH Prior Analysis Complete!")
     print(f"Results saved in: {results_dir}")
     print(f"Model Performance: R²={metrics['r2']:.3f}, RMSE={metrics['rmse']:.2f}")
     print(f"All visualizations and analyses generated successfully!")
