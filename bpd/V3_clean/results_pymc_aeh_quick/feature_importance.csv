@@ -1,0 +1,13 @@
+,mean,sd,hdi_3%,hdi_97%,mcse_mean,mcse_sd,ess_bulk,ess_tail,r_hat,feature
+reordered_coeffs[0],44.5297,0.6205,43.3878,45.669,0.0239,0.0179,670.4628,793.3289,1.006,ghg_emissions_int_log
+reordered_coeffs[1],-0.1705,0.7382,-1.779,1.2477,0.0688,0.104,234.9761,66.5792,1.0027,floor_area_log
+reordered_coeffs[2],0.373,0.0094,0.3557,0.3904,0.0004,0.0002,638.9077,764.6593,1.0067,electric_eui
+reordered_coeffs[3],0.5712,0.0079,0.5565,0.5856,0.0003,0.0003,656.7009,420.3807,1.0033,fuel_eui
+reordered_coeffs[4],-5.1471,1.3447,-7.832,-2.7833,0.0628,0.0471,459.027,580.3777,1.0014,energy_star_rating_normalized
+reordered_coeffs[5],-15.5194,1.5944,-18.5006,-12.5941,0.0501,0.0446,1016.7166,746.8484,1.007,energy_mix
+reordered_coeffs[6],-0.5575,2.6611,-5.5813,4.6211,0.1516,0.1659,347.8464,394.0631,1.0017,building_age_log
+reordered_coeffs[7],-0.0232,0.3693,-0.7399,0.7393,0.0345,0.0526,234.2923,66.5174,1.0034,floor_area_squared
+reordered_coeffs[8],-6.2391,18.5926,-57.7819,16.6486,4.499,4.7159,21.8038,22.5307,1.0671,energy_intensity_ratio
+reordered_coeffs[9],-0.5749,1.3071,-3.0897,1.9401,0.0741,0.0822,360.2689,394.0631,1.0023,building_age_squared
+reordered_coeffs[10],-3.0941,1.2348,-5.4441,-0.6791,0.0575,0.0422,465.7823,504.8417,1.0026,energy_star_rating_squared
+reordered_coeffs[11],-0.1492,7.1038,-12.9646,12.7077,0.6614,1.9116,231.7896,126.103,1.0118,ghg_per_area

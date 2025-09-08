@@ -1,0 +1,20 @@
+{
+  "model_type": "Enhanced HMC Adaptive Prior ARD",
+  "final_metrics": {
+    "r2": 0.8286054413320382,
+    "rmse": 11.088893781998236,
+    "mae": 8.353327943786926
+  },
+  "hmc_config": {
+    "n_chains": 8,
+    "hmc_steps": 100,
+    "warmup_steps": 1000,
+    "target_acceptance": 0.65
+  },
+  "convergence": {
+    "iteration": 9,
+    "mse": 78.64965233977915,
+    "r2": 0.8903730351478356,
+    "w_norm": 1.6170905324531917
+  }
+}

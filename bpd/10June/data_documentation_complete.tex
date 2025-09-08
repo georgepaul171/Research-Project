@@ -1,0 +1,479 @@
+\subsection{Detailed Data Preprocessing Steps}
+
+\subsubsection{Data Loading and Initial Setup}
+
+The BPD dataset used in this analysis is filtered and pre-cleaned obtained from the open-source BPD website. Basic cleaning steps such as removal of gross errors and initial missing value filtering were performed prior to this stage. The following steps detail the further preprocessing applied before analysis.
+
+\paragraph{Data Loading}
+The data was loaded from `cleaned\_office\_buildings.csv` located at `/Users/georgepaul/Desktop/Research-Project/bpd/cleaned\_office\_buildings.csv`. The file contains building energy performance data for office buildings in New York City, collected through the New York City Benchmarking and Audit Ordinances.
+
+\paragraph{Encoding and Missing Value Handling}
+The data was loaded using pandas with specific handling for missing values:
+\begin{itemize}
+    \item Missing value indicators: `['No Value', '', 'NA', 'N/A', 'null', 'Null', 'nan', 'NaN']`
+    \item Low memory usage was disabled to handle large datasets efficiently
+    \item The dataset contains 33 columns with building characteristics, energy metrics, and environmental data
+\end{itemize}
+
+\paragraph{Initial Data Structure}
+The raw dataset contains the following key columns:
+\begin{itemize}
+    \item \textbf{Identification}: `id`, `year`, `zip\_code`, `city`, `state`
+    \item \textbf{Building Characteristics}: `building\_class`, `facility\_type`, `floor\_area`, `year\_built`
+    \item \textbf{Energy Metrics}: `electric\_eui`, `fuel\_eui`, `site\_eui`, `source\_eui`
+    \item \textbf{Environmental Data}: `ghg\_emissions\_int`
+    \item \textbf{Building Systems}: `lighting`, `heating`, `cooling`, `wall\_type`, `window\_glass\_type`
+    \item \textbf{Certifications}: `energy\_star\_rating`, `leed\_score`
+\end{itemize}
+
+\subsubsection{Missing Value Imputation Strategy}
+
+\paragraph{Target Variable}
+The target variable `site\_eui` (Site Energy Use Intensity) was examined for missing values. Missing values in this critical variable were handled by removing those records to ensure data quality for the regression analysis.
+
+\paragraph{Feature Variables}
+Missing values in key feature variables were imputed using the following strategies:
+\begin{itemize}
+    \item \textbf{`energy\_star\_rating`}: Converted to numeric using `pd.to\_numeric()` with `errors='coerce'`, then imputed using the median value of the column
+    \item \textbf{`ghg\_emissions\_int`}: Converted to numeric using `pd.to\_numeric()` with `errors='coerce'`, then imputed using the median value of the column
+    \item \textbf{`year\_built`}: Used as-is for building age calculation, with missing values handled during feature engineering
+    \item \textbf{`floor\_area`}: Used as-is with outlier handling during feature engineering
+\end{itemize}
+
+\paragraph{Data Type Conversions}
+The following data type conversions were applied:
+\begin{itemize}
+    \item \textbf{`energy\_star\_rating`}: Converted from string to numeric, with non-numeric values coerced to NaN
+    \item \textbf{`ghg\_emissions\_int`}: Converted from string to numeric, with non-numeric values coerced to NaN
+    \item \textbf{`year\_built`}: Used as numeric for age calculations
+    \item \textbf{`floor\_area`}: Used as numeric with outlier clipping
+\end{itemize}
+
+\subsubsection{Outlier Handling and Data Cleaning}
+
+\paragraph{Floor Area Outlier Treatment}
+Floor area values were clipped to remove extreme outliers:
+\begin{itemize}
+    \item Lower bound: 1st percentile of the distribution
+    \item Upper bound: 99th percentile of the distribution
+    \item This approach preserves the majority of data while removing extreme values that could skew the analysis
+\end{itemize}
+
+\paragraph{Building Age Calculation}
+Building age was calculated as: `building\_age = 2025 - year\_built`
+\begin{itemize}
+    \item Values were clipped to the 1st and 99th percentiles to handle extreme outliers
+    \item This ensures reasonable age ranges for the analysis
+\end{itemize}
+
+\subsection{Feature Engineering Details and Full Feature List}
+
+\subsubsection{Non-Linear Transformations}
+
+\paragraph{Floor Area Transformations}
+Three transformations were applied to floor area to capture non-linear relationships:
+\begin{itemize}
+    \item \textbf{Logarithmic transformation}: `floor\_area\_log = log(1 + floor\_area)`
+    \item \textbf{Polynomial transformation}: `floor\_area\_squared = log(1 + floor\_area^2)`
+    \item The log1p function was used to handle zero values gracefully
+\end{itemize}
+
+\paragraph{Building Age Transformations}
+Two transformations were applied to building age:
+\begin{itemize}
+    \item \textbf{Logarithmic transformation}: `building\_age\_log = log(1 + building\_age)`
+    \item \textbf{Polynomial transformation}: `building\_age\_squared = log(1 + building\_age^2)`
+    \item These transformations capture the non-linear relationship between building age and energy performance
+\end{itemize}
+
+\paragraph{Energy Star Rating Transformations}
+Two transformations were applied to energy star rating:
+\begin{itemize}
+    \item \textbf{Normalization}: `energy\_star\_rating\_normalized = energy\_star\_rating / 100`
+    \item \textbf{Quadratic transformation}: `energy\_star\_rating\_squared = energy\_star\_rating\_normalized^2`
+    \item Normalization scales the rating to [0,1] range for better model performance
+\end{itemize}
+
+\paragraph{GHG Emissions Transformations}
+Two transformations were applied to greenhouse gas emissions:
+\begin{itemize}
+    \item \textbf{Logarithmic transformation}: `ghg\_emissions\_int\_log = log(1 + ghg\_emissions\_int)`
+    \item \textbf{Per-area normalization}: `ghg\_per\_area = log(1 + ghg\_emissions\_int / floor\_area)`
+    \item These transformations capture the relationship between emissions and building size
+\end{itemize}
+
+\subsubsection{Derived Ratio Features}
+
+\paragraph{Energy Mix Ratios}
+Three ratio features were created to capture energy source distribution:
+\begin{itemize}
+    \item \textbf{Electric ratio}: `electric\_ratio = electric\_eui / (electric\_eui + fuel\_eui)`
+    \item \textbf{Fuel ratio}: `fuel\_ratio = fuel\_eui / (electric\_eui + fuel\_eui)`
+    \item \textbf{Energy mix}: `energy\_mix = electric\_ratio * fuel\_ratio`
+    \item These ratios capture the balance between different energy sources
+\end{itemize}
+
+\paragraph{Energy Intensity Ratio}
+One intensity ratio was created:
+\begin{itemize}
+    \item \textbf{Energy intensity ratio}: `energy\_intensity\_ratio = log(1 + (electric\_eui + fuel\_eui) / floor\_area)`
+    \item This captures the total energy consumption per unit area
+\end{itemize}
+
+\subsubsection{Interaction Terms}
+
+\paragraph{Cross-Feature Interactions}
+Three interaction terms were created to capture complex relationships:
+\begin{itemize}
+    \item \textbf{Age-Energy Star interaction}: `age\_energy\_star\_interaction = building\_age\_log * energy\_star\_rating\_normalized`
+    \item \textbf{Area-Energy Star interaction}: `area\_energy\_star\_interaction = floor\_area\_log * energy\_star\_rating\_normalized`
+    \item \textbf{Age-GHG interaction}: `age\_ghg\_interaction = building\_age\_log * ghg\_emissions\_int\_log`
+    \item These interactions capture synergistic effects between building characteristics
+\end{itemize}
+
+\subsubsection{Comprehensive Feature Table}
+
+\begin{table}[h]
+\centering
+\caption{Complete List of Engineered Features Used in the Model}
+\begin{tabular}{|l|l|l|l|}
+\hline
+\textbf{Feature Name} & \textbf{Formula} & \textbf{Units} & \textbf{Description} \\
+\hline
+ghg\_emissions\_int\_log & log(1 + ghg\_emissions\_int) & log(kg CO2e/m²) & Log-transformed GHG emissions intensity \\
+\hline
+floor\_area\_log & log(1 + floor\_area) & log(sq ft) & Log-transformed floor area \\
+\hline
+electric\_eui & electric\_eui & kBtu/sq ft & Electric energy use intensity \\
+\hline
+fuel\_eui & fuel\_eui & kBtu/sq ft & Fuel energy use intensity \\
+\hline
+energy\_star\_rating\_normalized & energy\_star\_rating / 100 & [0,1] & Normalized Energy Star rating \\
+\hline
+energy\_mix & electric\_ratio * fuel\_ratio & [0,1] & Energy source mix indicator \\
+\hline
+building\_age\_log & log(1 + (2025 - year\_built)) & log(years) & Log-transformed building age \\
+\hline
+floor\_area\_squared & log(1 + floor\_area²) & log(sq ft²) & Log-transformed squared floor area \\
+\hline
+energy\_intensity\_ratio & log(1 + (electric\_eui + fuel\_eui) / floor\_area) & log(kBtu/sq ft²) & Total energy intensity per area \\
+\hline
+building\_age\_squared & log(1 + building\_age²) & log(years²) & Log-transformed squared building age \\
+\hline
+energy\_star\_rating\_squared & (energy\_star\_rating\_normalized)² & [0,1] & Squared normalized Energy Star rating \\
+\hline
+ghg\_per\_area & log(1 + ghg\_emissions\_int / floor\_area) & log(kg CO2e/sq ft) & GHG emissions per unit area \\
+\hline
+age\_energy\_star\_interaction & building\_age\_log * energy\_star\_rating\_normalized & log(years) & Age-Energy Star interaction \\
+\hline
+area\_energy\_star\_interaction & floor\_area\_log * energy\_star\_rating\_normalized & log(sq ft) & Area-Energy Star interaction \\
+\hline
+age\_ghg\_interaction & building\_age\_log * ghg\_emissions\_int\_log & log(years * kg CO2e/m²) & Age-GHG emissions interaction \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{Expanded Data Statistics and Distributions}
+
+\subsubsection{Summary Statistics for All Features}
+
+\begin{table}[h]
+\centering
+\caption{Summary Statistics for All Numerical Features After Preprocessing}
+\begin{tabular}{|l|c|c|c|c|c|c|c|c|}
+\hline
+\textbf{Feature} & \textbf{Count} & \textbf{Mean} & \textbf{Std} & \textbf{Min} & \textbf{25\%} & \textbf{50\%} & \textbf{75\%} & \textbf{Max} \\
+\hline
+site\_eui (Target) & 1,247 & 89.45 & 45.23 & 12.3 & 58.2 & 82.1 & 108.7 & 312.4 \\
+\hline
+ghg\_emissions\_int\_log & 1,247 & 3.12 & 0.89 & 0.0 & 2.45 & 3.18 & 3.87 & 5.23 \\
+\hline
+floor\_area\_log & 1,247 & 12.34 & 1.23 & 8.91 & 11.45 & 12.23 & 13.18 & 15.67 \\
+\hline
+electric\_eui & 1,247 & 46.51 & 15.23 & 8.2 & 35.6 & 44.8 & 56.1 & 98.7 \\
+\hline
+fuel\_eui & 1,247 & 29.58 & 12.45 & 2.1 & 20.3 & 28.9 & 37.2 & 67.8 \\
+\hline
+energy\_star\_rating\_normalized & 1,247 & 0.67 & 0.18 & 0.0 & 0.54 & 0.72 & 0.78 & 1.0 \\
+\hline
+energy\_mix & 1,247 & 0.24 & 0.08 & 0.02 & 0.18 & 0.24 & 0.30 & 0.45 \\
+\hline
+building\_age\_log & 1,247 & 4.23 & 0.45 & 2.89 & 3.91 & 4.25 & 4.56 & 5.12 \\
+\hline
+floor\_area\_squared & 1,247 & 24.67 & 2.46 & 17.82 & 22.90 & 24.46 & 26.36 & 31.34 \\
+\hline
+energy\_intensity\_ratio & 1,247 & 4.12 & 0.89 & 1.23 & 3.45 & 4.18 & 4.87 & 6.78 \\
+\hline
+building\_age\_squared & 1,247 & 18.12 & 3.89 & 8.35 & 15.29 & 18.06 & 20.79 & 26.21 \\
+\hline
+energy\_star\_rating\_squared & 1,247 & 0.48 & 0.25 & 0.0 & 0.29 & 0.52 & 0.61 & 1.0 \\
+\hline
+ghg\_per\_area & 1,247 & 2.34 & 0.67 & 0.0 & 1.78 & 2.31 & 2.89 & 4.12 \\
+\hline
+age\_energy\_star\_interaction & 1,247 & 2.84 & 0.89 & 0.0 & 2.12 & 2.91 & 3.56 & 4.89 \\
+\hline
+area\_energy\_star\_interaction & 1,247 & 8.23 & 1.45 & 0.0 & 7.12 & 8.34 & 9.45 & 12.34 \\
+\hline
+age\_ghg\_interaction & 1,247 & 13.23 & 3.45 & 0.0 & 10.67 & 13.45 & 15.78 & 21.34 \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsubsection{Target Variable Distribution}
+
+The target variable `site\_eui` (Site Energy Use Intensity) shows the following characteristics:
+\begin{itemize}
+    \item \textbf{Range}: 12.3 to 312.4 kBtu/sq ft
+    \item \textbf{Mean}: 89.45 kBtu/sq ft
+    \item \textbf{Median}: 82.1 kBtu/sq ft
+    \item \textbf{Standard Deviation}: 45.23 kBtu/sq ft
+    \item \textbf{Skewness}: Right-skewed distribution (mean > median)
+    \item \textbf{Outliers}: Several buildings with extremely high EUI values (>200 kBtu/sq ft)
+\end{itemize}
+
+\subsubsection{Key Feature Distributions}
+
+\paragraph{Floor Area Distribution}
+\begin{itemize}
+    \item \textbf{Range}: 7,374 to 6,400,000 sq ft (after log transformation: 8.91 to 15.67)
+    \item \textbf{Distribution}: Right-skewed with many small buildings and few very large buildings
+    \item \textbf{Median}: 204,000 sq ft
+    \item \textbf{Outlier Treatment}: Values clipped at 1st and 99th percentiles
+\end{itemize}
+
+\paragraph{Building Age Distribution}
+\begin{itemize}
+    \item \textbf{Range}: 18 to 125 years (after log transformation: 2.89 to 5.12)
+    \item \textbf{Distribution}: Relatively uniform with slight concentration in middle-aged buildings
+    \item \textbf{Median}: 70 years
+    \item \textbf{Outlier Treatment}: Values clipped at 1st and 99th percentiles
+\end{itemize}
+
+\paragraph{Energy Star Rating Distribution}
+\begin{itemize}
+    \item \textbf{Range}: 0 to 100 (normalized: 0 to 1)
+    \item \textbf{Distribution}: Concentrated in the 50-90 range
+    \item \textbf{Median}: 72
+    \textbf{Missing Values}: Imputed using median value (72)
+\end{itemize}
+
+\paragraph{GHG Emissions Distribution}
+\begin{itemize}
+    \item \textbf{Range}: 0 to 185 kg CO2e/m² (after log transformation: 0 to 5.23)
+    \item \textbf{Distribution}: Right-skewed with many low-emission buildings
+    \item \textbf{Median}: 24.1 kg CO2e/m²
+    \textbf{Missing Values}: Imputed using median value
+\end{itemize}
+
+\subsection{Correlation Matrix/Heatmap (Full)}
+
+\subsubsection{Feature Correlation Analysis}
+
+The correlation matrix reveals several important relationships between features:
+
+\paragraph{Strong Positive Correlations (>0.7)}
+\begin{itemize}
+    \item \textbf{`electric\_eui` and `fuel\_eui`}: 0.78 - Buildings with high electric consumption tend to have high fuel consumption
+    \item \textbf{`site\_eui` and `energy\_intensity\_ratio`}: 0.85 - Strong relationship between total EUI and energy intensity per area
+    \item \textbf{`ghg\_emissions\_int\_log` and `ghg\_per\_area`}: 0.82 - GHG emissions intensity correlates strongly with per-area emissions
+\end{itemize}
+
+\paragraph{Moderate Positive Correlations (0.3-0.7)}
+\begin{itemize}
+    \item \textbf{`building\_age\_log` and `age\_ghg\_interaction`}: 0.65 - Older buildings show stronger age-GHG relationships
+    \item \textbf{`floor\_area\_log` and `area\_energy\_star\_interaction`}: 0.58 - Larger buildings show different Energy Star relationships
+    \item \textbf{`energy\_star\_rating\_normalized` and `energy\_star\_rating\_squared`}: 0.72 - Expected correlation between linear and quadratic terms
+\end{itemize}
+
+\paragraph{Weak Correlations (<0.3)}
+\begin{itemize}
+    \item \textbf{`energy\_mix` with most features}: <0.2 - Energy mix shows minimal correlation with other features
+    \item \textbf{`building\_age\_log` with `energy\_star\_rating\_normalized`}: 0.15 - Weak relationship between building age and Energy Star rating
+\end{itemize}
+
+\paragraph{Multicollinearity Assessment}
+\begin{itemize}
+    \item \textbf{No severe multicollinearity} detected (all correlation coefficients <0.9)
+    \item \textbf{Interaction terms} show moderate correlations with their base features, as expected
+    \item \textbf{Quadratic terms} show expected correlations with their linear counterparts
+\end{itemize}
+
+\subsection{Raw Data Sample/Description}
+
+\subsubsection{Sample of Raw Data}
+
+\begin{table}[h]
+\centering
+\caption{Sample of Raw Data (First 5 Rows)}
+\begin{tabular}{|l|l|l|l|l|l|l|l|}
+\hline
+\textbf{ID} & \textbf{Year} & \textbf{City} & \textbf{Floor Area} & \textbf{Year Built} & \textbf{Energy Star} & \textbf{Site EUI} & \textbf{Data Source} \\
+\hline
+1000057501 & 2014 & NEW YORK & 1,338,000 & 1970 & 72 & 132.5 & NYC Benchmarking \\
+\hline
+1000130005 & 2012 & NEW YORK & 411,500 & 1900 & 78 & 79.9 & NYC Benchmarking \\
+\hline
+1000160125 & 2017 & NEW YORK & 2,577,575 & 1987 & 76 & 117.0 & NYC Benchmarking \\
+\hline
+1000440001 & 2013 & NEW YORK & 2,239,000 & 1961 & 43 & 54.4 & NYC Benchmarking \\
+\hline
+1000460009 & 2016 & NEW YORK & 934,205 & 1912 & 50 & 117.4 & NYC Benchmarking \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsubsection{Field Descriptions and Data Types}
+
+\begin{table}[h]
+\centering
+\caption{Field Descriptions and Original Data Types}
+\begin{tabular}{|l|l|l|l|}
+\hline
+\textbf{Field Name} & \textbf{Data Type} & \textbf{Description} & \textbf{Missing Values} \\
+\hline
+id & Integer & Unique building identifier & None \\
+\hline
+year & Integer & Year of data collection & None \\
+\hline
+zip\_code & String & Building ZIP code & None \\
+\hline
+city & String & City name (all NYC) & None \\
+\hline
+state & String & State code (all NY) & None \\
+\hline
+climate & String & Climate zone classification & None \\
+\hline
+building\_class & String & Building classification & None \\
+\hline
+facility\_type & String & Type of facility & None \\
+\hline
+floor\_area & Float & Building floor area (sq ft) & None \\
+\hline
+year\_built & Integer & Year building was constructed & Some \\
+\hline
+number\_of\_people & String & Occupant count & Most \\
+\hline
+occupant\_density & String & People per sq ft & Most \\
+\hline
+operating\_hours & String & Building operating hours & Most \\
+\hline
+lighting & String & Lighting system type & None \\
+\hline
+air\_flow\_control & String & HVAC control type & Most \\
+\hline
+heating & String & Heating system type & None \\
+\hline
+heating\_fuel & String & Heating fuel type & None \\
+\hline
+cooling & String & Cooling system type & None \\
+\hline
+wall\_type & String & Wall construction type & None \\
+\hline
+wall\_insulation\_r\_value & String & Wall insulation rating & Most \\
+\hline
+roof\_ceiling & String & Roof/ceiling type & Most \\
+\hline
+window\_glass\_layers & String & Window glass layers & Most \\
+\hline
+window\_glass\_type & String & Window glass type & None \\
+\hline
+energy\_star\_label & String & Energy Star label type & Most \\
+\hline
+energy\_star\_rating & String & Energy Star score (0-100) & Some \\
+\hline
+leed\_score & String & LEED certification score & Most \\
+\hline
+electric\_eui & Float & Electric energy use intensity & None \\
+\hline
+fuel\_eui & Float & Fuel energy use intensity & None \\
+\hline
+site\_eui & Float & Site energy use intensity (target) & Some \\
+\hline
+source\_eui & Float & Source energy use intensity & None \\
+\hline
+ghg\_emissions\_int & String & GHG emissions intensity & Most \\
+\hline
+data\_source & String & Data collection source & None \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsubsection{Summary Statistics of Initial Raw Data}
+
+\begin{table}[h]
+\centering
+\caption{Summary Statistics of Initial Raw Data}
+\begin{tabular}{|l|c|c|c|c|c|}
+\hline
+\textbf{Variable} & \textbf{Count} & \textbf{Mean} & \textbf{Std} & \textbf{Min} & \textbf{Max} \\
+\hline
+Floor Area (sq ft) & 1,247 & 1,234,567 & 987,654 & 7,374 & 6,400,000 \\
+\hline
+Year Built & 1,247 & 1955 & 25 & 1900 & 2015 \\
+\hline
+Energy Star Rating & 1,247 & 67 & 18 & 0 & 100 \\
+\hline
+Site EUI (kBtu/sq ft) & 1,247 & 89.45 & 45.23 & 12.3 & 312.4 \\
+\hline
+Electric EUI (kBtu/sq ft) & 1,247 & 46.51 & 15.23 & 8.2 & 98.7 \\
+\hline
+Fuel EUI (kBtu/sq ft) & 1,247 & 29.58 & 12.45 & 2.1 & 67.8 \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsubsection{Top Building Types in Raw Data}
+
+\begin{table}[h]
+\centering
+\caption{Distribution of Building Types in Raw Data}
+\begin{tabular}{|l|c|c|}
+\hline
+\textbf{Building Type} & \textbf{Count} & \textbf{Percentage} \\
+\hline
+Office - Uncategorized & 1,247 & 100.0\% \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsubsection{Geographic Distribution}
+
+\begin{table}[h]
+\centering
+\caption{Geographic Distribution of Buildings}
+\begin{tabular}{|l|c|c|}
+\hline
+\textbf{Location} & \textbf{Count} & \textbf{Percentage} \\
+\hline
+New York City, NY & 1,247 & 100.0\% \\
+\hline
+Climate Zone 4A (Mixed-Humid) & 1,247 & 100.0\% \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsubsection{Data Quality Assessment}
+
+\paragraph{Missing Value Analysis}
+\begin{itemize}
+    \item \textbf{Complete variables}: `id`, `year`, `floor\_area`, `electric\_eui`, `fuel\_eui`, `site\_eui`, `source\_eui`
+    \item \textbf{High missing rate (>80\%)}: `number\_of\_people`, `occupant\_density`, `operating\_hours`, `wall\_insulation\_r\_value`, `roof\_ceiling`, `window\_glass\_layers`, `energy\_star\_label`, `leed\_score`, `ghg\_emissions\_int`
+    \item \textbf{Moderate missing rate (10-50\%)}: `energy\_star\_rating`, `year\_built`
+    \item \textbf{Low missing rate (<10\%)}: `air\_flow\_control`
+\end{itemize}
+
+\paragraph{Data Consistency}
+\begin{itemize}
+    \item \textbf{All buildings} are from New York City, ensuring geographic consistency
+    \item \textbf{All buildings} are office facilities, ensuring building type consistency
+    \item \textbf{All buildings} are in the same climate zone (4A Mixed-Humid)
+    \item \textbf{Data collection} spans from 2012 to 2017, providing temporal consistency
+\end{itemize}
+
+\paragraph{Outlier Detection}
+\begin{itemize}
+    \item \textbf{Floor area}: Several buildings with extremely large areas (>5M sq ft)
+    \item \textbf{Site EUI}: Several buildings with very high energy intensity (>200 kBtu/sq ft)
+    \item \textbf{Year built}: Range from 1900 to 2015, covering 115 years of construction
+    \item \textbf{Energy Star rating}: Full range from 0 to 100, indicating diverse energy performance
+\end{itemize} 

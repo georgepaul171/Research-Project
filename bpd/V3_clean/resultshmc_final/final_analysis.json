@@ -1,0 +1,22 @@
+{
+  "model_type": "Final HMC Adaptive Prior ARD with NUTS",
+  "final_metrics": {
+    "r2": 0.4882929469503259,
+    "rmse": 19.16021640783106,
+    "mae": 17.899950526482474
+  },
+  "final_hmc_config": {
+    "n_chains": 12,
+    "hmc_steps": 200,
+    "warmup_steps": 2000,
+    "target_acceptance": 0.65,
+    "use_nuts": true,
+    "max_tree_depth": 10
+  },
+  "convergence": {
+    "iteration": 20,
+    "mse": 82.20632488383858,
+    "r2": 0.885415515255773,
+    "w_norm": 1.8044700166558083
+  }
+}

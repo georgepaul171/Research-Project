@@ -1,0 +1,5 @@
+R-hat (max): 1.024
+R-hat (mean): 1.008
+ESS (min): 57.3
+ESS (mean): 395.0
+ESS (sum): 10664

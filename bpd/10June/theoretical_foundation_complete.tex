@@ -1,0 +1,341 @@
+\subsection{Theoretical Foundation}
+
+\subsubsection{Complete Model Specification}
+
+The model extends traditional ARD with a novel hierarchical Bayesian structure:
+
+\[
+p(y|X,w,\alpha) = \mathcal{N}(y|Xw,\alpha^{-1}I)
+\]
+
+\[
+p(w|\theta) = \prod_{g \in \mathcal{G}} \prod_{j \in g} p(w_j|\theta_g)
+\]
+
+where $\mathcal{G}$ is the set of feature groups and $\theta_g$ represents group-specific hyperparameters. 
+
+\subsubsection{Prior Decomposition with Numerical Stability}
+
+The prior structure is decomposed into four components with numerical stability measures: 
+
+\begin{itemize}
+
+\item Hierarchical Component with Stability:
+    \[
+    p(w_j|\lambda_j,\tau_j,\nu_j) = \mathcal{N}(w_j|0,(\lambda_j\tau_j)^{-1})
+    \]
+    \[
+    \lambda_j^{(t+1)} = \frac{\nu_j + 1}{w_j^2 + S_{jj} + 2\tau_j^{(t)} + \epsilon}
+    \]
+    \[
+    \tau_j^{(t+1)} = \frac{\nu_j + 1}{\lambda_j^{(t+1)} + 1 + \epsilon}
+    \]
+    \[
+    p(\nu_j) = \text{Gamma}(\nu_j|a_0,b_0)
+    \]
+    where $\epsilon$ is a small constant for numerical stability.
+
+\item Spike-Slab Component with Robust Updates:
+    \[
+    p(w_j|\pi_j,\sigma^2_{0j},\sigma^2_{1j}) = (1-\pi_j)\mathcal{N}(w_j|0,\sigma^2_{0j}) + \pi_j\mathcal{N}(w_j|0,\sigma^2_{1j})
+    \]
+    \[
+    \log \text{odds}_j = \log\frac{\pi_j}{1-\pi_j} + \frac{1}{2}\log\frac{\sigma^2_{1j}}{\sigma^2_{0j}} + \frac{w_j^2}{2}(\frac{1}{\sigma^2_{0j}} - \frac{1}{\sigma^2_{1j}})
+    \]
+    \[
+    \pi_j^{(t+1)} = \frac{1}{1 + \exp(-\log \text{odds}_j)}
+    \]
+    \[
+    \sigma_{0j}^{2,(t+1)} = \frac{b_0 + \frac{w_j^2}{2}}{a_0 + \frac{1}{2} + \epsilon}
+    \]
+    \[
+    \sigma_{1j}^{2,(t+1)} = \frac{b_1 + \frac{w_j^2}{2}}{a_1 + \frac{1}{2} + \epsilon}
+    \]
+
+\item Horseshoe Component with Adaptive Shrinkage:
+    \[
+    p(w_j|\lambda_j,\tau) = \mathcal{N}(w_j|0,\lambda_j^2\tau^2)
+    \]
+    \[
+    \lambda_j^{(t+1)} = \frac{1}{\frac{w_j^2}{2\tau^{(t)}} + \frac{1}{c^2} + \epsilon}
+    \]
+    \[
+    \tau^{(t+1)} = \frac{1}{\frac{\sum_j w_j^2}{2\sum_j \lambda_j^{(t+1)}} + 1 + \epsilon}
+    \]
+
+\item Adaptive Elastic Horseshoe (AEH) Component (Novel):
+    \[
+    p(w_j|\lambda_j,\tau,\alpha,\beta) = \mathcal{N}(w_j|0,\lambda_j^2\tau^2)
+    \]
+    \[
+    \text{elastic\_penalty}_j = \alpha|w_j| + (1-\alpha)w_j^2
+    \]
+    \[
+    \text{horseshoe\_scale}_j = \frac{1}{\frac{w_j^2}{2\tau^{(t)}} + \beta \cdot \text{elastic\_penalty}_j + \epsilon}
+    \]
+    \[
+    \text{gradient}_j = -\text{horseshoe\_scale}_j + \beta \cdot \text{elastic\_penalty}_j
+    \]
+    \[
+    \text{momentum}_j^{(t+1)} = \rho \cdot \text{momentum}_j^{(t)} + \gamma \cdot \text{gradient}_j
+    \]
+    \[
+    \lambda_j^{(t+1)} = \text{clip}(\lambda_j^{(t)} + \text{momentum}_j^{(t+1)}, \epsilon, \infty)
+    \]
+    \[
+    \alpha^{(t+1)} = \text{clip}(\alpha^{(t)} + \gamma \cdot (0.5 - \text{importance\_ratio}), 0.1, 0.9)
+    \]
+    \[
+    \beta^{(t+1)} = \text{clip}(\beta^{(t)} + \gamma \cdot (1.0 - \text{uncertainty\_ratio}), 0.1, 10.0)
+    \]
+    
+\end{itemize}
+
+\begin{itemize}
+
+\item These mathematical formulations are consistent with the implementation.
+
+\item All parameters ($\epsilon, a_0, b_0, a_1, b_1, c^2, \alpha, \beta, \gamma, \rho$) have been clearly defined.
+
+\item The AEH prior is a novel contribution that combines elastic net regularization with horseshoe shrinkage, providing adaptive feature selection with momentum-based updates.
+
+\end{itemize}
+
+\subsubsection{Group Prior Structure}
+
+\paragraph{Group Assignments}
+The model implements group-specific priors based on feature characteristics:
+
+\begin{itemize}
+\item \textbf{Energy Features} (indices 0-3): Adaptive Elastic Horseshoe prior
+\item \textbf{Building Features} (indices 4-7): Hierarchical ARD prior  
+\item \textbf{Interaction Features} (indices 8+): Spike-and-Slab prior
+\end{itemize}
+
+\paragraph{Group Structure with Numerical Stability}
+
+\[
+p(w_g|\theta_g) = \prod_{j \in g} p(w_j|\theta_g)
+\]
+
+\[
+p(\theta_g|\phi_g) = \prod_{k \in \theta_g} p(\theta_{gk}|\phi_{gk}) 
+\]
+
+\paragraph{Group Interaction Model with Stability}
+
+\[
+p(w_{g_1},w_{g_2}|\theta_{g_1,g_2}) = p(w_{g_1}|\theta_{g_1})p(w_{g_2}|\theta_{g_2})p(\theta_{g_1,g_2})
+\]
+
+\begin{itemize}
+
+\item The specific functional forms for $p(\theta_{gk}|\phi_{gk})$ are implicitly defined by the chosen prior for each group (AEH, Hierarchical ARD, Spike-and-Slab). For instance, for the Hierarchical ARD group, $\theta_g$ includes $\lambda_j$ and $\tau_j$ with their Gamma hyperpriors.
+
+\item Interaction terms $w_{g_1}, w_{g_2}$ are modelled through the explicit creation of interaction features in the feature engineering step. $p(\theta_{g_1,g_2})$ does not have a specific form as the group-wise priors (e.g., Spike-and-Slab for interaction terms) model their influence directly, rather than through a separate interaction hyperprior.
+
+\end{itemize}
+
+\subsubsection{Dynamic Shrinkage Mechanism}
+
+\paragraph{Adaptive Shrinkage with Stability}
+\[
+\kappa_j^{(t+1)} = (1-\eta_{\text{adapt}})\kappa_j^{(t)} + \eta_{\text{adapt}} \cdot \text{importance}(w_j) 
+\]
+
+\[
+\text{importance}(w_j) = \frac{1}{\beta_j + \epsilon}
+\]
+
+\paragraph{Uncertainty-Based Adaptation}
+\[
+\eta_j^{(t+1)} = (1-\eta_{\text{adapt}})\eta_j^{(t)} + \eta_{\text{adapt}} \cdot \mathbb{I}(\sqrt{S_{jj}} > \tau_{\text{unc}})
+\]
+
+\begin{itemize}
+
+\item $\eta_{\text{adapt}}$ is the learning rate for the adaptive shrinkage (default: $0.1$). 
+
+\item $\kappa_j^{(t+1)}$ represents an adaptive scaling factor for the shrinkage of weight $w_j$. $\eta_j^{(t+1)}$ is an adaptive learning rate that controls how quickly the prior adapts based on the uncertainty of feature $j$. Their update rules dynamically adjust the regularization based on feature importance and uncertainty.
+
+\item $\tau_{\text{unc}}$ in the uncertainty-based adaptation refers to a threshold for the standard deviation (default: $0.1$), not the global shrinkage parameter from the Horseshoe prior. It indicates if the uncertainty of a feature is above a certain threshold.
+
+\end{itemize}
+
+\subsubsection{Robust Noise Modelling}
+
+\paragraph{Student's t Noise Model}
+\[
+p(\epsilon|\alpha,\nu) = \text{Student-t}(\epsilon|0,\alpha^{-1},\nu)
+\]
+
+\paragraph{Fixed Degrees of Freedom}
+\[
+\nu = 3.0 \text{ (fixed during training)}
+\]
+
+\begin{itemize}
+
+\item The model uses a fixed degrees of freedom $\nu = 3.0$ for robustness, rather than adaptively learning it. This provides heavy-tailed noise modeling that is robust to outliers.
+
+\item $\nu$ (degrees of freedom) is fixed at $3.0$ during training, making the noise model robust to outliers.
+\end{itemize}
+
+\subsubsection{Uncertainty Calibration}
+
+\paragraph{Base Uncertainty with Stability}
+\[
+\sigma^2_{\text{base}} = \frac{1}{\alpha + \epsilon} + \sum_{j=1}^p (X_j^TSX_j)
+\]
+
+\paragraph{Calibrated Uncertainty}
+\[
+\sigma^2_{\text{calibrated}} = \sigma^2_{\text{base}} \cdot \gamma_{\text{cal}}
+\]
+
+where:
+\[
+\gamma_{\text{cal}}^{(t+1)} = \gamma_{\text{cal}}^{(t)} \cdot \exp(\eta_{\text{cal}} \cdot (\text{nominal\_coverage} - \text{empirical\_coverage}))
+\]
+
+\begin{itemize}
+
+\item $\alpha$ is the noise precision from the model. $\epsilon$ is a numerical stability constant (default: $1 \times 10^{-10}$).
+ 
+\item $\gamma_{\text{cal}}$ (calibration factor) is learned adaptively based on the discrepancy between nominal and empirical coverage during the validation phase. $\eta_{\text{cal}}$ controls the learning rate for calibration updates.
+
+\item The calibration factor is initialized to $10.0$ and updated to ensure prediction intervals have the correct coverage probability.
+
+\end{itemize}
+
+\subsubsection{Hamiltonian Monte Carlo Integration}
+
+\paragraph{Hamiltonian Dynamics with Stability}
+\[
+H(w,p) = U(w) + K(p)
+\]
+
+where:
+\[
+U(w) = -\log p(w|X,y,\theta) + \frac{\epsilon_{\text{HMC}}}{2}w^Tw 
+\]
+
+\[
+K(p) = \frac{1}{2}p^TM^{-1}p 
+\]
+
+\paragraph{Leapfrog Integration with Stability}
+\[
+p^{(t+\epsilon_{\text{HMC}}/2)} = p^{(t)} - \frac{\epsilon_{\text{HMC}}}{2}\nabla U(w^{(t)})
+\]
+
+\[
+w^{(t+\epsilon_{\text{HMC}})} = w^{(t)} + \epsilon_{\text{HMC}} M^{-1}p^{(t+\epsilon_{\text{HMC}}/2)}
+\]
+
+\[
+p^{(t+\epsilon_{\text{HMC}})} = p^{(t+\epsilon_{\text{HMC}}/2)} - \frac{\epsilon_{\text{HMC}}}{2}\nabla U(w^{(t+\epsilon_{\text{HMC}})})
+\]
+
+\paragraph{Implementation Parameters}
+\begin{itemize}
+\item $\epsilon_{\text{HMC}}$ (step size) = $0.01$
+\item Number of leapfrog steps = $10$
+\item Number of HMC steps per iteration = $10$
+\item Momentum variance = $2.0$
+\item Mass matrix $M$ = Identity matrix
+\item Number of chains = $4$
+\end{itemize}
+
+\begin{itemize}
+
+\item The step size $\epsilon_{\text{HMC}}$ is set to $0.01$. $M$ (mass matrix) is implicitly an identity matrix, assuming a standard HMC implementation without preconditioning.
+
+\item The number of leapfrog steps is $10$. These values were chosen to balance computational efficiency with sampling quality, ensuring good mixing without excessive computational cost on the available hardware.
+
+\item The Metropolis acceptance step is applied after each leapfrog trajectory. A proposed state $(w',p')$ is accepted or rejected based on the change in Hamiltonian energy, ensuring samples are drawn from the true posterior distribution.
+
+\item Momentum resampling occurs with probability $0.3$ to improve exploration.
+
+\end{itemize}
+
+\subsubsection{Theoretical Guarantees}
+
+\paragraph{Posterior Consistency with Stability}
+\[
+\lim_{n \to \infty} p(w|X,y) = \delta(w-w^*) 
+\]
+
+\paragraph{Uncertainty Quantification with Calibration}
+\[
+\mathbb{P}(|y - \hat{y}| \leq k\sigma_{\text{calibrated}}) \approx \Phi(k)
+\]
+
+\begin{itemize}
+
+\item These guarantees are foundational in Bayesian statistics. Posterior consistency implies that as the amount of data ($n$) increases, the posterior distribution of the weights $w$ converges to a Dirac delta function centered at the true weights $w^*$. Uncertainty quantification with calibration, where $\Phi(k)$ is the standard normal CDF, indicates that the calibrated prediction intervals accurately reflect the true variability in the data, ensuring reliable confidence assessments. 
+
+\item "Stability" (e.g., numerical constants like $\epsilon$, robust updates, and appropriate clipping) ensures that the optimization and sampling processes remain well-behaved, preventing numerical issues and allowing the theoretical properties to hold in practice.
+
+\end{itemize}
+
+\subsubsection{Cross-Validation Framework}
+
+\paragraph{K-Fold Cross-Validation}
+\[
+\text{CV Score} = \frac{1}{K}\sum_{k=1}^K \frac{1}{n_k}\sum_{i \in \text{fold}_k} (y_i - \hat{y}_i)^2 
+\]
+
+\paragraph{Probabilistic Metrics}
+\[
+\text{PICP} = \frac{1}{n}\sum_{i=1}^n \mathbb{I}(y_i \in [\hat{y}_i - Z_{\alpha_c/2}\sigma_i, \hat{y}_i + Z_{\alpha_c/2}\sigma_i])
+\]
+
+\[
+\text{CRPS} = \frac{1}{n}\sum_{i=1}^n \int_{-\infty}^{\infty} (F(x) - \mathbb{I}(x \ge y_i))^2 dx
+\]
+
+\paragraph{Implementation Parameters}
+\begin{itemize}
+\item Number of folds $K$ = $3$
+\item Convergence tolerance = $1 \times 10^{-4}$
+\item Maximum iterations = $200$
+\item Random state = $42$
+\end{itemize}
+
+\begin{itemize}
+
+\item **CV Score (RMSE)**: This represents the Root Mean Squared Error, measuring the average magnitude of the errors.
+
+\item **PICP**: Prediction Interval Coverage Probability. This metric evaluates the reliability of the prediction intervals by quantifying the percentage of observed values ($y_i$) that fall within the specified credible intervals ( $[\hat{y}_i - Z_{\alpha_c/2}\sigma_i, \hat{y}_i + Z_{\alpha_c/2}\sigma_i]$).
+
+\item **CRPS**: Continuous Ranked Probability Score. This is a proper scoring rule that simultaneously assesses the accuracy of point forecasts and the sharpness of predictive distributions by measuring the integrated squared difference between the predicted and observed cumulative distribution functions.
+
+\item $K$ (number of folds) is $3$ in this study. $n_k$ is the size of the validation fold.
+
+\item $\mathbb{I}(\cdot)$ is the indicator function, which is $1$ if the condition is true and $0$ otherwise. $Z_{\alpha_c/2}$ is the quantile from the standard normal distribution corresponding to the desired confidence level $\alpha_c$. 
+
+\end{itemize}
+
+\subsubsection{Model Configuration}
+
+\paragraph{Default Hyperparameters}
+\begin{itemize}
+\item Initial noise precision $\alpha_0$ = $1 \times 10^{-6}$
+\item Initial weight precision $\beta_0$ = $1 \times 10^{-6}$
+\item Adaptation rate $\eta_{\text{adapt}}$ = $0.1$
+\item Uncertainty threshold $\tau_{\text{unc}}$ = $0.1$
+\item Calibration factor $\gamma_{\text{cal}}$ = $10.0$
+\item Student's t degrees of freedom $\nu$ = $3.0$
+\item AEH parameters: $\alpha$ = $0.5$, $\beta$ = $1.0$, $\gamma$ = $0.1$, $\rho$ = $0.9$
+\end{itemize}
+
+\paragraph{Feature Engineering}
+The model includes comprehensive feature engineering:
+\begin{itemize}
+\item Logarithmic transformations: $\log(1 + x)$ for area, age, and emissions
+\item Squared terms: $\log(1 + x^2)$ for non-linear relationships
+\item Ratio features: Energy mix calculations
+\item Interaction terms: Age-energy star, area-energy star, age-GHG interactions
+\item Robust scaling and outlier clipping at 1st and 99th percentiles
+\end{itemize} 

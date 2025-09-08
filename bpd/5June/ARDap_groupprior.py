@@ -218,6 +218,11 @@ class AdaptivePriorARD:
         # Uncertainty calibration
         self.uncertainty_calibration_factor = self.config.calibration_factor
         self.uncertainty_calibration_history = []
+        
+        # MCMC history tracking
+        self.weight_history = []
+        self.alpha_history = []
+        self.acceptance_rates = []
 
     def _initialize_adaptive_priors(self, n_features: int):
         """
@@ -564,6 +569,11 @@ class AdaptivePriorARD:
         # Initialise adaptive priors
         self._initialize_adaptive_priors(n_features)
         
+        # Clear history tracking
+        self.weight_history = []
+        self.alpha_history = []
+        self.acceptance_rates = []
+        
         # Cross-validation for robust evaluation
         kf = KFold(n_splits=self.config.n_splits, shuffle=True, 
                   random_state=self.config.random_state)
@@ -598,8 +608,13 @@ class AdaptivePriorARD:
                     self.m, acceptance_probs = self._hmc_sampling(
                         X_train_scaled, y_train_scaled, self.m
                     )
+                    self.acceptance_rates.extend(acceptance_probs)
                     logger.info(f"Fold {fold}, Iteration {iteration}: "
                               f"Mean HMC acceptance rate: {np.mean(acceptance_probs):.3f}")
+                
+                # Track history
+                self.weight_history.append(self.m.copy())
+                self.alpha_history.append(self.alpha)
                 
                 # M-step: Update hyperparameters
                 residuals = y_train_scaled - X_train_scaled @ self.m
@@ -706,6 +721,11 @@ class AdaptivePriorARD:
         self.cv_results = pd.DataFrame(cv_metrics)
         logger.info(f"Cross-validation results:\n{self.cv_results.mean()}")
         
+        # Convert history lists to numpy arrays
+        self.weight_history = np.array(self.weight_history)
+        self.alpha_history = np.array(self.alpha_history)
+        self.acceptance_rates = np.array(self.acceptance_rates)
+        
         return self
     
     def predict(self, X: np.ndarray, return_std: bool = False) -> Tuple[np.ndarray, Optional[np.ndarray]]:
@@ -787,7 +807,10 @@ class AdaptivePriorARD:
             'scaler_y': self.scaler_y,
             'config': self.config,
             'uncertainty_calibration_factor': self.uncertainty_calibration_factor,
-            'uncertainty_calibration_history': self.uncertainty_calibration_history
+            'uncertainty_calibration_history': self.uncertainty_calibration_history,
+            'weight_history': self.weight_history,
+            'alpha_history': self.alpha_history,
+            'acceptance_rates': self.acceptance_rates
         }
         joblib.dump(model_data, path)
         logger.info(f"Model saved to {path}")
@@ -816,7 +839,124 @@ class AdaptivePriorARD:
         model.scaler_y = model_data['scaler_y']
         model.uncertainty_calibration_factor = model_data['uncertainty_calibration_factor']
         model.uncertainty_calibration_history = model_data['uncertainty_calibration_history']
+        model.weight_history = model_data['weight_history']
+        model.alpha_history = model_data['alpha_history']
+        model.acceptance_rates = model_data['acceptance_rates']
         return model
+
+    def generate_mcmc_diagnostics(self, output_dir: str):
+        """
+        Generate comprehensive MCMC diagnostics including trace plots, Gelman-Rubin statistics,
+        and Effective Sample Size calculations.
+        
+        Args:
+            output_dir: Directory to save diagnostic plots and results
+        """
+        os.makedirs(output_dir, exist_ok=True)
+        
+        # 1. Trace Plots for Key Parameters
+        plt.figure(figsize=(15, 10))
+        
+        # Plot weights for top 5 important features
+        importance = self.get_feature_importance()
+        top_features = np.argsort(importance)[-5:]
+        
+        for i, feat_idx in enumerate(top_features):
+            plt.subplot(3, 2, i+1)
+            plt.plot(self.weight_history[:, feat_idx], alpha=0.5)
+            plt.title(f'Weight Trace: Feature {feat_idx}')
+            plt.xlabel('Iteration')
+            plt.ylabel('Weight Value')
+        
+        # Plot noise precision
+        plt.subplot(3, 2, 6)
+        plt.plot(self.alpha_history, alpha=0.5)
+        plt.title('Noise Precision Trace')
+        plt.xlabel('Iteration')
+        plt.ylabel('Alpha Value')
+        
+        plt.tight_layout()
+        plt.savefig(os.path.join(output_dir, 'trace_plots.png'), dpi=300, bbox_inches='tight')
+        plt.close()
+        
+        # 2. Gelman-Rubin Statistics
+        n_chains = 4  # Number of parallel chains
+        chain_length = len(self.weight_history) // n_chains
+        
+        # Reshape weight history into chains
+        chains = self.weight_history.reshape(n_chains, chain_length, -1)
+        
+        # Calculate R-hat statistics
+        r_hat_stats = {}
+        for j in range(chains.shape[-1]):
+            between_chain_var = np.var(np.mean(chains[:, :, j], axis=1))
+            within_chain_var = np.mean(np.var(chains[:, :, j], axis=1))
+            r_hat = np.sqrt((between_chain_var + within_chain_var) / within_chain_var)
+            r_hat_stats[f'weight_{j}'] = r_hat
+        
+        # Save R-hat statistics
+        with open(os.path.join(output_dir, 'gelman_rubin_stats.json'), 'w') as f:
+            json.dump(r_hat_stats, f, indent=4)
+        
+        # 3. Effective Sample Size (ESS)
+        ess_stats = {}
+        for j in range(chains.shape[-1]):
+            # Calculate autocorrelation
+            acf = np.correlate(chains[0, :, j], chains[0, :, j], mode='full')
+            acf = acf[len(acf)//2:]
+            acf = acf / acf[0]
+            
+            # Find first lag where autocorrelation becomes negative
+            cutoff = np.where(acf < 0)[0]
+            if len(cutoff) > 0:
+                cutoff = cutoff[0]
+            else:
+                cutoff = len(acf)
+            
+            # Calculate ESS
+            ess = chain_length / (1 + 2 * np.sum(acf[1:cutoff]))
+            ess_stats[f'weight_{j}'] = ess
+        
+        # Save ESS statistics
+        with open(os.path.join(output_dir, 'ess_stats.json'), 'w') as f:
+            json.dump(ess_stats, f, indent=4)
+        
+        # 4. Divergent Transitions
+        divergent_count = sum(1 for x in self.acceptance_rates if x < 0.5)
+        divergent_percentage = (divergent_count / len(self.acceptance_rates)) * 100
+        
+        # Save divergent transitions info
+        with open(os.path.join(output_dir, 'divergent_transitions.json'), 'w') as f:
+            json.dump({
+                'total_steps': len(self.acceptance_rates),
+                'divergent_count': divergent_count,
+                'divergent_percentage': divergent_percentage
+            }, f, indent=4)
+        
+        # 5. Acceptance Rate Distribution
+        plt.figure(figsize=(10, 6))
+        plt.hist(self.acceptance_rates, bins=30, alpha=0.7)
+        plt.title('HMC Acceptance Rate Distribution')
+        plt.xlabel('Acceptance Rate')
+        plt.ylabel('Count')
+        plt.savefig(os.path.join(output_dir, 'acceptance_rates.png'), dpi=300, bbox_inches='tight')
+        plt.close()
+        
+        # 6. Generate diagnostic summary
+        diagnostic_summary = {
+            'r_hat_mean': np.mean(list(r_hat_stats.values())),
+            'r_hat_std': np.std(list(r_hat_stats.values())),
+            'ess_mean': np.mean(list(ess_stats.values())),
+            'ess_std': np.std(list(ess_stats.values())),
+            'acceptance_rate_mean': np.mean(self.acceptance_rates),
+            'acceptance_rate_std': np.std(self.acceptance_rates),
+            'divergent_percentage': divergent_percentage
+        }
+        
+        with open(os.path.join(output_dir, 'diagnostic_summary.json'), 'w') as f:
+            json.dump(diagnostic_summary, f, indent=4)
+        
+        return diagnostic_summary
 
 def feature_engineering(df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -1514,7 +1654,7 @@ if __name__ == "__main__":
     logger.info(f"y std: {y.std():.4f}")
     
     # Train and evaluate model
-    results_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'results_groupprior')
+    results_dir = "/Users/georgepaul/Desktop/Research-Project/bpd/5June/results_groupprior"  # Updated to absolute path
     logger.info(f"\nTraining model and saving results to {results_dir}")
     model, metrics = train_and_evaluate_adaptive(X, y, feature_names, output_dir=results_dir)
     

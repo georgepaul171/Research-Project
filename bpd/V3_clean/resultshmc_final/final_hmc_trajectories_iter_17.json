@@ -1,0 +1,19 @@
+{
+  "iteration": 17,
+  "trajectory_lengths": [
+    2.0,
+    2.0,
+    2.0,
+    2.0,
+    2.0,
+    2.0,
+    2.0,
+    2.0,
+    2.0,
+    2.0,
+    2.0,
+    2.0
+  ],
+  "mean_trajectory_length": 2.0,
+  "std_trajectory_length": 0.0
+}

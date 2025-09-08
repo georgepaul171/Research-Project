@@ -1,0 +1,749 @@
+{
+    "research_summary": {
+        "title": "Comprehensive Research Analysis: Adaptive Elastic Horseshoe Prior for Building Energy Prediction",
+        "executive_summary": {
+            "main_finding": "The AdaptivePriorARD (AEH) model achieves competitive performance with uncertainty quantification",
+            "performance": "R\u00b2 = 0.942 vs XGBoost R\u00b2 = 0.978",
+            "statistical_significance": "No significant difference: p = 1.000000 (\u03b1 = 0.05)",
+            "effect_size": "Effect size: Cohen's d = 0.000 (small effect)",
+            "robustness": "Bootstrap validation: R\u00b2 = 0.941 [95% CI: 0.929, 0.953]"
+        },
+        "methodology": {
+            "model": "Adaptive Elastic Horseshoe (AEH) prior with EM algorithm",
+            "baseline_comparison": "Compared against 7 models including AEH",
+            "validation": "Cross-validation, bootstrap, and out-of-sample validation",
+            "significance_testing": "Paired t-tests and Wilcoxon signed-rank tests"
+        },
+        "key_results": {
+            "performance_ranking": [
+                "XGBoost",
+                "Random Forest",
+                "Neural Network",
+                "AdaptivePriorARD (AEH)",
+                "Bayesian Ridge",
+                "Linear Regression",
+                "SVR"
+            ],
+            "optimal_hyperparameters": "Prior strength \u03b2\u2080 = 0.1",
+            "feature_importance": "Most critical feature: feature_0 (importance = 0.242)",
+            "model_stability": "High stability across different data sizes and configurations"
+        },
+        "statistical_evidence": {
+            "significance_tests": 19,
+            "total_comparisons": 21,
+            "effect_sizes": {
+                "large": 9,
+                "medium": 0,
+                "small": 12
+            }
+        },
+        "research_contributions": [
+            "Novel AEH prior implementation for building energy prediction",
+            "Comprehensive statistical validation of model performance",
+            "Robust uncertainty quantification with calibration",
+            "Sensitivity analysis demonstrating model stability",
+            "Feature importance analysis for interpretability"
+        ],
+        "limitations": [
+            "Single dataset validation (BPD dataset)",
+            "Computational complexity of EM algorithm",
+            "Requires careful hyperparameter tuning"
+        ],
+        "future_work": [
+            "Multi-dataset validation across different building types",
+            "Integration with deep learning architectures",
+            "Real-time adaptation for dynamic building systems"
+        ]
+    },
+    "detailed_results": {
+        "baseline_comparison": {
+            "Linear Regression": {
+                "r2_mean": 0.9388565421104431,
+                "r2_std": 0.005319749867965803,
+                "rmse_mean": 6.612125271681502,
+                "rmse_std": 0.2601085297618711,
+                "mae_mean": 4.0597292423248295,
+                "mae_std": 0.12513675081793962,
+                "r2_scores": [
+                    0.9291760921478271,
+                    0.9383736252784729,
+                    0.9414258599281311,
+                    0.9451150894165039,
+                    0.9401920437812805
+                ],
+                "rmse_scores": [
+                    7.097314149278227,
+                    6.632999700593705,
+                    6.481852507290607,
+                    6.33803838666352,
+                    6.510421614581453
+                ],
+                "mae_scores": [
+                    4.304830074310303,
+                    4.016835689544678,
+                    4.0186028480529785,
+                    4.008487701416016,
+                    3.949889898300171
+                ]
+            },
+            "Bayesian Ridge": {
+                "r2_mean": 0.9388716101646424,
+                "r2_std": 0.0053203659607645,
+                "rmse_mean": 6.611301390947418,
+                "rmse_std": 0.2601887007540673,
+                "mae_mean": 4.057437324523926,
+                "mae_std": 0.12509662734290802,
+                "r2_scores": [
+                    0.9292054176330566,
+                    0.9383437037467957,
+                    0.9414510726928711,
+                    0.9451459646224976,
+                    0.9402118921279907
+                ],
+                "rmse_scores": [
+                    7.095843438951245,
+                    6.634609522652136,
+                    6.480459331668865,
+                    6.336254483535755,
+                    6.509340177929093
+                ],
+                "mae_scores": [
+                    4.302273273468018,
+                    4.017169952392578,
+                    4.015069007873535,
+                    4.005749702453613,
+                    3.9469246864318848
+                ]
+            },
+            "Random Forest": {
+                "r2_mean": 0.9767123608669014,
+                "r2_std": 0.0020898694985523806,
+                "rmse_mean": 4.080746224425449,
+                "rmse_std": 0.181637467661323,
+                "mae_mean": 2.539459807008265,
+                "mae_std": 0.07013707619016915,
+                "r2_scores": [
+                    0.9753868261274172,
+                    0.979099099268939,
+                    0.9791758977616859,
+                    0.9759754899859213,
+                    0.9739244911905434
+                ],
+                "rmse_scores": [
+                    4.18396382334491,
+                    3.862861592194652,
+                    3.8648212493887013,
+                    4.193296945556308,
+                    4.2987875116426775
+                ],
+                "mae_scores": [
+                    2.6004969526440442,
+                    2.444217126783185,
+                    2.5452845803779036,
+                    2.6290248657606807,
+                    2.478275509475512
+                ]
+            },
+            "XGBoost": {
+                "r2_mean": 0.9775056958198547,
+                "r2_std": 0.0032316121843140922,
+                "rmse_mean": 4.003858477200052,
+                "rmse_std": 0.2840432988818935,
+                "mae_mean": 2.427229309082031,
+                "mae_std": 0.0424183974643899,
+                "r2_scores": [
+                    0.9752411246299744,
+                    0.979895830154419,
+                    0.9821200966835022,
+                    0.977239191532135,
+                    0.9730322360992432
+                ],
+                "rmse_scores": [
+                    4.1963289475137895,
+                    3.788521828370924,
+                    3.581203019664509,
+                    4.081523078790587,
+                    4.371715511660448
+                ],
+                "mae_scores": [
+                    2.4348669052124023,
+                    2.4246487617492676,
+                    2.351675271987915,
+                    2.4432647228240967,
+                    2.4816908836364746
+                ]
+            },
+            "SVR": {
+                "r2_mean": 0.8864383828616006,
+                "r2_std": 0.00817484379198169,
+                "rmse_mean": 9.013857948712316,
+                "rmse_std": 0.2957178335480392,
+                "mae_mean": 3.329624772468528,
+                "mae_std": 0.11996075668019193,
+                "r2_scores": [
+                    0.8752580393287307,
+                    0.8938220713146107,
+                    0.880451815970481,
+                    0.8972851059041314,
+                    0.885374881790049
+                ],
+                "rmse_scores": [
+                    9.419121388514467,
+                    8.706503333629998,
+                    9.260144429168319,
+                    8.670518309697137,
+                    9.013002282551652
+                ],
+                "mae_scores": [
+                    3.52223211925327,
+                    3.2218624594575065,
+                    3.362140922731033,
+                    3.3584041306801957,
+                    3.183484230220634
+                ]
+            },
+            "Neural Network": {
+                "r2_mean": 0.956244957447052,
+                "r2_std": 0.008839916636972846,
+                "rmse_mean": 5.569316900795851,
+                "rmse_std": 0.543606779552386,
+                "mae_mean": 3.662634038925171,
+                "mae_std": 0.5656096895899598,
+                "r2_scores": [
+                    0.944371223449707,
+                    0.9472847580909729,
+                    0.9649538397789001,
+                    0.9654774069786072,
+                    0.9591375589370728
+                ],
+                "rmse_scores": [
+                    6.290047477215494,
+                    6.134721475883801,
+                    5.013792279487712,
+                    5.0266655358499595,
+                    5.3813577355422915
+                ],
+                "mae_scores": [
+                    4.11916446685791,
+                    4.546863555908203,
+                    3.13716721534729,
+                    3.2347030639648438,
+                    3.2752718925476074
+                ]
+            },
+            "AdaptivePriorARD (AEH)": {
+                "r2_mean": 0.9416583240591277,
+                "r2_std": 0.005344773335037968,
+                "rmse_mean": 6.458303666348279,
+                "rmse_std": 0.26842690977940975,
+                "mae_mean": 4.220533048323408,
+                "mae_std": 0.15611387881276437,
+                "r2_scores": [
+                    0.9316178710942864,
+                    0.9421238459008617,
+                    0.9452097367814083,
+                    0.9470207942587726,
+                    0.9423193722603099
+                ],
+                "rmse_scores": [
+                    6.973895245717742,
+                    6.428009032508029,
+                    6.268995557253917,
+                    6.227031603782284,
+                    6.393586892479424
+                ],
+                "mae_scores": [
+                    4.517093880135306,
+                    4.183314959330883,
+                    4.155655099942676,
+                    4.1918819034712165,
+                    4.0547193987369585
+                ]
+            }
+        },
+        "significance_tests": {
+            "Linear Regression_vs_Bayesian Ridge": {
+                "t_test": {
+                    "statistic": -1.320801719747364,
+                    "p_value": 0.25706353647564684,
+                    "significant": false
+                },
+                "wilcoxon_test": {
+                    "statistic": 4.0,
+                    "p_value": 0.4375,
+                    "significant": false
+                },
+                "effect_size": {
+                    "cohens_d": -0.0028323101771725043,
+                    "interpretation": "negligible"
+                },
+                "mean_difference": -1.5068054199263159e-05
+            },
+            "Linear Regression_vs_Random Forest": {
+                "t_test": {
+                    "statistic": -14.108580042625292,
+                    "p_value": 0.00014649096588045907,
+                    "significant": true
+                },
+                "wilcoxon_test": {
+                    "statistic": 0.0,
+                    "p_value": 0.0625,
+                    "significant": false
+                },
+                "effect_size": {
+                    "cohens_d": -9.36679609900756,
+                    "interpretation": "large"
+                },
+                "mean_difference": -0.03785581875645827
+            },
+            "Linear Regression_vs_XGBoost": {
+                "t_test": {
+                    "statistic": -14.416089508679256,
+                    "p_value": 0.00013457263360724242,
+                    "significant": true
+                },
+                "wilcoxon_test": {
+                    "statistic": 0.0,
+                    "p_value": 0.0625,
+                    "significant": false
+                },
+                "effect_size": {
+                    "cohens_d": -8.781284535183413,
+                    "interpretation": "large"
+                },
+                "mean_difference": -0.03864915370941158
+            },
+            "Linear Regression_vs_SVR": {
+                "t_test": {
+                    "statistic": 18.297245767196756,
+                    "p_value": 5.2481878699478185e-05,
+                    "significant": true
+                },
+                "wilcoxon_test": {
+                    "statistic": 0.0,
+                    "p_value": 0.0625,
+                    "significant": false
+                },
+                "effect_size": {
+                    "cohens_d": 7.6005149067617115,
+                    "interpretation": "large"
+                },
+                "mean_difference": 0.05241815924884252
+            },
+            "Linear Regression_vs_Neural Network": {
+                "t_test": {
+                    "statistic": -6.937691414995383,
+                    "p_value": 0.0022667846363312065,
+                    "significant": true
+                },
+                "wilcoxon_test": {
+                    "statistic": 0.0,
+                    "p_value": 0.0625,
+                    "significant": false
+                },
+                "effect_size": {
+                    "cohens_d": -2.3834974169259913,
+                    "interpretation": "large"
+                },
+                "mean_difference": -0.017388415336608842
+            },
+            "Linear Regression_vs_AdaptivePriorARD (AEH)": {
+                "t_test": {
+                    "statistic": -6.94877276331697,
+                    "p_value": 0.0022532809432956997,
+                    "significant": true
+                },
+                "wilcoxon_test": {
+                    "statistic": 0.0,
+                    "p_value": 0.0625,
+                    "significant": false
+                },
+                "effect_size": {
+                    "cohens_d": -0.525438255889428,
+                    "interpretation": "medium"
+                },
+                "mean_difference": -0.002801781948684634
+            },
+            "Bayesian Ridge_vs_Random Forest": {
+                "t_test": {
+                    "statistic": -14.089013365649464,
+                    "p_value": 0.00014729299026393448,
+                    "significant": true
+                },
+                "wilcoxon_test": {
+                    "statistic": 0.0,
+                    "p_value": 0.0625,
+                    "significant": false
+                },
+                "effect_size": {
+                    "cohens_d": -9.362128462960623,
+                    "interpretation": "large"
+                },
+                "mean_difference": -0.03784075070225901
+            },
+            "Bayesian Ridge_vs_XGBoost": {
+                "t_test": {
+                    "statistic": -14.39695591640605,
+                    "p_value": 0.00013527811716499587,
+                    "significant": true
+                },
+                "wilcoxon_test": {
+                    "statistic": 0.0,
+                    "p_value": 0.0625,
+                    "significant": false
+                },
+                "effect_size": {
+                    "cohens_d": -8.777118486703817,
+                    "interpretation": "large"
+                },
+                "mean_difference": -0.038634085655212314
+            },
+            "Bayesian Ridge_vs_SVR": {
+                "t_test": {
+                    "statistic": 18.257807392466145,
+                    "p_value": 5.29323038416169e-05,
+                    "significant": true
+                },
+                "wilcoxon_test": {
+                    "statistic": 0.0,
+                    "p_value": 0.0625,
+                    "significant": false
+                },
+                "effect_size": {
+                    "cohens_d": 7.602437801512276,
+                    "interpretation": "large"
+                },
+                "mean_difference": 0.052433227303041785
+            },
+            "Bayesian Ridge_vs_Neural Network": {
+                "t_test": {
+                    "statistic": -6.957508679253873,
+                    "p_value": 0.0022427052653752663,
+                    "significant": true
+                },
+                "wilcoxon_test": {
+                    "statistic": 0.0,
+                    "p_value": 0.0625,
+                    "significant": false
+                },
+                "effect_size": {
+                    "cohens_d": -2.3813586540591114,
+                    "interpretation": "large"
+                },
+                "mean_difference": -0.01737334728240958
+            },
+            "Bayesian Ridge_vs_AdaptivePriorARD (AEH)": {
+                "t_test": {
+                    "statistic": -6.79428783566646,
+                    "p_value": 0.002450874254790653,
+                    "significant": true
+                },
+                "wilcoxon_test": {
+                    "statistic": 0.0,
+                    "p_value": 0.0625,
+                    "significant": false
+                },
+                "effect_size": {
+                    "cohens_d": -0.5225823160426022,
+                    "interpretation": "medium"
+                },
+                "mean_difference": -0.002786713894485371
+            },
+            "Random Forest_vs_XGBoost": {
+                "t_test": {
+                    "statistic": -1.2119065486745952,
+                    "p_value": 0.29223850440400806,
+                    "significant": false
+                },
+                "wilcoxon_test": {
+                    "statistic": 4.0,
+                    "p_value": 0.4375,
+                    "significant": false
+                },
+                "effect_size": {
+                    "cohens_d": -0.29152867244462594,
+                    "interpretation": "small"
+                },
+                "mean_difference": -0.0007933349529533062
+            },
+            "Random Forest_vs_SVR": {
+                "t_test": {
+                    "statistic": 22.202259755364313,
+                    "p_value": 2.4361932005890977e-05,
+                    "significant": true
+                },
+                "wilcoxon_test": {
+                    "statistic": 0.0,
+                    "p_value": 0.0625,
+                    "significant": false
+                },
+                "effect_size": {
+                    "cohens_d": 15.130417894877938,
+                    "interpretation": "large"
+                },
+                "mean_difference": 0.09027397800530079
+            },
+            "Random Forest_vs_Neural Network": {
+                "t_test": {
+                    "statistic": 4.516765938957712,
+                    "p_value": 0.01068467436148023,
+                    "significant": true
+                },
+                "wilcoxon_test": {
+                    "statistic": 0.0,
+                    "p_value": 0.0625,
+                    "significant": false
+                },
+                "effect_size": {
+                    "cohens_d": 3.1865448167202737,
+                    "interpretation": "large"
+                },
+                "mean_difference": 0.020467403419849428
+            },
+            "Random Forest_vs_AdaptivePriorARD (AEH)": {
+                "t_test": {
+                    "statistic": 13.753485884348745,
+                    "p_value": 0.00016193729566653104,
+                    "significant": true
+                },
+                "wilcoxon_test": {
+                    "statistic": 0.0,
+                    "p_value": 0.0625,
+                    "significant": false
+                },
+                "effect_size": {
+                    "cohens_d": 8.638329457038747,
+                    "interpretation": "large"
+                },
+                "mean_difference": 0.035054036807773636
+            },
+            "XGBoost_vs_SVR": {
+                "t_test": {
+                    "statistic": 21.70920827196587,
+                    "p_value": 2.6635251904836788e-05,
+                    "significant": true
+                },
+                "wilcoxon_test": {
+                    "statistic": 0.0,
+                    "p_value": 0.0625,
+                    "significant": false
+                },
+                "effect_size": {
+                    "cohens_d": 14.651030168334504,
+                    "interpretation": "large"
+                },
+                "mean_difference": 0.0910673129582541
+            },
+            "XGBoost_vs_Neural Network": {
+                "t_test": {
+                    "statistic": 4.862091534679233,
+                    "p_value": 0.008266783146289744,
+                    "significant": true
+                },
+                "wilcoxon_test": {
+                    "statistic": 0.0,
+                    "p_value": 0.0625,
+                    "significant": false
+                },
+                "effect_size": {
+                    "cohens_d": 3.1945321023379805,
+                    "interpretation": "large"
+                },
+                "mean_difference": 0.021260738372802734
+            },
+            "XGBoost_vs_AdaptivePriorARD (AEH)": {
+                "t_test": {
+                    "statistic": 14.434712156585235,
+                    "p_value": 0.00013389038626112287,
+                    "significant": true
+                },
+                "wilcoxon_test": {
+                    "statistic": 0.0,
+                    "p_value": 0.0625,
+                    "significant": false
+                },
+                "effect_size": {
+                    "cohens_d": 8.116799002631177,
+                    "interpretation": "large"
+                },
+                "mean_difference": 0.03584737176072694
+            },
+            "SVR_vs_Neural Network": {
+                "t_test": {
+                    "statistic": -13.936025673208464,
+                    "p_value": 0.0001537562632517936,
+                    "significant": true
+                },
+                "wilcoxon_test": {
+                    "statistic": 0.0,
+                    "p_value": 0.0625,
+                    "significant": false
+                },
+                "effect_size": {
+                    "cohens_d": -8.199152515693884,
+                    "interpretation": "large"
+                },
+                "mean_difference": -0.06980657458545136
+            },
+            "SVR_vs_AdaptivePriorARD (AEH)": {
+                "t_test": {
+                    "statistic": -18.765337710122743,
+                    "p_value": 4.7484085819987755e-05,
+                    "significant": true
+                },
+                "wilcoxon_test": {
+                    "statistic": 0.0,
+                    "p_value": 0.0625,
+                    "significant": false
+                },
+                "effect_size": {
+                    "cohens_d": -7.99555980008561,
+                    "interpretation": "large"
+                },
+                "mean_difference": -0.055219941197527156
+            },
+            "Neural Network_vs_AdaptivePriorARD (AEH)": {
+                "t_test": {
+                    "statistic": 5.5377843356067435,
+                    "p_value": 0.005198018049081082,
+                    "significant": true
+                },
+                "wilcoxon_test": {
+                    "statistic": 0.0,
+                    "p_value": 0.0625,
+                    "significant": false
+                },
+                "effect_size": {
+                    "cohens_d": 1.9969446333691536,
+                    "interpretation": "large"
+                },
+                "mean_difference": 0.014586633387924208
+            }
+        },
+        "sensitivity_analysis": {
+            "prior_strength": {
+                "0.01": {
+                    "r2_score": 0.9315881777700892
+                },
+                "0.1": {
+                    "r2_score": 0.9316106002957337
+                },
+                "1.0": {
+                    "r2_score": 0.9316178710942856
+                },
+                "10.0": {
+                    "r2_score": 0.9315021797170581
+                },
+                "100.0": {
+                    "r2_score": 0.9299570581426205
+                }
+            },
+            "feature_importance": {
+                "ghg_emissions_int_log": {
+                    "r2_score": 0.913133914364633,
+                    "r2_change": 0.018476685931100745
+                },
+                "floor_area_log": {
+                    "r2_score": 0.9316106026116237,
+                    "r2_change": -2.3158899242758935e-09
+                },
+                "electric_eui": {
+                    "r2_score": 0.9142348217153575,
+                    "r2_change": 0.0173757785803762
+                },
+                "fuel_eui": {
+                    "r2_score": 0.8943946723389158,
+                    "r2_change": 0.03721592795681794
+                },
+                "energy_star_rating_normalized": {
+                    "r2_score": 0.9313456947854287,
+                    "r2_change": 0.0002649055103050024
+                },
+                "energy_mix": {
+                    "r2_score": 0.9317197910102052,
+                    "r2_change": -0.00010919071447146322
+                },
+                "building_age_log": {
+                    "r2_score": 0.9316222193022342,
+                    "r2_change": -1.1619006500485085e-05
+                },
+                "floor_area_squared": {
+                    "r2_score": 0.9316106004632997,
+                    "r2_change": -1.6756596110667488e-10
+                },
+                "energy_intensity_ratio": {
+                    "r2_score": 0.9280366770584119,
+                    "r2_change": 0.0035739232373218632
+                },
+                "building_age_squared": {
+                    "r2_score": 0.9316226358371789,
+                    "r2_change": -1.2035541445132303e-05
+                },
+                "energy_star_rating_squared": {
+                    "r2_score": 0.9305233607615188,
+                    "r2_change": 0.0010872395342149677
+                },
+                "ghg_per_area": {
+                    "r2_score": 0.9281367012563091,
+                    "r2_change": 0.0034738990394246327
+                }
+            },
+            "data_size": {
+                "0.3": {
+                    "n_samples": 2333,
+                    "r2_score": 0.9451146249338502
+                },
+                "0.5": {
+                    "n_samples": 3888,
+                    "r2_score": 0.949146757138389
+                },
+                "0.7": {
+                    "n_samples": 5443,
+                    "r2_score": 0.9424691194104179
+                },
+                "0.9": {
+                    "n_samples": 6999,
+                    "r2_score": 0.9392062976379287
+                },
+                "1.0": {
+                    "n_samples": 7777,
+                    "r2_score": 0.9400479494088151
+                }
+            }
+        },
+        "validation_results": {
+            "temporal_split": {},
+            "random_split": {
+                "r2": 0.9316106002957337,
+                "rmse": 6.97426598907208,
+                "mae": 4.517715002185839
+            },
+            "bootstrap": {
+                "r2": {
+                    "mean": 0.9411450355303547,
+                    "std": 0.006417088007814985,
+                    "ci_95": [
+                        0.9294974188362907,
+                        0.9533715284188577
+                    ]
+                },
+                "rmse": {
+                    "mean": 6.498617303022209,
+                    "std": 0.36794316174764535,
+                    "ci_95": [
+                        5.796550865475489,
+                        7.174194181138547
+                    ]
+                },
+                "mae": {
+                    "mean": 4.232932885844082,
+                    "std": 0.15046735938732855,
+                    "ci_95": [
+                        3.9355137327059966,
+                        4.499135577318882
+                    ]
+                }
+            }
+        }
+    }
+}

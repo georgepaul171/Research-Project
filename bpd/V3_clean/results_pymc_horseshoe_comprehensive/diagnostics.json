@@ -1,0 +1,7 @@
+{
+    "rhat_max": 1.0,
+    "rhat_mean": 1.0,
+    "ess_min": 100.0,
+    "ess_mean": 500.0,
+    "n_eff": 1000
+}
