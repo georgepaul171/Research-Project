@@ -1,0 +1,7 @@
+method,n,convergence_rate,n_replications,n_converged
+AEH,500,0.92,50,46
+AEH,1000,0.88,50,44
+AEH,2000,0.94,50,47
+Horseshoe,500,0.96,50,48
+Horseshoe,1000,1.0,50,50
+Horseshoe,2000,1.0,50,50
